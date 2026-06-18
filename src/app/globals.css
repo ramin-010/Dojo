@@ -1,20 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-foreground: var(--foreground);
-  --color-background: var(--bg-main);
-  --color-sidebar: var(--bg-sidebar);
-  --color-hover: var(--bg-hover);
-  --color-accent: var(--accent);
-  --color-divider: color-mix(in srgb, var(--foreground) 5%, transparent);
+  --color-foreground: #cccccc;
+  --color-background: #1e1e1e;
+  --color-sidebar: #181818;
+  --color-hover: #2a2a2a;
+  --color-accent: #0078D4;
+  --color-divider: #2a2a2a;
 }
 
 :root {
   --foreground: #cccccc;
   --bg-sidebar: #181818;
   --bg-main: #1e1e1e;
-  --bg-hover: #2d2d2d;
+  --bg-hover: #2a2a2a;
   --accent: #0078D4;
+  --divider: #2a2a2a;
 }
 
 body {
@@ -26,12 +27,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Base styles for the UI */
+/* Base border style — gives all borders the subtle divider color */
 * {
-  border-color: var(--color-divider);
+  border-color: var(--divider);
 }
 
 input, textarea, button {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Scrollbar styling for the dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
 }
