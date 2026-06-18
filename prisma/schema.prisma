@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?  // Optional hex color for UI grouping
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topics    Topic[]
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?  @db.Text // Tiptap JSON or Markdown content
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  // Spaced Repetition Core
+  revisions   Json     @default("[]") // [{ date: "2026-06-18", status: "pending|completed|missed", type: "Day 1" }]
+  nextRevDate DateTime?
+
+  // Linking System (Symlinks)
+  linksTo     TopicLink[] @relation("SourceTopic")
+  linkedFrom  TopicLink[] @relation("TargetTopic")
+}
+
+// Explicit many-to-many table for symlinks to allow metadata (like context/description of the link)
+model TopicLink {
+  id            String   @id @default(cuid())
+  sourceId      String
+  targetId      String
+  context       String?  // E.g., "See this for background on X"
+  createdAt     DateTime @default(now())
+
+  sourceTopic   Topic    @relation("SourceTopic", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetTopic   Topic    @relation("TargetTopic", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId])
+}
