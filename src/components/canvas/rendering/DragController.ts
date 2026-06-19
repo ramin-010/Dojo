@@ -39,6 +39,9 @@ export class DragController {
 
     private notify() {
         this.listeners.forEach(cb => cb(this.isDragging, this._activeId));
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('canvas-drag-state', { detail: { isDragging: this.isDragging } }));
+        }
     }
 }
 

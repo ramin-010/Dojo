@@ -14,7 +14,7 @@ import { useCanvasHandlers } from './useCanvasHandlers';
 export const TITLE_HEIGHT = 105;
 export const COVER_HEIGHT = 192;
 export const SIDE_PADDING = 5;
-export const VERTICAL_PADDING = 10;
+export const VERTICAL_PADDING = 5;
 
 interface SingleCanvasProps {
   canvasId: string;
@@ -40,7 +40,7 @@ interface SingleCanvasProps {
   onCanvasClick: (canvasId: string) => void;
   onConnectionsChange: (connections: Connection[]) => void;
   onSelectConnection: (id: string | null) => void;
-  onAddImage?: (canvasId: string, file: File) => void;
+  onAddImage?: (canvasId: string, file: File, x?: number, y?: number) => void;
   onMentionClick?: (topicId: string) => void;
 }
 

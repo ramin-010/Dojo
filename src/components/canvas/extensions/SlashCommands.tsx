@@ -6,7 +6,7 @@ import Suggestion, { SuggestionOptions, SuggestionProps } from '@tiptap/suggesti
 import tippy, { Instance } from 'tippy.js';
 import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
-  Heading2, Heading3, List, ListOrdered,
+  Heading1, Heading2, Heading3, List, ListOrdered,
   Quote, Code, Minus, CheckSquare, Type,
   Info, AlertTriangle, Lightbulb, AlertOctagon
 } from 'lucide-react';
@@ -30,14 +30,22 @@ export const getSuggestionItems = (): CommandItem[] => [
   {
     title: 'Heading 1',
     description: 'Large section heading',
+    icon: <Heading1 className="w-4 h-4" />,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
+    },
+  },
+  {
+    title: 'Heading 2',
+    description: 'Medium section heading',
     icon: <Heading2 className="w-4 h-4" />,
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
     },
   },
   {
-    title: 'Heading 2',
-    description: 'Medium section heading',
+    title: 'Heading 3',
+    description: 'Small section heading',
     icon: <Heading3 className="w-4 h-4" />,
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run();

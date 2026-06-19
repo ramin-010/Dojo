@@ -100,7 +100,7 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
     editorProps: {
       attributes: {
         class: 'outline-none max-w-none',
-        style: `white-space: pre-wrap; word-break: break-word; max-width: 100%; margin: 0; padding-left: 4px; padding-right: 4px; padding-top: 2px; padding-bottom: 2px; line-height: 1.7;`,
+        style: `white-space: pre-wrap; word-break: break-word; max-width: 100%; margin: 0; padding-left: 4px; padding-right: 4px; padding-top: 2px; padding-bottom: 2px;`,
       },
       handleKeyDown: (view, event) => {
         if (wrapperRef.current && event.key.length === 1) {

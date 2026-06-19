@@ -88,6 +88,29 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
     };
   }, [isDragging]);
 
+  // Listen for canvas block drag events to animate the canvas border efficiently
+  useEffect(() => {
+    const handleCanvasDrag = (e: Event) => {
+      const customEvent = e as CustomEvent<{ isDragging: boolean }>;
+      const isDraggingBlock = customEvent.detail.isDragging;
+      const container = document.getElementById('canvas-border-container');
+      if (container) {
+        if (isDraggingBlock) {
+          // Become a full highlighted dashed border with accent bg
+          container.className = "flex-1 w-full relative border border-accent rounded-2xl mt-2 transition-all duration-300 shadow-sm bg-accent/5 border-dashed";
+          container.style.borderTopStyle = 'solid';
+        } else {
+          // Revert to only top border, no background
+          container.className = "flex-1 w-full relative border-t border-divider rounded-t-2xl mt-2 transition-all duration-300";
+          container.style.borderTopStyle = '';
+        }
+      }
+    };
+
+    window.addEventListener('canvas-drag-state', handleCanvasDrag);
+    return () => window.removeEventListener('canvas-drag-state', handleCanvasDrag);
+  }, []);
+
   // Dummy data for symlinks
   const outboundLinks = [
     { id: 't2', title: 'Client Component Boundaries', subject: 'Next.js Architecture', context: '...because Server Components cannot use hooks like useState, you must use @Client Component Boundaries for interactivity...' }
@@ -183,16 +206,17 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
               </div>
               
             </div>
-            
-            {/* Sticky Curved Top Border for the Canvas */}
-            <div className="w-full border-t border-divider rounded-t-xl mt-2 pt-4" />
+            {/* We no longer have an empty div here, we wrap the canvas below */}
           </div>
         
           {/* Topic Canvas */}
-          <div ref={canvasWrapperRef} className="flex-1 w-full relative">
-            <div className="pb-32 w-full h-full relative">
+          <div 
+            id="canvas-border-container" 
+            className="flex-1 w-full relative border-t border-divider rounded-t-2xl mt-2 transition-all duration-300"
+          >
+            <div ref={canvasWrapperRef} className="pb-32 w-full h-full relative pt-4">
               <TopicCanvas 
-                topicId={topic.id} 
+                topicId={topic  .id} 
                 initialContent={topic.content} 
                 onMentionClick={handleMentionClick} 
                 containerWidth={canvasContainerWidth} 

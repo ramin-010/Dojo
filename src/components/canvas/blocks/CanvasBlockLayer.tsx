@@ -144,7 +144,7 @@ const BlockWrapperComponent = ({
       onResizeStart={handleResizeStart}
       onResizeStop={handleResizeStop}
       className="z-100"
-      style={{ zIndex, opacity: editingBlockId === block.blockId ? 0 : 1, pointerEvents: editingBlockId === block.blockId ? 'none' : 'auto', willChange: 'transform' }}
+      style={{ zIndex, opacity: editingBlockId === block.blockId ? 0 : 1, pointerEvents: editingBlockId === block.blockId ? 'none' : 'auto' }}
       resizeHandleStyles={{
         right: { zIndex: 5 },
         bottom: { zIndex: 5 },

@@ -83,6 +83,23 @@ function SmartBlockComponent({
 
   const isMinimalText = type === 'text' && !isEditing && !isConnected && !color;
 
+  const lastClickTimeRef = useRef<number>(0);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 300) {
+      if (type === 'text') {
+        e.stopPropagation();
+        if (onEditRequest) {
+          onEditRequest(id);
+        } else {
+          setIsEditing(true);
+        }
+      }
+    }
+    lastClickTimeRef.current = now;
+  };
+
   return (
     <div
       ref={blockRef}
@@ -109,21 +126,12 @@ function SmartBlockComponent({
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onPointerDown={handlePointerDown}
       onClick={(e) => {
         onFocus?.(id);
       }}
-      onDoubleClick={(e) => {
-        if (type === 'text') {
-          e.stopPropagation();
-          if (onEditRequest) {
-            onEditRequest(id);
-          } else {
-            setIsEditing(true);
-          }
-        }
-      }}
     >
-      <DragHandle isVisible={isHovered || isSelected} />
+      {/* <DragHandle isVisible={isHovered || isSelected} /> */}
       
       <AnchorPoints 
         isVisible={isSelected || !!isConnectionDragging}

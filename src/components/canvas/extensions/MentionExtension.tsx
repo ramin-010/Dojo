@@ -65,7 +65,7 @@ export const getMentionSuggestions = {
           return true;
         }
 
-        return component.ref?.onKeyDown(props);
+        return (component.ref as any)?.onKeyDown(props);
       },
 
       onExit() {

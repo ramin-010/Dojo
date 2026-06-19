@@ -160,7 +160,7 @@ export function TopicCanvas({
         setSelectedConnectionId(null);
       }
     }}>
-      <div style={{
+      <div className="mx-auto" style={{
         width: CANVAS_WIDTH * autoZoom,
       }}>
         <div style={{

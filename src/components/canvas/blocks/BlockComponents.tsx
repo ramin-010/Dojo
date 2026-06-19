@@ -164,7 +164,7 @@ export const BlockContent: React.FC<BlockContentProps> = ({
         }}
       >
         <div 
-          className="ProseMirror preview-prosemirror select-none h-full w-full"
+          className="tiptap ProseMirror preview-prosemirror select-none h-full w-full"
           style={{ 
             maxWidth: '100%', 
             margin: 0, 
@@ -172,7 +172,6 @@ export const BlockContent: React.FC<BlockContentProps> = ({
             paddingRight: '4px',
             paddingTop: '2px',
             paddingBottom: '2px',
-            lineHeight: '1.7',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             color: 'inherit',

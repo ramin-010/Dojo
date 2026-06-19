@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background">
+      <body className="font-sans antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background">
         
         {/* Collapsible Left Sidebar */}
         <Sidebar />
