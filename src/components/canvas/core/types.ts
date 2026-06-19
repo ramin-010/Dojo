@@ -47,4 +47,4 @@ export const CANVAS_WIDTH = 890;
 export const CANVAS_MIN_HEIGHT = 1500;
 export const MIN_ZOOM = 0.5;
 export const MAX_ZOOM = 1.5;
-export const GUIDE_LINE_SPACING = 24;
+export const GUIDE_LINE_SPACING = 4;

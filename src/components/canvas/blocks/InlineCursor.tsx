@@ -109,8 +109,8 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
             if (sel && sel.rangeCount > 0) {
               const caretRect = sel.getRangeAt(0).getBoundingClientRect();
               const wrapperRect = wrapperRef.current.getBoundingClientRect();
-              if (wrapperRect.right - caretRect.right < 15) {
-                wrapperRef.current.style.width = `${wrapperRef.current.offsetWidth + 20}px`;
+              if (wrapperRect.right - caretRect.right < 50) {
+                wrapperRef.current.style.width = `${wrapperRef.current.offsetWidth + 50}px`;
               }
             }
           } catch (_) {}
@@ -144,8 +144,29 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
       onChangeRef.current?.(editor.getHTML());
     },
     onBlur: () => {
-      const capturedWidth = wrapperRef.current?.offsetWidth || 0;
+      let capturedWidth = wrapperRef.current?.offsetWidth || 0;
       const capturedHeight = wrapperRef.current?.offsetHeight || 0;
+
+      if (editor && !editor.isDestroyed) {
+        try {
+          let maxChildWidth = 0;
+          const children = Array.from(editor.view.dom.children);
+          
+          children.forEach(child => {
+            const el = child as HTMLElement;
+            const originalDisplay = el.style.display;
+            // inline-block forces the element to shrink-wrap its text content
+            el.style.display = 'inline-block';
+            maxChildWidth = Math.max(maxChildWidth, el.getBoundingClientRect().width);
+            el.style.display = originalDisplay;
+          });
+
+          // Add a small 8px buffer for the padding (4px left + 4px right)
+          if (maxChildWidth > 0) {
+            capturedWidth = Math.ceil(maxChildWidth) + 8;
+          }
+        } catch (_) {}
+      }
 
       setTimeout(() => {
         if (!editor || editor.isDestroyed) return;

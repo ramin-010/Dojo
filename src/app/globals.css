@@ -77,6 +77,14 @@ input, textarea, button {
   outline: none;
 }
 
+.tiptap > *:first-child {
+  margin-top: 0;
+}
+
+.tiptap > *:last-child {
+  margin-bottom: 0;
+}
+
 .tiptap p {
   font-size: 1rem;
   margin: 0.35rem 0;
