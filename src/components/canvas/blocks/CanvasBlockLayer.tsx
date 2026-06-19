@@ -80,7 +80,7 @@ const BlockWrapperComponent = ({
     dragController?.stopDrag();
   }, [block.blockId, onDragStop, dragController]);
 
-  const handleRndDragStart = useCallback(() => {
+  const handleRndDragStart = useCallback((_e: any, d: any) => {
     onDragStart?.(block.blockId);
     dragController?.startDrag(block.blockId);
   }, [block.blockId, onDragStart, dragController]);

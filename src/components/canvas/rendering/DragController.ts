@@ -8,9 +8,14 @@ export class DragController {
         return this._activeId;
     }
 
-    startDrag(id: string) {
+    startDrag(id: string, x?: number, y?: number) {
         this.isDragging = true;
         this._activeId = id;
+        if (x !== undefined && y !== undefined) {
+            this.activeOffset = { x, y };
+        } else {
+            this.activeOffset = null;
+        }
         this.notify();
     }
 
