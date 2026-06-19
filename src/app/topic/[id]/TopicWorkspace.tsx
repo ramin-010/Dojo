@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu } from "lucide-react";
 import Link from "next/link";
 import { TopicCanvas } from "@/components/canvas/TopicCanvas";
 
@@ -19,11 +19,12 @@ interface TopicWorkspaceProps {
 }
 
 export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('symlinks');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
 
   const [sidebarWidth, setSidebarWidth] = useState(384); // Default w-96 = 384px
+
   const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
@@ -138,13 +139,46 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
     setPreviewTopicId(clickedTopicId);
     setActiveTab('preview');
     setIsSidebarOpen(true);
+    setSidebarWidth(window.innerWidth / 2);
   };
+
+  const fullFadeWidth = typeof window !== 'undefined' ? window.innerWidth / 2 : 960;
+  const overlayOpacity = isSidebarOpen
+    ? Math.min(0.6, Math.max(0, (sidebarWidth - 384) / Math.max(1, fullFadeWidth - 384) * 0.6))
+    : 0;
 
   return (
     <div className="h-screen w-full bg-background flex overflow-hidden">
       {/* Main Content Area */}
-      <div className={`flex-1 h-full overflow-y-auto overflow-x-hidden flex flex-col min-w-[500px] ${isDragging ? '' : 'transition-all duration-300 ease-in-out'}`}>
-        <div className="max-w-[960px] mx-auto w-full h-full flex flex-col px-8">
+      <div 
+        className={`flex-1 h-full overflow-y-auto overflow-x-hidden flex flex-col min-w-[500px] relative ${isDragging ? '' : 'transition-all duration-300 ease-in-out'}`}
+        style={{ marginRight: isSidebarOpen ? `${sidebarWidth}px` : '0px' }}
+      >
+        {/* Floating Sidebar Toggle Button */}
+        {!isSidebarOpen && (
+          <button 
+            onClick={() => {
+              setIsSidebarOpen(true);
+              setSidebarWidth(window.innerWidth / 2);
+            }}
+            className="fixed top-6 right-6 p-2 bg-background border border-border shadow-sm hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all z-50 animate-in fade-in zoom-in-95"
+            title="Open Context Panel"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+        
+        {/* Dynamic Dark Overlay */}
+        {overlayOpacity > 0 && (
+          <div 
+            className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-75 z-50"
+            style={{ opacity: overlayOpacity }}
+          />
+        )}
+        
+        <div 
+          className="max-w-[960px] min-w-[960px] mx-auto w-full h-full flex flex-col px-8 transition-all duration-300 ease-in-out"
+        >
           <div className="pt-6 flex-shrink-0 sticky top-0 bg-background z-40">
             <div className="flex flex-col gap-6 pb-2">
               
@@ -241,33 +275,32 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
       {/* Drag Handle */}
       {isSidebarOpen && (
         <div 
-          className="w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-30"
-          style={{ backgroundColor: isDragging ? 'hsl(var(--primary) / 0.5)' : 'transparent' }}
+          className="fixed top-0 bottom-0 cursor-col-resize hover:bg-primary/50 transition-colors z-[60]"
+          style={{ right: `${sidebarWidth}px`, width: '4px', backgroundColor: isDragging ? 'hsl(var(--primary) / 0.5)' : 'transparent' }}
           onMouseDown={() => setIsDragging(true)}
         />
       )}
       
       <div 
-        className={`flex-shrink-0 border-l border-divider bg-sidebar flex flex-col h-full shadow-xl z-20 overflow-hidden ${isDragging ? '' : 'transition-all duration-300 ease-in-out'}`}
-        style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '48px' }}
+        className={`fixed right-0 top-0 bottom-0 bg-sidebar flex flex-col h-full shadow-2xl z-50 overflow-hidden ${isDragging ? '' : 'transition-all duration-300 ease-in-out'} ${isSidebarOpen ? 'border-l border-divider' : 'border-none'}`}
+        style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '0px' }}
       >
-        {isSidebarOpen ? (
-          <>
-            {/* Sidebar Header & Tabs */}
-            <div className="flex flex-col border-b border-divider">
-              <div className="flex items-center justify-between px-4 py-3">
-                <h2 className="font-semibold text-foreground flex items-center gap-2">
-                  Context Panel
-                </h2>
-                <button 
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1.5 hover:bg-hover rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                  title="Collapse Panel"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            
+        <div style={{ width: `${sidebarWidth}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {/* Sidebar Header & Tabs */}
+          <div className="flex flex-col border-b border-divider">
+            <div className="flex items-center justify-between px-4 py-3">
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                Context Panel
+              </h2>
+              <button 
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1.5 hover:bg-hover rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                title="Collapse Panel"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          
             <div className="flex px-2 space-x-1 pb-2">
               <button 
                 onClick={() => setActiveTab('symlinks')}
@@ -407,43 +440,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
               </div>
             )}
           </div>
-        </>
-        ) : (
-          <div className="flex flex-col items-center py-4 space-y-4 w-full">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 hover:bg-hover rounded-md text-muted-foreground hover:text-foreground transition-colors mb-2"
-              title="Expand Context Panel"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            
-            <div className="w-6 h-px bg-divider my-2" />
-
-            <button 
-              onClick={() => { setActiveTab('symlinks'); setIsSidebarOpen(true); }}
-              className={`p-2 rounded-md transition-colors ${activeTab === 'symlinks' ? 'bg-background shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-hover'}`}
-              title="Symlinks"
-            >
-              <LinkIcon className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => { setActiveTab('resources'); setIsSidebarOpen(true); }}
-              className={`p-2 rounded-md transition-colors ${activeTab === 'resources' ? 'bg-background shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-hover'}`}
-              title="Resources"
-            >
-              <Globe className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => { setActiveTab('preview'); setIsSidebarOpen(true); }}
-              disabled={!previewTopicId}
-              className={`p-2 rounded-md transition-colors ${!previewTopicId ? 'opacity-50 cursor-not-allowed' : ''} ${activeTab === 'preview' ? 'bg-background shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-hover'}`}
-              title="Preview"
-            >
-              <FileText className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

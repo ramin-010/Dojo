@@ -38,8 +38,25 @@ const INITIAL_SUBJECTS = [
 ];
 
 export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [subjects, setSubjects] = useState(INITIAL_SUBJECTS);
+
+  React.useEffect(() => {
+    const stored = localStorage.getItem('revise-sidebar-collapsed');
+    if (stored) {
+      setTimeout(() => {
+        setIsCollapsed(stored === 'true');
+      }, 1000);
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('revise-sidebar-collapsed', next.toString());
+      return next;
+    });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -95,7 +112,7 @@ export function Sidebar() {
       <div className={`flex items-center h-14 border-b border-border/50 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'}`}>
         {!isCollapsed && <span className="font-bold text-base tracking-tight text-foreground">Revise</span>}
         <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleSidebar}
           className="p-1.5 rounded-md hover:bg-hover text-muted-foreground transition-colors flex-shrink-0"
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
