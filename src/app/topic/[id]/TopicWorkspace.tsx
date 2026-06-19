@@ -94,15 +94,23 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
       const customEvent = e as CustomEvent<{ isDragging: boolean }>;
       const isDraggingBlock = customEvent.detail.isDragging;
       const container = document.getElementById('canvas-border-container');
-      if (container) {
+      const stickyBorder = document.getElementById('canvas-top-sticky-border');
+      
+      if (container && stickyBorder) {
         if (isDraggingBlock) {
-          // Become a full highlighted dashed border with accent bg
-          container.className = "flex-1 w-full relative border border-accent rounded-2xl mt-2 transition-all duration-300 shadow-sm bg-accent/5 border-dashed";
-          container.style.borderTopStyle = 'solid';
+          // Top sticky border gets top/left/right SOLID borders and accent background
+          stickyBorder.className = "w-full border-t border-l border-r rounded-t-2xl h-4 mt-2 bg-accent/5 transition-all duration-300";
+          stickyBorder.style.borderColor = '#007acc';
+          
+          // Container gets left/right/bottom dashed borders and accent background
+          container.className = "flex-1 w-full relative border-l border-r border-b rounded-b-2xl transition-all duration-300 shadow-sm bg-accent/5 border-dashed";
+          container.style.borderColor = 'rgba(0, 122, 204, 0.3)';
         } else {
-          // Revert to only top border, no background
-          container.className = "flex-1 w-full relative border-t border-divider rounded-t-2xl mt-2 transition-all duration-300";
-          container.style.borderTopStyle = '';
+          // Revert to default states
+          stickyBorder.className = "w-full border-t rounded-t-2xl h-4 mt-2 bg-background transition-all duration-300";
+          stickyBorder.style.borderColor = '#007acc';
+          container.className = "flex-1 w-full relative transition-all duration-300";
+          container.style.borderColor = ''; // reset container border color
         }
       }
     };
@@ -137,7 +145,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
       {/* Main Content Area */}
       <div className={`flex-1 h-full overflow-y-auto overflow-x-hidden flex flex-col min-w-[500px] ${isDragging ? '' : 'transition-all duration-300 ease-in-out'}`}>
         <div className="max-w-[960px] mx-auto w-full h-full flex flex-col px-8">
-          <div className="pt-8 flex-shrink-0 sticky top-0 bg-background z-40">
+          <div className="pt-6 flex-shrink-0 sticky top-0 bg-background z-40">
             <div className="flex flex-col gap-6 pb-2">
               
               {/* Top Utility Row */}
@@ -206,15 +214,17 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
               </div>
               
             </div>
-            {/* We no longer have an empty div here, we wrap the canvas below */}
+            
+            {/* Sticky Curved Border */}
+            <div id="canvas-top-sticky-border" className="w-full border-t rounded-t-2xl h-4 mt-2 bg-background" style={{ borderColor: '#007acc' }} />
           </div>
         
           {/* Topic Canvas */}
           <div 
             id="canvas-border-container" 
-            className="flex-1 w-full relative border-t border-divider rounded-t-2xl mt-2 transition-all duration-300"
+            className="flex-1 w-full relative transition-all duration-300"
           >
-            <div ref={canvasWrapperRef} className="pb-32 w-full h-full relative pt-4">
+            <div ref={canvasWrapperRef} className="pb-32 w-full h-full relative ">
               <TopicCanvas 
                 topicId={topic  .id} 
                 initialContent={topic.content} 

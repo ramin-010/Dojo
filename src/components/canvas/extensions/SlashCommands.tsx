@@ -151,6 +151,15 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
     setSelectedIndex(0);
   }, [items]);
 
+  useEffect(() => {
+    if (containerRef.current) {
+      const selectedItem = containerRef.current.children[selectedIndex] as HTMLElement;
+      if (selectedItem) {
+        selectedItem.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [selectedIndex]);
+
   const selectItem = useCallback((index: number) => {
     const item = items[index];
     if (item) {
@@ -185,7 +194,7 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(({ items, comma
   }
 
   return (
-    <div ref={containerRef} className="bg-[#202020] border border-[#262626] rounded-lg shadow-xl overflow-hidden w-64 p-1 z-50">
+    <div ref={containerRef} className="bg-[#202020] border border-[#262626] rounded-lg shadow-xl overflow-y-auto max-h-[320px] scrollbar-thin scrollbar-thumb-[#3f3f46] scrollbar-track-transparent w-64 p-1 z-50">
       {items.map((item, index) => (
         <button
           key={item.title}
