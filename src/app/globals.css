@@ -1,33 +1,40 @@
 @import "tailwindcss";
 
 @theme {
-  --color-foreground: #cccccc;
-  --color-background: #1e1e1e;
-  --color-sidebar: #181818;
-  --color-hover: #2a2a2a;
-  --color-accent: #0078D4;
-  --color-divider: #2a2a2a;
+  --color-foreground: #e5e5e5;
+  --color-background: #191919;
+  --color-sidebar: #202020;
+  --color-hover: #2d2d2d;
+  --color-accent: #3b82f6;
+  --color-divider: #262626;
+  --color-border: #262626;
+  --color-muted: #8f8f8f;
+  --color-card: #2d2d2d;
 }
 
 :root {
-  --foreground: #cccccc;
-  --bg-sidebar: #181818;
-  --bg-main: #1e1e1e;
-  --bg-hover: #2a2a2a;
-  --accent: #0078D4;
-  --divider: #2a2a2a;
+  --foreground: #e5e5e5;
+  --bg-sidebar: #202020;
+  --bg-main: #191919;
+  --bg-hover: #2d2d2d;
+  --accent: #3b82f6;
+  --divider: #262626;
+  --muted: #8f8f8f;
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-family: var(--font-inter, 'Inter'), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--foreground);
   background-color: var(--bg-main);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
 }
 
-/* Base border style — gives all borders the subtle divider color */
+/* Base border style */
 * {
   border-color: var(--divider);
 }
@@ -37,17 +44,140 @@ input, textarea, button {
   font-size: inherit;
 }
 
-/* Scrollbar styling for the dark theme */
+/* Text selection — premium blue highlight */
+::selection {
+  background-color: rgba(59, 130, 246, 0.4) !important;
+  color: white !important;
+}
+
+/* Scrollbar styling — refined, minimal */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-main);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3a3a3a;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a4a4a;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Tiptap Editor Typography ─── */
+.tiptap {
+  min-height: 20px;
+}
+
+.tiptap:focus {
+  outline: none;
+}
+
+.tiptap p {
+  margin: 0.35rem 0;
+  line-height: 1.65;
+}
+
+.tiptap h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+  letter-spacing: -0.02em;
+  color: #f0f0f0;
+}
+
+.tiptap h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.4rem;
+  letter-spacing: -0.015em;
+  color: #f0f0f0;
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.35rem;
+  letter-spacing: -0.01em;
+  color: #f0f0f0;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.5rem;
+  margin: 0.35rem 0;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+}
+
+.tiptap li {
+  margin: 0.2rem 0;
+}
+
+.tiptap code {
+  background-color: rgba(255, 255, 255, 0.06);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  color: #e8a0bf;
+}
+
+.tiptap pre {
+  background-color: rgba(255, 255, 255, 0.04);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tiptap blockquote {
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  color: var(--muted);
+}
+
+.tiptap a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Node-level Placeholder */
+.tiptap p.is-empty::before {
+  color: rgba(255, 255, 255, 0.25);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Hide placeholder in lists */
+.tiptap li p.is-empty::before {
+  content: none;
+}
+
+/* Task list styling */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tiptap ul[data-type="taskList"] li label {
+  margin-top: 0.25rem;
 }
