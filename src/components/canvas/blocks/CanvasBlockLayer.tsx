@@ -1,10 +1,10 @@
 'use client';
 
-import React, { memo, useCallback, useMemo, useRef, useEffect} from 'react';
+import React, { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import { SmartBlock } from './SmartBlock';
 import { DragController } from '../rendering/DragController';
-import { CanvasBlockData, Connection, CANVAS_WIDTH } from '../core/types';
+import { CanvasBlockData, Connection, CANVAS_WIDTH, DEFAULT_FONT_SIZE } from '../core/types';
 
 const SIDE_PADDING = 4;
 
@@ -74,6 +74,9 @@ const BlockWrapperComponent = ({
   onMentionClick,
 }: BlockWrapperProps) => {
   const isResizingRef = useRef(false);
+  const resizeStartRef = useRef<{ width: number; fontSize: number } | null>(null);
+  const [liveFontSize, setLiveFontSize] = useState<number | null>(null);
+  const [resizingDir, setResizingDir] = useState<string | null>(null);
 
   const handleRndDragStop = useCallback((_e: any, d: any) => {
     onDragStop(block.blockId, d.x, d.y);
@@ -90,9 +93,15 @@ const BlockWrapperComponent = ({
     dragController?.update(block.blockId, d.x, d.y);
   }, [block.blockId, onDrag, dragController]);
 
-  const handleResizeStart = useCallback(() => {
+  const handleResizeStart = useCallback((_e: any, dir: any) => {
     isResizingRef.current = true;
-  }, []);
+    setResizingDir(dir);
+    // Capture initial dimensions for proportional font scaling
+    resizeStartRef.current = {
+      width: block.width,
+      fontSize: (block.type === 'text' && block.fontSize) ? block.fontSize : DEFAULT_FONT_SIZE,
+    };
+  }, [block.width, block.fontSize, block.type]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -104,23 +113,44 @@ const BlockWrapperComponent = ({
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
-  const handleResizeStop = useCallback((_e: any, _dir: any, ref: any, _delta: any, position: any) => {
+  const isText = block.type === 'text';
+
+  const handleRndResize = useCallback((_e: any, dir: any, ref: any, _delta: any, _position: any) => {
+    if (isText && resizeStartRef.current && dir === 'bottomRight') {
+      const newWidth = ref.offsetWidth;
+      const ratio = newWidth / resizeStartRef.current.width;
+      const newFontSize = Math.round(Math.min(DEFAULT_FONT_SIZE, Math.max(8, resizeStartRef.current.fontSize * ratio)));
+      setLiveFontSize(newFontSize);
+    }
+  }, [isText]);
+
+  const handleResizeStop = useCallback((_e: any, dir: any, ref: any, _delta: any, position: any) => {
     isResizingRef.current = false;
     const newWidth = ref.offsetWidth;
     const newHeight = ref.offsetHeight;
 
     const updates: Partial<CanvasBlockData> = {
       width: newWidth,
-      height: newHeight,
+      height: isText ? 'auto' : newHeight,
       x: position.x,
       y: position.y,
     };
 
+    // Use the live font size if available
+    if (isText && resizeStartRef.current && dir === 'bottomRight') {
+      const ratio = newWidth / resizeStartRef.current.width;
+      const finalFontSize = Math.round(Math.min(DEFAULT_FONT_SIZE, Math.max(8, resizeStartRef.current.fontSize * ratio)));
+      updates.fontSize = finalFontSize;
+    }
+    
+    resizeStartRef.current = null;
+    setLiveFontSize(null);
+    setResizingDir(null);
+
     onUpdateBlock(block.blockId, updates);
-  }, [block.blockId, onUpdateBlock]);
+  }, [block.blockId, onUpdateBlock, isText]);
 
   const zIndex = isSelected ? 20 : 10;
-  const isText = block.type === 'text';
 
   return (
     <Rnd
@@ -137,11 +167,13 @@ const BlockWrapperComponent = ({
       onDrag={handleRndDrag}
       onDragStart={handleRndDragStart}
       dragHandleClassName="smart-block-drag-handle"
+      lockAspectRatio={isText && resizingDir === 'bottomRight'}
       enableResizing={{
         top: false, right: isText, bottom: !isText, left: false,
-        topRight: false, bottomRight: !isText, bottomLeft: false, topLeft: false,
+        topRight: false, bottomRight: true, bottomLeft: false, topLeft: false,
       }}
       onResizeStart={handleResizeStart}
+      onResize={handleRndResize}
       onResizeStop={handleResizeStop}
       className="z-100"
       style={{ zIndex, opacity: editingBlockId === block.blockId ? 0 : 1, pointerEvents: editingBlockId === block.blockId ? 'none' : 'auto' }}
@@ -173,7 +205,7 @@ const BlockWrapperComponent = ({
         readOnly={readOnly}
         color={block.color}
         textColor={block.textColor}
-        fontSize={block.fontSize}
+        fontSize={liveFontSize !== null ? liveFontSize : block.fontSize}
         onEditRequest={onEditRequest}
         onMentionClick={onMentionClick}
       />

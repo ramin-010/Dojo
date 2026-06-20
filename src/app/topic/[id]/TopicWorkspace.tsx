@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { TopicCanvas } from "@/components/canvas/TopicCanvas";
+import { TopicLinksTimeline } from './TopicLinksTimeline';
 
-export type SidebarTab = 'symlinks' | 'preview' | 'resources';
+export type SidebarTab = 'links' | 'notes' | 'resources';
 
 interface TopicWorkspaceProps {
   topic: {
@@ -20,7 +21,7 @@ interface TopicWorkspaceProps {
 
 export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<SidebarTab>('symlinks');
+  const [activeTab, setActiveTab] = useState<SidebarTab>('links');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
 
   const [sidebarWidth, setSidebarWidth] = useState(384); // Default w-96 = 384px
@@ -120,24 +121,30 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
     return () => window.removeEventListener('canvas-drag-state', handleCanvasDrag);
   }, []);
 
-  // Dummy data for symlinks
-  const outboundLinks = [
-    { id: 't2', title: 'Client Component Boundaries', subject: 'Next.js Architecture', context: '...because Server Components cannot use hooks like useState, you must use @Client Component Boundaries for interactivity...' }
-  ];
+  // Dummy data for complex context relationships
+  const contextLinks = {
+    // Topics that THIS topic links TO (current topic tagged these)
+    outbound: [
+      { id: 'l1', path: 'Client Component Boundaries', taggedAt: 'Oct 12, 2023', updatedAt: 'Oct 15, 2023' },
+      { id: 'l2', path: 'React Mastery / React Hooks', taggedAt: 'Oct 10, 2023', updatedAt: 'Oct 11, 2023' },
+      { id: 'l3', path: 'Next.js / Data Fetching / Data Fetching in Next 15', taggedAt: 'Oct 14, 2023', updatedAt: 'Oct 14, 2023' }
+    ],
+    // Other topics that have tagged/referenced THIS topic
+    inbound: [
+      { id: 'l4', path: 'Architecture / Frontend Patterns / Micro-frontends', taggedAt: 'Oct 05, 2023', updatedAt: 'Oct 09, 2023' },
+      { id: 'l5', path: 'Performance Optimization Notes', taggedAt: 'Nov 02, 2023', updatedAt: 'Nov 05, 2023' }
+    ]
+  };
 
-  const inboundLinks = [
-    { id: 't3', title: 'Data Fetching in Next 15', subject: 'Next.js Architecture', context: '...this pattern works seamlessly with @React Server Components Deep Dive to stream data...' },
-    { id: 't4', title: 'Caching Strategies', subject: 'Performance', context: '...similar to how @React Server Components Deep Dive reduces bundle size...' }
-  ];
-
-  const resourceLinks = [
-    { id: 'r1', title: 'React Docs: Server Components', url: 'https://react.dev/reference/rsc/server-components', tags: ['Official Docs'] },
-    { id: 'r2', title: 'Next.js App Router', url: 'https://nextjs.org/docs/app', tags: ['Guide'] }
+  const quickNotes = [
+    { id: 'n1', type: 'topic-same-subject', content: 'Make sure to test this component with a slow network preset in DevTools.', date: 'Today, 2:30 PM', linkedItemTitle: 'React Server Components Deep Dive' },
+    { id: 'n2', type: 'subject', content: 'Next.js Architecture Rule: All new components must use Server Components by default unless interactivity is required.', date: 'Yesterday', linkedItemTitle: 'Next.js Architecture' },
+    { id: 'n3', type: 'topic-diff-subject', content: 'We can borrow the cache invalidation strategy from the Redis topic here.', date: 'Oct 12', linkedItemTitle: 'Redis Caching (Backend)' }
   ];
 
   const handleMentionClick = (clickedTopicId: string) => {
     setPreviewTopicId(clickedTopicId);
-    setActiveTab('preview');
+    setActiveTab('resources');
     setIsSidebarOpen(true);
     setSidebarWidth(window.innerWidth / 2);
   };
@@ -159,7 +166,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
           <button 
             onClick={() => {
               setIsSidebarOpen(true);
-              setSidebarWidth(window.innerWidth / 2);
+              setSidebarWidth(window.innerWidth / 4);
             }}
             className="fixed top-6 right-6 p-2 bg-background border border-border shadow-sm hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all z-50 animate-in fade-in zoom-in-95"
             title="Open Context Panel"
@@ -288,155 +295,80 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
         <div style={{ width: `${sidebarWidth}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
           {/* Sidebar Header & Tabs */}
           <div className="flex flex-col border-b border-divider">
-            <div className="flex items-center justify-between px-4 py-3">
-              <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <div className="flex items-center justify-between px-6 py-5 pb-4">
+              <h2 className="font-semibold text-foreground text-[15px]">
                 Context Panel
               </h2>
               <button 
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1.5 hover:bg-hover rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                title="Collapse Panel"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="Close Panel"
               >
-                <ChevronRight className="w-4 h-4" />
+                <X className="w-[18px] h-[18px]" />
               </button>
             </div>
           
-            <div className="flex px-2 space-x-1 pb-2">
+            <div className="flex px-6 space-x-6">
               <button 
-                onClick={() => setActiveTab('symlinks')}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'symlinks' ? 'bg-background shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-hover'}`}
+                onClick={() => setActiveTab('links')}
+                className={`pb-3 text-[13px] font-medium transition-colors relative ${activeTab === 'links' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
               >
-                <LinkIcon className="w-3.5 h-3.5" />
-                Symlinks
+                Links
+                {activeTab === 'links' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
+              </button>
+              <button 
+                onClick={() => setActiveTab('notes')}
+                className={`pb-3 text-[13px] font-medium transition-colors relative ${activeTab === 'notes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+              >
+                Notes
+                {activeTab === 'notes' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
               </button>
               <button 
                 onClick={() => setActiveTab('resources')}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'resources' ? 'bg-background shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-hover'}`}
+                className={`pb-3 text-[13px] font-medium transition-colors relative ${activeTab === 'resources' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
               >
-                <Globe className="w-3.5 h-3.5" />
                 Resources
-              </button>
-              <button 
-                onClick={() => setActiveTab('preview')}
-                disabled={!previewTopicId}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${!previewTopicId ? 'opacity-50 cursor-not-allowed' : ''} ${activeTab === 'preview' ? 'bg-background shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-hover'}`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Preview
+                {activeTab === 'resources' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
               </button>
             </div>
           </div>
 
           {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            {activeTab === 'symlinks' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                    <ArrowLeft className="w-3 h-3 text-primary" />
-                    Linked To (Outbound)
-                  </h3>
-                  {outboundLinks.length > 0 ? (
-                    <div className="space-y-3">
-                      {outboundLinks.map(link => (
-                        <div key={link.id} className="p-3 rounded-lg border border-divider bg-background hover:border-accent/50 transition-colors cursor-pointer group" onClick={() => handleMentionClick(link.id)}>
-                          <div className="text-xs text-muted-foreground mb-1 font-medium">{link.subject}</div>
-                          <div className="font-medium text-sm text-primary group-hover:underline mb-2">{link.title}</div>
-                          <div className="text-xs text-muted-foreground italic line-clamp-2 leading-relaxed">
-                            "{link.context}"
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground italic px-2">No outbound links.</div>
-                  )}
-                </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pb-20">
+            {activeTab === 'links' && <TopicLinksTimeline onMentionClick={handleMentionClick} />}
 
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                    <ArrowLeft className="w-3 h-3 text-orange-400 rotate-180" />
-                    Referenced By (Inbound)
-                  </h3>
-                  {inboundLinks.length > 0 ? (
-                    <div className="space-y-3">
-                      {inboundLinks.map(link => (
-                        <div key={link.id} className="p-3 rounded-lg border border-divider bg-background hover:border-accent/50 transition-colors cursor-pointer group" onClick={() => handleMentionClick(link.id)}>
-                          <div className="text-xs text-muted-foreground mb-1 font-medium">{link.subject}</div>
-                          <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors mb-2">{link.title}</div>
-                          <div className="text-xs text-muted-foreground italic line-clamp-3 leading-relaxed">
-                            "{link.context}"
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground italic px-2">No inbound references yet.</div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'resources' && (
+            {activeTab === 'notes' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Subject Resources
+                    Quick Notes
                   </h3>
                   <button className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded font-medium transition-colors">
-                    + Add Link (Ctrl+K)
+                    + New Note
                   </button>
                 </div>
                 
-                {resourceLinks.map(resource => (
-                  <a key={resource.id} href={resource.url} target="_blank" rel="noopener noreferrer" className="block p-3 rounded-lg border border-divider bg-background hover:border-accent/50 transition-colors group">
-                    <div className="font-medium text-sm text-primary group-hover:underline mb-1 line-clamp-1">{resource.title}</div>
-                    <div className="text-xs text-muted-foreground truncate mb-2">{resource.url}</div>
-                    <div className="flex gap-1">
-                      {resource.tags.map(tag => (
-                        <span key={tag} className="text-[10px] uppercase tracking-wider bg-hover text-muted-foreground px-1.5 py-0.5 rounded">
-                          {tag}
-                        </span>
-                      ))}
+                {quickNotes.map(note => (
+                  <div key={note.id} className="p-3 rounded-lg border border-divider bg-background hover:border-accent/50 transition-colors group cursor-pointer" onClick={() => handleMentionClick(note.id)}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${note.type === 'topic-same-subject' ? 'bg-blue-500/10 text-blue-500' : note.type === 'topic-diff-subject' ? 'bg-purple-500/10 text-purple-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        {note.type === 'topic-same-subject' ? 'Direct Note' : note.type === 'topic-diff-subject' ? 'Cross-Subject Note' : 'Subject-Level Note'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{note.date}</span>
                     </div>
-                  </a>
+                    <div className="text-sm text-foreground mb-3 leading-relaxed">{note.content}</div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-accent/5 p-1.5 rounded border border-divider/50">
+                      <LinkIcon className="w-3 h-3" />
+                      <span className="truncate">Linked to: <span className="font-medium text-foreground/80">{note.linkedItemTitle}</span></span>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
 
-            {activeTab === 'preview' && (
-              <div className="h-full flex flex-col">
-                {previewTopicId ? (
-                  <div className="animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Preview</span>
-                    </div>
-                    <h1 className="text-xl font-bold text-foreground mb-6">
-                      {outboundLinks.find(l => l.id === previewTopicId)?.title || inboundLinks.find(l => l.id === previewTopicId)?.title || "Unknown Topic"}
-                    </h1>
-                    
-                    {/* Dummy Read-Only Preview Content */}
-                    <div className="prose prose-sm dark:prose-invert">
-                      <p>This is a read-only preview of the linked note.</p>
-                      <p>In the actual implementation, this will render the Tiptap JSON content dynamically.</p>
-                      <ul>
-                        <li>Key concept 1</li>
-                        <li>Key concept 2</li>
-                      </ul>
-                      <blockquote>
-                        "This is a dummy blockquote demonstrating the preview UI."
-                      </blockquote>
-                    </div>
-                    
-                    <button className="mt-8 w-full py-2 bg-hover hover:bg-accent hover:text-accent-foreground text-foreground rounded-md text-sm font-medium transition-colors border border-divider">
-                      Open Full Note
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground italic text-center px-4">
-                    Select a link from the Symlinks tab to preview it here.
-                  </div>
-                )}
+            {activeTab === 'resources' && (
+              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground italic text-center px-4">
+                Resources section coming soon...
               </div>
             )}
           </div>

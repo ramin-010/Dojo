@@ -82,73 +82,7 @@ export function SingleCanvas({
     return () => window.removeEventListener('mousemove', handleGlobalMouseMove);
   }, []);
 
-  React.useEffect(() => {
-    const handlePaste = async (e: ClipboardEvent) => {
-      if (!isActive) return;
-      const target = e.target as HTMLElement;
-
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
-      const isInsideEditor =
-        target.isContentEditable ||
-        target.closest('[contenteditable="true"]') !== null ||
-        document.querySelector('.inline-cursor-editor') !== null;
-
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const { clientX, clientY } = absoluteMouseRef.current;
-      
-      if (
-        clientX < rect.left || clientX > rect.right ||
-        clientY < rect.top || clientY > rect.bottom
-      ) {
-        return;
-      }
-      
-      const rawX = (clientX - rect.left) / zoom;
-      const rawY = (clientY - rect.top) / zoom;
-      
-      const x = Math.max(SIDE_PADDING, rawX);
-      const y = Math.max(VERTICAL_PADDING, rawY);
-
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (const item of Array.from(items)) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file && onAddImage) {
-            await onAddImage(canvasId, file, x, y);
-          }
-          return;
-        }
-      }
-
-      if (isInsideEditor) return;
-
-      const textItem = Array.from(items).find(item => item.type === 'text/plain');
-      if (textItem) {
-        e.preventDefault();
-        textItem.getAsString((text) => {
-          const trimmed = text.trim();
-          if (!trimmed) return;
-
-          const isUrl = /^https?:\/\/\S+$/i.test(trimmed);
-          if (isUrl) {
-            const blockId = onAddBlock(canvasId, 'embed', x, y);
-            if (blockId) onUpdateBlock(blockId, { content: trimmed });
-          } else {
-            const blockId = onAddBlock(canvasId, 'text', x, y);
-            if (blockId) onUpdateBlock(blockId, { content: trimmed });
-          }
-        });
-      }
-    };
-
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [isActive, canvasId, onAddImage, onAddBlock, onUpdateBlock, zoom]);
+  // Paste handler moved below useCanvasHandlers — see below
 
   const h = useCanvasHandlers({
     canvasId,
@@ -169,6 +103,93 @@ export function SingleCanvas({
     containerRef,
     headerRef,
   });
+
+  // Paste handler — reads clipboard HTML/text and routes through InlineCursor
+  React.useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (!isActive) return;
+      const target = e.target as HTMLElement;
+
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      const isInsideEditor =
+        target.isContentEditable ||
+        target.closest('[contenteditable="true"]') !== null ||
+        document.querySelector('.inline-cursor-editor') !== null;
+
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const { clientX, clientY } = absoluteMouseRef.current;
+
+      if (
+        clientX < rect.left || clientX > rect.right ||
+        clientY < rect.top || clientY > rect.bottom
+      ) {
+        return;
+      }
+
+      const rawX = (clientX - rect.left) / zoom;
+      const rawY = (clientY - rect.top) / zoom;
+
+      const x = Math.max(SIDE_PADDING, rawX);
+      const y = Math.max(VERTICAL_PADDING, rawY);
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      // Image paste — unchanged
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file && onAddImage) {
+            await onAddImage(canvasId, file, x, y);
+          }
+          return;
+        }
+      }
+
+      // If inside an editor, let Tiptap handle paste natively
+      if (isInsideEditor) return;
+
+      // Try to read HTML first (preserves rich formatting from websites/Notion)
+      const htmlItem = Array.from(items).find(item => item.type === 'text/html');
+      const textItem = Array.from(items).find(item => item.type === 'text/plain');
+
+      if (htmlItem) {
+        e.preventDefault();
+        htmlItem.getAsString((html) => {
+          const trimmed = html.trim();
+          if (!trimmed) return;
+          // Open InlineCursor with the HTML — Tiptap parses it through its schema
+          h.handlePasteAsNewBlock(x, y, trimmed);
+        });
+      } else if (textItem) {
+        e.preventDefault();
+        textItem.getAsString((text) => {
+          const trimmed = text.trim();
+          if (!trimmed) return;
+
+          // URL → embed block (existing behavior)
+          if (/^https?:\/\/\S+$/i.test(trimmed)) {
+            const blockId = onAddBlock(canvasId, 'embed', x, y);
+            if (blockId) onUpdateBlock(blockId, { content: trimmed });
+            return;
+          }
+
+          // Convert plain text newlines to HTML paragraphs
+          const html = trimmed
+            .split(/\n\n+/)
+            .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+            .join('');
+          h.handlePasteAsNewBlock(x, y, html);
+        });
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isActive, canvasId, onAddImage, onAddBlock, onUpdateBlock, zoom, h]);
 
   return (
     <div

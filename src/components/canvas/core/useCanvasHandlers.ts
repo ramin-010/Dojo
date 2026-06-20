@@ -64,6 +64,7 @@ export interface CanvasHandlers {
   handleCursorCommit: (html: string, dims?: { width: number; height: number }) => void;
   handleCursorDiscard: () => void;
   handleEditRequest: (blockId: string) => void;
+  handlePasteAsNewBlock: (x: number, y: number, html: string) => void;
   handleDoubleClick: (e: React.MouseEvent) => void;
   handleMoveCursor: (direction: 'up' | 'down' | 'left' | 'right') => void;
   handleAnchorMouseDown: (blockId: string, side: 'top' | 'right' | 'bottom' | 'left', e: React.MouseEvent) => void;
@@ -340,6 +341,20 @@ export function useCanvasHandlers({
     }
   }, [blocks, onSelectBlock]);
 
+  const handlePasteAsNewBlock = useCallback((x: number, y: number, html: string) => {
+    // Create a block with the clipboard HTML
+    const blockId = onAddBlock(canvasId, 'text', x, y);
+    if (!blockId) return;
+    onUpdateBlock(blockId, { content: html });
+
+    // Immediately open InlineCursor to edit it — Tiptap parses the HTML through its schema
+    setIsNewBlockEditing(false);
+    cursorKeyRef.current = blockId;
+    setEditingBlockId(blockId);
+    setCursorPos({ x, y });
+    onSelectBlock(blockId);
+  }, [canvasId, onAddBlock, onUpdateBlock, onSelectBlock]);
+
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === containerRef.current) {
@@ -422,6 +437,7 @@ export function useCanvasHandlers({
     handleCursorCommit,
     handleCursorDiscard,
     handleEditRequest,
+    handlePasteAsNewBlock,
     handleDoubleClick,
     handleMoveCursor,
     handleAnchorMouseDown,
