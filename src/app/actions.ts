@@ -262,7 +262,6 @@ export async function deleteTopic(topicId: string) {
     where: { id: topicId },
     select: { subjectId: true },
   });
-  if (!topic) return;
 
   await prisma.topic.delete({
     where: { id: topicId },
@@ -330,74 +329,4 @@ export async function getDailyHistory(days = 7) {
   });
 
   return history;
-}
-
-/** Mark a specific revision as completed */
-export async function completeRevision(revisionId: string) {
-  const revision = await prisma.revision.update({
-    where: { id: revisionId },
-    data: {
-      status: 'done',
-      completedAt: new Date(),
-    },
-    include: { topic: { select: { id: true, title: true, subjectId: true } } },
-  });
-
-  // Log the activity
-  await prisma.activityLog.create({
-    data: {
-      userId: DEV_USER_ID,
-      subjectId: revision.topic.subjectId,
-      topicId: revision.topic.id,
-      action: 'COMPLETED_REVISION',
-      details: revision.topic.title,
-    },
-  });
-
-  // Update subject lastActiveAt
-  await prisma.subject.update({
-    where: { id: revision.topic.subjectId },
-    data: { lastActiveAt: new Date() },
-  });
-
-  revalidatePath(`/topic/${revision.topic.id}`);
-  revalidatePath(`/subject/${revision.topic.subjectId}`);
-  revalidatePath('/dashboard');
-  revalidatePath('/');
-  return revision;
-}
-
-// ==========================================
-// WORKSPACE SETTINGS ACTIONS
-// ==========================================
-
-export async function getWorkspaceSettings() {
-  const workspace = await prisma.workspace.findFirst({
-    select: {
-      id: true,
-      spacedRepetitionIntervals: true
-    }
-  });
-  
-  if (!workspace) {
-    throw new Error('Workspace not found');
-  }
-  
-  return workspace;
-}
-
-export async function updateWorkspaceSchedule(workspaceId: string, intervals: number[]) {
-  // Sort the intervals
-  const sortedIntervals = [...intervals].sort((a, b) => a - b);
-  
-  const updated = await prisma.workspace.update({
-    where: { id: workspaceId },
-    data: {
-      spacedRepetitionIntervals: sortedIntervals
-    }
-  });
-  
-  revalidatePath('/dashboard');
-  revalidatePath('/');
-  return updated;
 }

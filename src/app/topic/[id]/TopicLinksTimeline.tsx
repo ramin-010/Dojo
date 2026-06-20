@@ -12,12 +12,21 @@ type ContextLinksData = {
   inbound: ContextLink[];
 };
 
-interface TopicLinksTimelineProps {
-  onMentionClick: (id: string) => void;
-  contextLinks: ContextLinksData;
-}
+export const contextLinks: ContextLinksData = {
+  // Topics that THIS topic links TO (current topic tagged these)
+  outbound: [
+    { id: 'l1', path: 'Client Component Boundaries', taggedAt: 'Oct 12, 2023', updatedAt: 'Oct 15, 2023' },
+    { id: 'l2', path: 'React Mastery / React Hooks', taggedAt: 'Oct 10, 2023', updatedAt: 'Oct 11, 2023' },
+    { id: 'l3', path: 'Next.js / Data Fetching / Data Fetching in Next 15', taggedAt: 'Oct 14, 2023', updatedAt: 'Oct 14, 2023' }
+  ],
+  // Other topics that have tagged/referenced THIS topic
+  inbound: [
+    { id: 'l4', path: 'Architecture / Frontend Patterns / Micro-frontends', taggedAt: 'Oct 05, 2023', updatedAt: 'Oct 09, 2023' },
+    { id: 'l5', path: 'Performance Optimization Notes', taggedAt: 'Nov 02, 2023', updatedAt: 'Nov 05, 2023' }
+  ]
+};
 
-export function TopicLinksTimeline({ onMentionClick, contextLinks }: TopicLinksTimelineProps) {
+export function TopicLinksTimeline({ onMentionClick }: { onMentionClick: (id: string) => void }) {
   return (
     <div className="pb-4 pt-2">
       <div className="space-y-8">

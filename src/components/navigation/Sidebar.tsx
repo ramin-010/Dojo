@@ -16,7 +16,6 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { SidebarSubject } from './SidebarSubject';
 
 import { reorderTopics } from '@/app/actions';
-import { useSettingsStore } from '@/lib/store/settingsStore';
 
 interface Topic {
   id: string;
@@ -32,7 +31,6 @@ interface Subject {
 export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [subjects, setSubjects] = useState(initialSubjects);
-  const setSettingsOpen = useSettingsStore((state) => state.setIsOpen);
 
   React.useEffect(() => {
     setSubjects(initialSubjects);
@@ -152,7 +150,6 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
 
       <div className="p-3 border-t border-border/50">
         <button 
-          onClick={() => setSettingsOpen(true)}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-hover text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors ${isCollapsed ? 'justify-center' : ''}`}
           title={isCollapsed ? "Settings" : undefined}
         >

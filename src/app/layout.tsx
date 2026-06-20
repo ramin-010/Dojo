@@ -10,13 +10,13 @@ const inter = Inter({
 });
 
 import { Sidebar } from "@/components/navigation/Sidebar";
-import { SettingsModal } from "@/components/settings/SettingsModal";
-import { getSubjectsWithTopics } from "@/app/actions";
 
 export const metadata: Metadata = {
   title: "Revise",
   description: "A focused personal workspace for spaced repetition.",
 };
+
+import { getSubjectsWithTopics } from "@/app/actions";
 
 export default async function RootLayout({
   children,
@@ -37,8 +37,6 @@ export default async function RootLayout({
           {children}
         </main>
         
-        {/* Global Modals */}
-        <SettingsModal />
       </body>
     </html>
   );

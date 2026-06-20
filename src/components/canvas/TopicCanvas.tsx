@@ -6,8 +6,6 @@ import { useCanvasState } from './core/useCanvasState';
 import { canvasOfflineStorage } from '@/lib/storage/canvasOfflineStorage';
 import { CANVAS_WIDTH } from './core/types';
 
-import { saveCanvasData } from '@/app/actions';
-
 interface TopicCanvasProps {
   topicId: string;
   initialContent?: string;
@@ -17,7 +15,6 @@ interface TopicCanvasProps {
   onMentionClick?: (topicId: string) => void;
   containerWidth?: number;
   onSavingChange?: (isSaving: boolean) => void;
-  topicUpdatedAt?: Date; // Added for sync priority
 }
 
 export function TopicCanvas({
@@ -29,7 +26,6 @@ export function TopicCanvas({
   onMentionClick,
   containerWidth,
   onSavingChange,
-  topicUpdatedAt,
 }: TopicCanvasProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
@@ -47,26 +43,12 @@ export function TopicCanvas({
     debounceTimer.current = setTimeout(async () => {
       setIsSaving(true);
       onSavingChange?.(true);
-
-      // Extract mentions using a regex to find data-mention-id in the stringified JSON
-      const mentionMatches = [...content.matchAll(/data-mention-id(?:\\)?"\s*:\s*(?:\\)?"([^"\\]+)/g)];
-      const extractedMentions = Array.from(new Set(mentionMatches.map(m => m[1])));
-
-      try {
-        // Dual-write: save to IndexedDB cache instantly, and fire Server Action
-        await canvasOfflineStorage.saveDoc(topicId, content, title || 'Untitled Topic');
-        
-        // Pass to Server Action (it will skip if identical to last save, or execute db transaction)
-        await saveCanvasData(topicId, JSON.parse(content), extractedMentions);
-      } catch (err) {
-        console.error('Save failed:', err);
-      } finally {
-        setTimeout(() => {
-          setIsSaving(false);
-          onSavingChange?.(false);
-        }, 500);
-      }
-    }, 2000); // 2 second debounce
+      await canvasOfflineStorage.saveDoc(topicId, content, title || 'Untitled Topic').catch(() => {});
+      setTimeout(() => {
+        setIsSaving(false);
+        onSavingChange?.(false);
+      }, 500);
+    }, 1000);
   }, [topicId, title, onChange, onSavingChange]);
 
   const {
@@ -88,15 +70,9 @@ export function TopicCanvas({
     const loadData = async () => {
       try {
         const doc = await canvasOfflineStorage.loadDoc(topicId);
-        
-        // Load Priority: Check if IndexedDB has a newer timestamp than the server
-        const isLocalNewer = doc && topicUpdatedAt && doc.updatedAt > new Date(topicUpdatedAt).getTime();
-        
-        if (doc && doc.content && (isLocalNewer || !initialContent)) {
-          console.log(`[Canvas Sync] Hydrating from local IndexedDB (Local is newer or server is empty)`);
+        if (doc && doc.content) {
           await hydrate(doc.content);
         } else if (initialContent) {
-          console.log(`[Canvas Sync] Hydrating from Server props`);
           await hydrate(initialContent);
         }
       } catch (err) {
@@ -109,7 +85,7 @@ export function TopicCanvas({
       }
     };
     loadData();
-  }, [topicId, hydrate, initialContent, topicUpdatedAt]);
+  }, [topicId, hydrate, initialContent]);
 
   // ---------------------------------------------------------------------------
   // Global keyboard handler — mirrors recollect SlideCanvas.tsx
