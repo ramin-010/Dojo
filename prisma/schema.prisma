@@ -4,48 +4,174 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+// ====================================================================
+// LEVEL 1: WORKSPACE & USER
+// ====================================================================
+
+model User {
+  id         String       @id @default(uuid()) // Hardcoded initially
+  email      String?      @unique
+  name       String?
+  workspaces Workspace[]
+  streak     UserStreak?
+}
+
+model Workspace {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  name      String
+  spacedRepetitionIntervals Int[] @default([1, 3, 7, 14, 30])
+  subjects  Subject[]
+}
+
+// ====================================================================
+// LEVEL 2: SUBJECT DASHBOARD
+// ====================================================================
 
 model Subject {
-  id        String   @id @default(cuid())
-  name      String
-  color     String?  // Optional hex color for UI grouping
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String         @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  name         String
+  description  String?        // "About this subject" text
+  icon         String?
+  color        String?
+  
+  lastActiveAt DateTime       @default(now()) // Updated when a topic is touched
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  topics    Topic[]
+  topics       Topic[]
+  resources    ResourceLink[]
+  quickNotes   QuickNote[]
 }
+
+model ResourceLink {
+  id              String   @id @default(uuid())
+  
+  // REQUIRED: Data boundary (cascading deletes)
+  subjectId       String   
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  // OPTIONAL: Does it belong to a specific topic?
+  topicId         String?
+  topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  // Controls visibility logic (Only Subject, Only Topic, Both)
+  isSubjectLevel  Boolean  @default(true)
+  
+  url             String
+  title           String
+  category        String   
+  createdAt       DateTime @default(now())
+}
+
+model QuickNote {
+  id              String   @id @default(uuid())
+  
+  subjectId       String   
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  topicId         String?
+  topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  isSubjectLevel  Boolean  @default(true)
+  
+  content         String   
+  createdAt       DateTime @default(now())
+}
+
+// ====================================================================
+// LEVEL 3: TOPICS & SPATIAL CANVAS
+// ====================================================================
 
 model Topic {
-  id          String   @id @default(cuid())
-  title       String
-  content     String?  @db.Text // Tiptap JSON or Markdown content
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id          String   @id @default(uuid())
   subjectId   String
   subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  title       String
+  tags        String[] @default([]) 
+  sortOrder   Float?   // Allows drag-and-drop or Previous/Next navigation
+  
+  // The Hybrid Spatial Data! All blocks/connections live here.
+  canvasData  Json?    @default("{}") 
+  
+  revisions   Revision[]
+  mentionsOut TopicMention[] @relation("SourceTopic")
+  mentionsIn  TopicMention[] @relation("TargetTopic")
+  
+  resources   ResourceLink[]
+  quickNotes  QuickNote[]
 
-  // Spaced Repetition Core
-  revisions   Json     @default("[]") // [{ date: "2026-06-18", status: "pending|completed|missed", type: "Day 1" }]
-  nextRevDate DateTime?
-
-  // Linking System (Symlinks)
-  linksTo     TopicLink[] @relation("SourceTopic")
-  linkedFrom  TopicLink[] @relation("TargetTopic")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-// Explicit many-to-many table for symlinks to allow metadata (like context/description of the link)
-model TopicLink {
-  id            String   @id @default(cuid())
-  sourceId      String
-  targetId      String
-  context       String?  // E.g., "See this for background on X"
+// Extracted from Canvas text blocks on save for easy timeline querying
+model TopicMention {
+  id            String   @id @default(uuid())
+  sourceTopicId String
+  sourceTopic   Topic    @relation("SourceTopic", fields: [sourceTopicId], references: [id], onDelete: Cascade)
+  targetTopicId String
+  targetTopic   Topic    @relation("TargetTopic", fields: [targetTopicId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
 
-  sourceTopic   Topic    @relation("SourceTopic", fields: [sourceId], references: [id], onDelete: Cascade)
-  targetTopic   Topic    @relation("TargetTopic", fields: [targetId], references: [id], onDelete: Cascade)
+  @@unique([sourceTopicId, targetTopicId])
+}
 
-  @@unique([sourceId, targetId])
+// ====================================================================
+// LEVEL 4: SPACED REPETITION & GAMIFICATION
+// ====================================================================
+
+// A Topic is "Not Started" if count(Revision) == 0.
+// Once started, the cycle is locked. Schedule changes cannot happen mid-flight.
+model Revision {
+  id           String    @id @default(uuid())
+  topicId      String
+  topic        Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  cycleNumber  Int       // To sort the progress bar (1, 2, 3, 4)
+  intervalDays Int       // Used to dynamically recalculate next cascading date if user is late
+  
+  scheduledFor DateTime  // Midnight of the due day
+  completedAt  DateTime? 
+  status       String    @default("pending") // "pending", "done", "missed"
+}
+
+// Powers the "Recent Activity" list on the Subject profile
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String   
+  subjectId   String?  
+  topicId     String?
+  
+  action      String   // "CREATED_TOPIC", "EDITED_TOPIC", "COMPLETED_REVISION"
+  details     String?  // e.g., "Generics in TS" (saves a JOIN when rendering the list)
+  
+  createdAt   DateTime @default(now())
+}
+
+// The lazy-evaluated Streak system
+model UserStreak {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak   Int      @default(0)
+  longestStreak   Int      @default(0)
+  lastCalculated  DateTime // Prevents continuous recalculation
+}
+
+// Powers the 7-day flame graph
+model DailyHistory {
+  id              String   @id @default(uuid())
+  userId          String
+  date            DateTime // Midnight of the evaluated day
+  
+  revisionsDue    Int      
+  revisionsDone   Int      
+  streakMaintained Boolean // True if Due == Done
 }

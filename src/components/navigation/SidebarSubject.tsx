@@ -14,7 +14,7 @@ interface Topic {
 
 interface Subject {
   id: string;
-  title: string;
+  name: string;
   topics: Topic[];
 }
 
@@ -31,7 +31,7 @@ export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
     // for the subject and hide the topics to save space and avoid a messy UI.
     return (
       <div className="flex justify-center py-2">
-        <Link href={`/subject/${subject.id}`} title={subject.title} className="p-2 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground">
+        <Link href={`/subject/${subject.id}`} title={subject.name} className="p-2 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground">
           <Folder className="w-4 h-4" />
         </Link>
       </div>
@@ -57,7 +57,7 @@ export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
             href={`/subject/${subject.id}`}
             className="flex-1 text-[13px] font-semibold text-foreground/80 tracking-tight truncate py-1"
           >
-            {subject.title}
+            {subject.name}
           </Link>
         </div>
       </div>

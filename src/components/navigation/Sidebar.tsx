@@ -15,31 +15,28 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { SidebarSubject } from './SidebarSubject';
 
-// Dummy data resembling an API response
-const INITIAL_SUBJECTS = [
-  {
-    id: 'subj-1',
-    title: 'TypeScript Prep',
-    topics: [
-      { id: 'topic-1', title: 'Generics' },
-      { id: 'topic-2', title: 'Utility Types' },
-      { id: 'topic-3', title: 'Advanced Inference' },
-    ]
-  },
-  {
-    id: 'subj-2',
-    title: 'System Design',
-    topics: [
-      { id: 'topic-4', title: 'CAP Theorem' },
-      { id: 'topic-5', title: 'Message Queues' },
-      { id: 'topic-6', title: 'Database Sharding' },
-    ]
-  }
-];
+import { reorderTopics } from '@/app/actions';
+import { useSettingsStore } from '@/lib/store/settingsStore';
 
-export function Sidebar() {
+interface Topic {
+  id: string;
+  title: string;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  topics: Topic[];
+}
+
+export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [subjects, setSubjects] = useState(INITIAL_SUBJECTS);
+  const [subjects, setSubjects] = useState(initialSubjects);
+  const setSettingsOpen = useSettingsStore((state) => state.setIsOpen);
+
+  React.useEffect(() => {
+    setSubjects(initialSubjects);
+  }, [initialSubjects]);
 
   React.useEffect(() => {
     const stored = localStorage.getItem('revise-sidebar-collapsed');
@@ -101,6 +98,9 @@ export function Sidebar() {
         topics: newTopics
       };
 
+      // Sync the new sort order to the database without blocking the UI
+      reorderTopics(subject.id, newTopics.map(t => t.id)).catch(console.error);
+
       return newSubjects;
     });
   };
@@ -152,6 +152,7 @@ export function Sidebar() {
 
       <div className="p-3 border-t border-border/50">
         <button 
+          onClick={() => setSettingsOpen(true)}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-hover text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors ${isCollapsed ? 'justify-center' : ''}`}
           title={isCollapsed ? "Settings" : undefined}
         >

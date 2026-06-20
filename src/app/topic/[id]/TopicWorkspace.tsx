@@ -4,22 +4,19 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { TopicCanvas } from "@/components/canvas/TopicCanvas";
-import { TopicLinksTimeline } from './TopicLinksTimeline';
+import { TopicLinksTimeline, ContextLink } from './TopicLinksTimeline';
+import { updateTopic, completeRevision } from '@/app/actions';
+import { timeAgo } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export type SidebarTab = 'links' | 'notes' | 'resources';
 
 interface TopicWorkspaceProps {
-  topic: {
-    id: string;
-    title: string;
-    subject: string;
-    status: string;
-    day: number;
-    content: string;
-  };
+  topic: any; // Using any for brevity, it's the full Prisma object with includes
 }
 
 export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('links');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
@@ -28,6 +25,45 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
 
   const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [tags, setTags] = useState<string[]>(topic.tags || []);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagText, setNewTagText] = useState('');
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMarkingDone, setIsMarkingDone] = useState(false);
+
+  // Derived state for the UI
+  const pendingRevision = topic.revisions?.find((r: any) => r.status === 'pending');
+  const isRevised = !pendingRevision && topic.revisions?.length > 0;
+  
+  // Format mentions into ContextLinks
+  const contextLinks = {
+    outbound: (topic.mentionsOut || []).map((m: any) => ({
+      id: m.targetTopic.id,
+      path: `${m.targetTopic.subject.name} / ${m.targetTopic.title}`,
+      taggedAt: timeAgo(new Date(m.createdAt)),
+      updatedAt: timeAgo(new Date(m.targetTopic.updatedAt))
+    })),
+    inbound: (topic.mentionsIn || []).map((m: any) => ({
+      id: m.sourceTopic.id,
+      path: `${m.sourceTopic.subject.name} / ${m.sourceTopic.title}`,
+      taggedAt: timeAgo(new Date(m.createdAt)),
+      updatedAt: timeAgo(new Date(m.sourceTopic.updatedAt))
+    }))
+  };
+
+  const quickNotes = (topic.quickNotes || []).map((note: any) => ({
+    id: note.id,
+    type: note.isSubjectLevel ? 'subject' : 'topic-same-subject',
+    content: note.content,
+    date: timeAgo(new Date(note.createdAt)),
+    linkedItemTitle: note.isSubjectLevel ? topic.subject.name : topic.title
+  }));
+
+  
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setIsScrolled(e.currentTarget.scrollTop > 40);
+  };
+  
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
   const [canvasContainerWidth, setCanvasContainerWidth] = useState(900);
   const rafRef = useRef<number>(0);
@@ -121,26 +157,19 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
     return () => window.removeEventListener('canvas-drag-state', handleCanvasDrag);
   }, []);
 
-  // Dummy data for complex context relationships
-  const contextLinks = {
-    // Topics that THIS topic links TO (current topic tagged these)
-    outbound: [
-      { id: 'l1', path: 'Client Component Boundaries', taggedAt: 'Oct 12, 2023', updatedAt: 'Oct 15, 2023' },
-      { id: 'l2', path: 'React Mastery / React Hooks', taggedAt: 'Oct 10, 2023', updatedAt: 'Oct 11, 2023' },
-      { id: 'l3', path: 'Next.js / Data Fetching / Data Fetching in Next 15', taggedAt: 'Oct 14, 2023', updatedAt: 'Oct 14, 2023' }
-    ],
-    // Other topics that have tagged/referenced THIS topic
-    inbound: [
-      { id: 'l4', path: 'Architecture / Frontend Patterns / Micro-frontends', taggedAt: 'Oct 05, 2023', updatedAt: 'Oct 09, 2023' },
-      { id: 'l5', path: 'Performance Optimization Notes', taggedAt: 'Nov 02, 2023', updatedAt: 'Nov 05, 2023' }
-    ]
+  // Remove old hardcoded contextLinks and quickNotes since they are now derived from props
+  
+  const handleMarkDone = async () => {
+    if (!pendingRevision || isMarkingDone) return;
+    setIsMarkingDone(true);
+    try {
+      await completeRevision(pendingRevision.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsMarkingDone(false);
+    }
   };
-
-  const quickNotes = [
-    { id: 'n1', type: 'topic-same-subject', content: 'Make sure to test this component with a slow network preset in DevTools.', date: 'Today, 2:30 PM', linkedItemTitle: 'React Server Components Deep Dive' },
-    { id: 'n2', type: 'subject', content: 'Next.js Architecture Rule: All new components must use Server Components by default unless interactivity is required.', date: 'Yesterday', linkedItemTitle: 'Next.js Architecture' },
-    { id: 'n3', type: 'topic-diff-subject', content: 'We can borrow the cache invalidation strategy from the Redis topic here.', date: 'Oct 12', linkedItemTitle: 'Redis Caching (Backend)' }
-  ];
 
   const handleMentionClick = (clickedTopicId: string) => {
     setPreviewTopicId(clickedTopicId);
@@ -160,6 +189,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
       <div 
         className={`flex-1 h-full overflow-y-auto overflow-x-hidden flex flex-col min-w-[500px] relative ${isDragging ? '' : 'transition-all duration-300 ease-in-out'}`}
         style={{ marginRight: isSidebarOpen ? `${sidebarWidth}px` : '0px' }}
+        onScroll={handleScroll}
       >
         {/* Floating Sidebar Toggle Button */}
         {!isSidebarOpen && (
@@ -186,69 +216,176 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
         <div 
           className="max-w-[960px] min-w-[960px] mx-auto w-full h-full flex flex-col px-8 transition-all duration-300 ease-in-out"
         >
-          <div className="pt-6 flex-shrink-0 sticky top-0 bg-background z-40">
-            <div className="flex flex-col gap-6 pb-2">
+          <div className="pt-6 flex-shrink-0 bg-background z-30">
+            {/* Top Utility Row */}
+            <div className="flex items-center justify-between">
+              <Link 
+                href={`/subject/${topic.subject.id}`} 
+                className={`inline-flex p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all duration-300 -ml-1.5 ${!isScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
               
-              {/* Top Utility Row */}
-              <div className="flex items-center justify-between">
-                <Link href="/" className="inline-flex p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-colors -ml-1.5">
-                  <ArrowLeft className="w-5 h-5" />
+              <div className="flex items-center gap-2">
+                <Link href={`/subject/${topic.subject.id}`} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span className="truncate">{topic.subject.name}</span>
                 </Link>
-                
-                <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]">
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    <span className="truncate">React Hooks</span>
-                  </button>
-                  <div className="w-px h-3 bg-border/50 mx-1" />
-                  <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/10 px-2 py-1 rounded-md transition-colors">
-                    <Plus className="w-3.5 h-3.5" />
-                    New Topic
-                  </button>
-                </div>
+                <div className="w-px h-3 bg-border/50 mx-1" />
+                <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/10 px-2 py-1 rounded-md transition-colors">
+                  <Plus className="w-3.5 h-3.5" />
+                  New Topic
+                </button>
               </div>
+            </div>
+          </div>
 
+          <div className={`flex-shrink-0 sticky top-0 bg-background z-40 transition-all duration-300 ${isScrolled ? 'pt-10' : 'pt-6'}`}>
+            <div className="flex flex-col pb-2">
               {/* Title & Metadata Row */}
-              <div className="flex flex-col">
-                <div className="flex flex-wrap justify-between items-start gap-4">
+              <div className="flex flex-col relative">
+                {/* Absolutely positioned Tags Area - hovers in the gap above without shifting layout */}
+                <div className="absolute -top-4 left-0 flex items-center gap-3 text-[#888888] text-xs font-medium -ml-0.5 z-10">
+                  {tags.length === 0 && !isAddingTag && (
+                    <span 
+                      className="text-[#888888]/50 hover:text-foreground cursor-pointer transition-colors"
+                      onClick={() => setIsAddingTag(true)}
+                    >
+                      Add tags...
+                    </span>
+                  )}
+                  {tags.map((tag) => (
+                    <span key={tag} className="hover:text-foreground cursor-pointer transition-colors">
+                      {tag}
+                    </span>
+                  ))}
+                  
+                  {isAddingTag ? (
+                    <input
+                      type="text"
+                      value={newTagText}
+                      onChange={(e) => setNewTagText(e.target.value)}
+                      onBlur={() => {
+                        if (newTagText.trim()) {
+                          const tag = newTagText.startsWith('#') ? newTagText.trim() : `#${newTagText.trim()}`;
+                          if (!tags.includes(tag)) {
+                            const newTags = [...tags, tag];
+                            setTags(newTags);
+                            updateTopic(topic.id, { tags: newTags }).catch(console.error);
+                          }
+                        }
+                        setNewTagText('');
+                        setIsAddingTag(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (newTagText.trim()) {
+                            const tag = newTagText.startsWith('#') ? newTagText.trim() : `#${newTagText.trim()}`;
+                            if (!tags.includes(tag)) {
+                              const newTags = [...tags, tag];
+                              setTags(newTags);
+                              updateTopic(topic.id, { tags: newTags }).catch(console.error);
+                            }
+                          }
+                          setNewTagText('');
+                          setIsAddingTag(false);
+                        } else if (e.key === 'Escape') {
+                          setNewTagText('');
+                          setIsAddingTag(false);
+                        }
+                      }}
+                      autoFocus
+                      className="bg-transparent border-none outline-none text-foreground p-0 w-24 placeholder:text-[#888888]/50"
+                      placeholder="Add tag..."
+                    />
+                  ) : (
+                    <button 
+                      onClick={() => setIsAddingTag(true)}
+                      className="hover:text-foreground transition-colors" 
+                      title="Add tag"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap justify-between items-start gap-4 relative">
+                  {/* Scroll-revealed Back Button */}
+                  <Link 
+                    href={`/subject/${topic.subject.id}`} 
+                    className={`absolute -left-10 top-[5px] p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all duration-300 z-20 ${isScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}
+                    title="Go back"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </Link>
+
                   <h1 className={`${canvasContainerWidth < 650 ? 'text-2xl' : 'text-3xl'} font-bold text-foreground transition-all duration-300 leading-snug`}>
                     {topic.title}
                   </h1>
                   
                   {/* Full View: Button on Title Row */}
-                  {canvasContainerWidth >= 650 && (
+                  {canvasContainerWidth >= 650 && pendingRevision && !isRevised && (
                     <div className="flex items-center gap-3 shrink-0 mt-1">
                       <div className={`transition-opacity duration-500 ${isSaving ? 'opacity-100' : 'opacity-0'}`}>
                         <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Saving to local storage" />
                       </div>
-                      <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80 hover:text-foreground hover:bg-accent px-3 py-1.5 rounded-md transition-colors">
+                      <button 
+                        onClick={handleMarkDone}
+                        disabled={isMarkingDone}
+                        className="flex items-center gap-1.5 text-xs font-medium text-white hover:bg-emerald-600 bg-emerald-500 px-3 py-1.5 rounded-md transition-colors shadow-sm disabled:opacity-50"
+                      >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Mark as Revised
+                        {isMarkingDone ? 'Saving...' : 'Mark as Revised'}
                       </button>
+                    </div>
+                  )}
+                  {canvasContainerWidth >= 650 && isRevised && (
+                    <div className="flex items-center gap-2 shrink-0 mt-1 text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-md text-xs font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Revised
                     </div>
                   )}
                 </div>
                 
                 <div className={`flex flex-wrap ${canvasContainerWidth < 650 ? 'justify-between' : ''} items-center gap-4 text-[13px]`}>
                   <div className="flex flex-wrap items-center gap-4">
-                    <span className="flex items-center gap-1.5 text-muted-foreground/80 bg-muted/40 px-2 py-0.5 rounded-md">
-                      <Clock className="w-3.5 h-3.5" /> Day {topic.day} Revision
-                    </span>
-                    <span className="flex items-center gap-1.5 text-muted-foreground/60">
-                      <Calendar className="w-3.5 h-3.5" /> Next due: Today
-                    </span>
+                    {pendingRevision ? (
+                      <>
+                        <span className="flex items-center gap-1.5 text-muted-foreground/80 bg-muted/40 px-2 py-0.5 rounded-md">
+                          <Clock className="w-3.5 h-3.5" /> Cycle {pendingRevision.cycleNumber} Revision
+                        </span>
+                        <span className={`flex items-center gap-1.5 ${new Date(pendingRevision.scheduledFor) < new Date() ? 'text-red-400' : 'text-muted-foreground/60'}`}>
+                          <Calendar className="w-3.5 h-3.5" /> 
+                          {new Date(pendingRevision.scheduledFor) < new Date() ? 'Overdue' : 'Due: ' + new Date(pendingRevision.scheduledFor).toLocaleDateString()}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-muted-foreground/60">
+                        <Clock className="w-3.5 h-3.5" /> No pending revisions
+                      </span>
+                    )}
                   </div>
 
                   {/* Narrow View: Button on Metadata Row */}
-                  {canvasContainerWidth < 650 && (
-                    <div className="flex items-center gap-3 shrink-0">
+                  {canvasContainerWidth < 650 && pendingRevision && !isRevised && (
+                    <div className="flex items-center gap-3 shrink-0 mt-1">
                       <div className={`transition-opacity duration-500 ${isSaving ? 'opacity-100' : 'opacity-0'}`}>
                         <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Saving to local storage" />
                       </div>
-                      <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80 hover:text-foreground hover:bg-accent px-3 py-1.5 rounded-md transition-colors">
+                      <button 
+                        onClick={handleMarkDone}
+                        disabled={isMarkingDone}
+                        className="flex items-center gap-1.5 text-xs font-medium text-white hover:bg-emerald-600 bg-emerald-500 px-3 py-1.5 rounded-md transition-colors shadow-sm disabled:opacity-50"
+                      >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Mark as Revised
+                        {isMarkingDone ? 'Saving...' : 'Mark as Revised'}
                       </button>
+                    </div>
+                  )}
+                  {canvasContainerWidth < 650 && isRevised && (
+                    <div className="flex items-center gap-2 shrink-0 mt-1 text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-md text-xs font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Revised
                     </div>
                   )}
                 </div>
@@ -267,11 +404,12 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
           >
             <div ref={canvasWrapperRef} className="pb-32 w-full h-full relative ">
               <TopicCanvas 
-                topicId={topic  .id} 
-                initialContent={topic.content} 
+                topicId={topic.id} 
+                initialContent={topic.canvasData ? JSON.stringify(topic.canvasData) : undefined} 
                 onMentionClick={handleMentionClick} 
                 containerWidth={canvasContainerWidth} 
                 onSavingChange={setIsSaving}
+                topicUpdatedAt={topic.updatedAt}
               />
             </div>
           </div>
@@ -335,7 +473,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
 
           {/* Sidebar Content */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pb-20">
-            {activeTab === 'links' && <TopicLinksTimeline onMentionClick={handleMentionClick} />}
+            {activeTab === 'links' && <TopicLinksTimeline onMentionClick={handleMentionClick} contextLinks={contextLinks} />}
 
             {activeTab === 'notes' && (
               <div className="space-y-4">
@@ -348,7 +486,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
                   </button>
                 </div>
                 
-                {quickNotes.map(note => (
+                {quickNotes.map((note: any) => (
                   <div key={note.id} className="p-3 rounded-lg border border-divider bg-background hover:border-accent/50 transition-colors group cursor-pointer" onClick={() => handleMentionClick(note.id)}>
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${note.type === 'topic-same-subject' ? 'bg-blue-500/10 text-blue-500' : note.type === 'topic-diff-subject' ? 'bg-purple-500/10 text-purple-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
