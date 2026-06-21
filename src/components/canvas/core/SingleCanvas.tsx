@@ -13,7 +13,7 @@ import { useCanvasHandlers } from './useCanvasHandlers';
 
 export const TITLE_HEIGHT = 105;
 export const COVER_HEIGHT = 192;
-export const SIDE_PADDING = 5;
+export const SIDE_PADDING = 3;
 export const VERTICAL_PADDING = 5;
 
 interface SingleCanvasProps {

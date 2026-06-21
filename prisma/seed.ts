@@ -37,18 +37,6 @@ async function main() {
   });
   console.log(`✅ Workspace: ${workspace.name} (${workspace.id})`);
 
-  // 3. Create the UserStreak row
-  await prisma.userStreak.upsert({
-    where: { userId: DEV_USER_ID },
-    update: {},
-    create: {
-      userId: DEV_USER_ID,
-      currentStreak: 0,
-      longestStreak: 0,
-      lastCalculated: new Date(),
-    },
-  });
-  console.log('✅ UserStreak initialized');
 
   console.log('\n🎉 Seed complete!');
 }

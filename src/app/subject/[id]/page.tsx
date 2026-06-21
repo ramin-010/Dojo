@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getSubjectById, getRecentActivity, getUserStreak, getDailyHistory } from '@/app/actions';
+import { getSubjectById, getRecentActivity, getSubjectStreak, getDailyHistory } from '@/app/actions';
 import { SubjectContent } from './SubjectContent';
 
 export default async function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -8,8 +8,8 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   const [subject, activities, streak, dailyHistory] = await Promise.all([
     getSubjectById(id),
     getRecentActivity(id),
-    getUserStreak(),
-    getDailyHistory(7),
+    getSubjectStreak(id),
+    getDailyHistory(id, 7),
   ]);
 
   if (!subject) {

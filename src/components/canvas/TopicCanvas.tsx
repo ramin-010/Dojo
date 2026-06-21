@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { SingleCanvas } from './core/SingleCanvas';
 import { useCanvasState } from './core/useCanvasState';
 import { canvasOfflineStorage } from '@/lib/storage/canvasOfflineStorage';
+import { saveCanvasData } from '@/app/actions';
 import { CANVAS_WIDTH } from './core/types';
 
 interface TopicCanvasProps {
@@ -43,12 +44,23 @@ export function TopicCanvas({
     debounceTimer.current = setTimeout(async () => {
       setIsSaving(true);
       onSavingChange?.(true);
+
+      // 1. Save to IndexedDB (fast, offline cache)
       await canvasOfflineStorage.saveDoc(topicId, content, title || 'Untitled Topic').catch(() => {});
+
+      // 2. Save to server (persistent storage)
+      try {
+        const parsed = JSON.parse(content);
+        await saveCanvasData(topicId, parsed);
+      } catch (e) {
+        console.error('[TopicCanvas] Server save failed:', e);
+      }
+
       setTimeout(() => {
         setIsSaving(false);
         onSavingChange?.(false);
       }, 500);
-    }, 1000);
+    }, 2000); // 2s debounce per Master Plan
   }, [topicId, title, onChange, onSavingChange]);
 
   const {

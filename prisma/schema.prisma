@@ -15,7 +15,8 @@ model User {
   email      String?      @unique
   name       String?
   workspaces Workspace[]
-  streak     UserStreak?
+  streaks    SubjectStreak[]
+  history    DailyHistory[]
 }
 
 model Workspace {
@@ -47,6 +48,10 @@ model Subject {
   topics       Topic[]
   resources    ResourceLink[]
   quickNotes   QuickNote[]
+  
+  tags         Tag[]
+  streaks      SubjectStreak[]
+  history      DailyHistory[]
 }
 
 model ResourceLink {
@@ -85,8 +90,19 @@ model QuickNote {
 }
 
 // ====================================================================
-// LEVEL 3: TOPICS & SPATIAL CANVAS
+// LEVEL 3: TOPICS, TAGS & SPATIAL CANVAS
 // ====================================================================
+
+model Tag {
+  id        String   @id @default(uuid())
+  subjectId String
+  name      String   
+  
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topics    Topic[]
+
+  @@unique([subjectId, name])
+}
 
 model Topic {
   id          String   @id @default(uuid())
@@ -94,7 +110,7 @@ model Topic {
   subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   
   title       String
-  tags        String[] @default([]) 
+  tags        Tag[] 
   sortOrder   Float?   // Allows drag-and-drop or Previous/Next navigation
   
   // The Hybrid Spatial Data! All blocks/connections live here.
@@ -155,19 +171,30 @@ model ActivityLog {
   createdAt   DateTime @default(now())
 }
 
-// The lazy-evaluated Streak system
-model UserStreak {
-  userId          String   @id
+// The lazy-evaluated Streak system per Subject
+model SubjectStreak {
+  userId          String
+  subjectId       String
+  
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
   currentStreak   Int      @default(0)
   longestStreak   Int      @default(0)
   lastCalculated  DateTime // Prevents continuous recalculation
+
+  @@id([userId, subjectId])
 }
 
-// Powers the 7-day flame graph
+// Powers the 7-day flame graph per Subject
 model DailyHistory {
   id              String   @id @default(uuid())
   userId          String
+  subjectId       String
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
   date            DateTime // Midnight of the evaluated day
   
   revisionsDue    Int      

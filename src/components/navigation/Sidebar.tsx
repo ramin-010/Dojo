@@ -17,6 +17,8 @@ import { SidebarSubject } from './SidebarSubject';
 
 import { reorderTopics } from '@/app/actions';
 
+import { useAppStore } from '@/store/useAppStore';
+
 interface Topic {
   id: string;
   title: string;
@@ -29,28 +31,24 @@ interface Subject {
 }
 
 export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [subjects, setSubjects] = useState(initialSubjects);
+  const { 
+    subjects, setSubjects, 
+    isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed, 
+    initializeSidebarState 
+  } = useAppStore();
 
   React.useEffect(() => {
     setSubjects(initialSubjects);
-  }, [initialSubjects]);
+  }, [initialSubjects, setSubjects]);
 
   React.useEffect(() => {
-    const stored = localStorage.getItem('revise-sidebar-collapsed');
-    if (stored) {
-      setTimeout(() => {
-        setIsCollapsed(stored === 'true');
-      }, 1000);
-    }
-  }, []);
+    setTimeout(() => {
+      initializeSidebarState();
+    }, 1000);
+  }, [initializeSidebarState]);
 
   const toggleSidebar = () => {
-    setIsCollapsed(prev => {
-      const next = !prev;
-      localStorage.setItem('revise-sidebar-collapsed', next.toString());
-      return next;
-    });
+    setIsSidebarCollapsed(!isCollapsed);
   };
 
   const sensors = useSensors(
@@ -71,36 +69,35 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
       return;
     }
 
-    setSubjects((prevSubjects) => {
-      // Find the subject that contains the active topic
-      const subjectIndex = prevSubjects.findIndex(subj => 
-        subj.topics.some(t => t.id === active.id)
-      );
-      
-      if (subjectIndex === -1) return prevSubjects;
+    const prevSubjects = subjects;
+    // Find the subject that contains the active topic
+    const subjectIndex = prevSubjects.findIndex(subj => 
+      subj.topics.some(t => t.id === active.id)
+    );
+    
+    if (subjectIndex === -1) return;
 
-      const subject = prevSubjects[subjectIndex];
-      
-      // Ensure the over item is in the same subject (no cross-subject drag support yet)
-      const isOverInSameSubject = subject.topics.some(t => t.id === over.id);
-      if (!isOverInSameSubject) return prevSubjects;
+    const subject = prevSubjects[subjectIndex];
+    
+    // Ensure the over item is in the same subject (no cross-subject drag support yet)
+    const isOverInSameSubject = subject.topics.some(t => t.id === over.id);
+    if (!isOverInSameSubject) return;
 
-      const oldIndex = subject.topics.findIndex(t => t.id === active.id);
-      const newIndex = subject.topics.findIndex(t => t.id === over.id);
+    const oldIndex = subject.topics.findIndex(t => t.id === active.id);
+    const newIndex = subject.topics.findIndex(t => t.id === over.id);
 
-      const newTopics = arrayMove(subject.topics, oldIndex, newIndex);
-      
-      const newSubjects = [...prevSubjects];
-      newSubjects[subjectIndex] = {
-        ...subject,
-        topics: newTopics
-      };
+    const newTopics = arrayMove(subject.topics, oldIndex, newIndex);
+    
+    const newSubjects = [...prevSubjects];
+    newSubjects[subjectIndex] = {
+      ...subject,
+      topics: newTopics
+    };
 
-      // Sync the new sort order to the database without blocking the UI
-      reorderTopics(subject.id, newTopics.map(t => t.id)).catch(console.error);
+    // Sync the new sort order to the database without blocking the UI
+    reorderTopics(subject.id, newTopics.map(t => t.id)).catch(console.error);
 
-      return newSubjects;
-    });
+    setSubjects(newSubjects);
   };
 
   return (

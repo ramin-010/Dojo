@@ -1,37 +1,138 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu, MoreHorizontal } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react';
+import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu, MoreHorizontal, PlayCircle, Loader2, Info } from "lucide-react";
 import Link from "next/link";
 import { TopicCanvas } from "@/components/canvas/TopicCanvas";
 import { TopicLinksTimeline } from './TopicLinksTimeline';
+import { timeAgo } from '@/lib/utils';
+import { useAppStore } from '@/store/useAppStore';
+import { startTopicRevisions, completeRevision, updateTopic, createTopic } from '@/app/actions';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TopicHistoryModal } from './TopicHistoryModal';
 
 export type SidebarTab = 'links' | 'notes' | 'resources';
 
+// Types matching what getTopicById returns (serialized from server)
 interface TopicWorkspaceProps {
   topic: {
     id: string;
     title: string;
-    subject: string;
-    status: string;
-    day: number;
-    content: string;
+    tags: { id: string; name: string }[];
+    canvasData: unknown;
+    subjectId: string;
+    sortOrder: number | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    subject: { id: string; name: string };
+    revisions: {
+      id: string;
+      cycleNumber: number;
+      intervalDays: number;
+      scheduledFor: Date | string;
+      completedAt: Date | string | null;
+      status: string;
+    }[];
+    mentionsOut: {
+      id: string;
+      createdAt: Date | string;
+      targetTopic: { id: string; title: string; updatedAt: Date | string };
+    }[];
+    mentionsIn: {
+      id: string;
+      createdAt: Date | string;
+      sourceTopic: { id: string; title: string; updatedAt: Date | string };
+    }[];
+    resources: {
+      id: string;
+      url: string;
+      title: string;
+      category: string;
+      createdAt: Date | string;
+    }[];
+    quickNotes: {
+      id: string;
+      content: string;
+      isSubjectLevel: boolean;
+      topicId: string | null;
+      subjectId: string;
+      createdAt: Date | string;
+    }[];
   };
+  allSubjectTags: { id: string; name: string }[];
 }
 
-export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
+export function TopicWorkspace({ topic, allSubjectTags }: TopicWorkspaceProps) {
+  const { updateTopicTitle, isSaving, setIsSaving } = useAppStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('links');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
+  const router = useRouter();
+  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
 
   const [sidebarWidth, setSidebarWidth] = useState(384); // Default w-96 = 384px
 
   const [isDragging, setIsDragging] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
+  
+  const [title, setTitle] = useState(topic.title);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLHeadingElement>(null);
+
+  // Stable reference for contentEditable to prevent React from resetting the text mid-typing
+  const prevTopicId = useRef(topic.id);
+  const initialTitleHtml = useRef({ __html: topic.title || 'Untitled Topic' });
+  if (prevTopicId.current !== topic.id) {
+    prevTopicId.current = topic.id;
+    initialTitleHtml.current = { __html: topic.title || 'Untitled Topic' };
+  }
+
+  const [tags, setTags] = useState<{ id: string; name: string }[]>(topic.tags);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagText, setNewTagText] = useState('');
+  const [suggestedTags, setSuggestedTags] = useState<{ id: string; name: string }[]>([]);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // Debounced title save
+  useEffect(() => {
+    if (title === topic.title) return;
+    const timer = setTimeout(async () => {
+      setIsSaving(true);
+      await updateTopic(topic.id, { title });
+      setIsSaving(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [title, topic.id, topic.title, setIsSaving]);
+
+  // Synchronous zero-latency client-side tag search
+  useEffect(() => {
+    if (!newTagText.trim()) {
+      setSuggestedTags([]);
+      return;
+    }
+    const results = allSubjectTags
+      .filter(t => t.name.toLowerCase().includes(newTagText.toLowerCase()))
+      .slice(0, 10);
+    setSuggestedTags(results);
+  }, [newTagText, allSubjectTags]);
+
+  const handleCommitTag = async (tagName: string) => {
+    const tag = tagName.startsWith('#') ? tagName.trim() : `#${tagName.trim()}`;
+    if (!tags.find(t => t.name === tag)) {
+      // Optimistic update
+      const tempId = `temp-${Date.now()}`;
+      const newTags = [...tags, { id: tempId, name: tag }];
+      setTags(newTags);
+      
+      // Save strings to backend (which connectOrCreates Tag models)
+      await updateTopic(topic.id, { tags: newTags.map(t => t.name) });
+    }
+    setNewTagText('');
+    setIsAddingTag(false);
+    setSuggestedTags([]);
+  };
   
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     setIsScrolled(e.currentTarget.scrollTop > 40);
@@ -130,26 +231,133 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
     return () => window.removeEventListener('canvas-drag-state', handleCanvasDrag);
   }, []);
 
-  // Dummy data for complex context relationships
-  const contextLinks = {
-    // Topics that THIS topic links TO (current topic tagged these)
-    outbound: [
-      { id: 'l1', path: 'Client Component Boundaries', taggedAt: 'Oct 12, 2023', updatedAt: 'Oct 15, 2023' },
-      { id: 'l2', path: 'React Mastery / React Hooks', taggedAt: 'Oct 10, 2023', updatedAt: 'Oct 11, 2023' },
-      { id: 'l3', path: 'Next.js / Data Fetching / Data Fetching in Next 15', taggedAt: 'Oct 14, 2023', updatedAt: 'Oct 14, 2023' }
-    ],
-    // Other topics that have tagged/referenced THIS topic
-    inbound: [
-      { id: 'l4', path: 'Architecture / Frontend Patterns / Micro-frontends', taggedAt: 'Oct 05, 2023', updatedAt: 'Oct 09, 2023' },
-      { id: 'l5', path: 'Performance Optimization Notes', taggedAt: 'Nov 02, 2023', updatedAt: 'Nov 05, 2023' }
-    ]
+  // Derive revision info from real data
+  const nextPendingRevision = useMemo(() => {
+    return topic.revisions
+      .filter(r => r.status === 'pending')
+      .sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime())[0] ?? null;
+  }, [topic.revisions]);
+
+  const revisionDay = nextPendingRevision?.cycleNumber ?? (topic.revisions.length > 0 ? topic.revisions[topic.revisions.length - 1].cycleNumber : 1);
+
+  // Format date for context links display and buttons
+  const formatDate = (d: Date | string) => {
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const quickNotes = [
-    { id: 'n1', type: 'topic-same-subject', content: 'Make sure to test this component with a slow network preset in DevTools.', date: 'Today, 2:30 PM', linkedItemTitle: 'React Server Components Deep Dive' },
-    { id: 'n2', type: 'subject', content: 'Next.js Architecture Rule: All new components must use Server Components by default unless interactivity is required.', date: 'Yesterday', linkedItemTitle: 'Next.js Architecture' },
-    { id: 'n3', type: 'topic-diff-subject', content: 'We can borrow the cache invalidation strategy from the Redis topic here.', date: 'Oct 12', linkedItemTitle: 'Redis Caching (Backend)' }
-  ];
+  const nextDueText = useMemo(() => {
+    if (!nextPendingRevision) return 'Completed';
+    const due = new Date(nextPendingRevision.scheduledFor);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const dueMidnight = new Date(due);
+    dueMidnight.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((dueMidnight.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return formatDate(due);
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    return formatDate(due);
+  }, [nextPendingRevision]);
+
+  const [isPending, startTransition] = useTransition();
+
+  // Spaced Repetition Engine Logic
+  const { revisionButtonState, revisionButtonText, handleRevisionAction } = useMemo(() => {
+    if (topic.revisions.length === 0) {
+      return {
+        revisionButtonState: 'start' as const,
+        revisionButtonText: 'Start Revisions',
+        handleRevisionAction: () => {
+          startTransition(async () => {
+            await startTopicRevisions(topic.id);
+          });
+        }
+      };
+    }
+
+    if (!nextPendingRevision) {
+      return {
+        revisionButtonState: 'completed' as const,
+        revisionButtonText: 'Completed',
+        handleRevisionAction: () => {}
+      };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const scheduled = new Date(nextPendingRevision.scheduledFor);
+    scheduled.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil((scheduled.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays >= 2) {
+      return {
+        revisionButtonState: 'wait' as const,
+        revisionButtonText: `Next Revision: ${formatDate(scheduled)}`,
+        handleRevisionAction: () => {}
+      };
+    }
+
+    if (diffDays === 1) {
+      return {
+        revisionButtonState: 'early' as const,
+        revisionButtonText: 'Revise Early',
+        handleRevisionAction: () => {
+          startTransition(async () => {
+            await completeRevision(nextPendingRevision.id);
+          });
+        }
+      };
+    }
+
+    return {
+      revisionButtonState: 'due' as const,
+      revisionButtonText: 'Mark as Revised',
+      handleRevisionAction: () => {
+        startTransition(async () => {
+          await completeRevision(nextPendingRevision.id);
+        });
+      }
+    };
+  }, [topic.revisions.length, topic.id, nextPendingRevision]);
+
+  // Serialize canvas data for the canvas component
+  const initialCanvasContent = useMemo(() => {
+    if (!topic.canvasData) return '';
+    if (typeof topic.canvasData === 'string') return topic.canvasData;
+    return JSON.stringify(topic.canvasData);
+  }, [topic.canvasData]);
+
+  // Format date for context links display
+  // Already defined above
+
+  // Derive context links from real mention data
+  const contextLinks = useMemo(() => ({
+    outbound: topic.mentionsOut.map(m => ({
+      id: m.targetTopic.id,
+      path: m.targetTopic.title,
+      taggedAt: formatDate(m.createdAt),
+      updatedAt: formatDate(m.targetTopic.updatedAt),
+    })),
+    inbound: topic.mentionsIn.map(m => ({
+      id: m.sourceTopic.id,
+      path: m.sourceTopic.title,
+      taggedAt: formatDate(m.createdAt),
+      updatedAt: formatDate(m.sourceTopic.updatedAt),
+    })),
+  }), [topic.mentionsOut, topic.mentionsIn]);
+
+  // Derive quick notes from real data
+  const quickNotes = useMemo(() => {
+    return topic.quickNotes.map(note => ({
+      id: note.id,
+      type: (note.isSubjectLevel ? 'subject' : 'topic-same-subject') as 'subject' | 'topic-same-subject' | 'topic-diff-subject',
+      content: note.content,
+      date: timeAgo(note.createdAt),
+      linkedItemTitle: note.isSubjectLevel ? topic.subject.name : topic.title,
+    }));
+  }, [topic.quickNotes, topic.subject.name, topic.title]);
 
   const handleMentionClick = (clickedTopicId: string) => {
     setPreviewTopicId(clickedTopicId);
@@ -196,11 +404,11 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
         <div 
           className="max-w-[960px] min-w-[960px] mx-auto w-full h-full flex flex-col px-8 transition-all duration-300 ease-in-out"
         >
-          <div className="pt-6 flex-shrink-0 bg-background z-30">
+          <div className="pt-5 flex-shrink-0 bg-background z-30">
             {/* Top Utility Row */}
             <div className="flex items-center justify-between">
               <Link 
-                href="/" 
+                href={`/subject/${topic.subject.id}`} 
                 className={`inline-flex p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all duration-300 -ml-1.5 ${!isScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -212,71 +420,112 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
                   <span className="truncate">React Hooks</span>
                 </button>
                 <div className="w-px h-3 bg-border/50 mx-1" />
-                <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/10 px-2 py-1 rounded-md transition-colors">
-                  <Plus className="w-3.5 h-3.5" />
+                <button 
+                  onClick={async () => {
+                    setIsCreatingTopic(true);
+                    try {
+                      const newTopic = await createTopic(topic.subject.id, "Untitled Topic");
+                      router.push(`/topic/${newTopic.id}`);
+                    } catch (e) {
+                      console.error(e);
+                      setIsCreatingTopic(false);
+                    }
+                  }}
+                  disabled={isCreatingTopic}
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/10 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
+                >
+                  {isCreatingTopic ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                   New Topic
                 </button>
               </div>
             </div>
           </div>
 
-          <div className={`flex-shrink-0 sticky top-0 bg-background z-40 transition-all duration-300 ${isScrolled ? 'pt-10' : 'pt-6'}`}>
+          <div className={`flex-shrink-0 sticky top-0 bg-background z-40 transition-all duration-300 ${isScrolled ? 'pt-11' : 'pt-8'}`}>
             <div className="flex flex-col pb-2">
               {/* Title & Metadata Row */}
               <div className="flex flex-col relative">
                 {/* Absolutely positioned Tags Area - hovers in the gap above without shifting layout */}
-                <div className="absolute -top-4 left-0 flex items-center gap-3 text-[#888888] text-xs font-medium -ml-0.5 z-10">
+                <div className="absolute -top-[26px] left-0 flex items-center gap-2 text-[#a0a0a0] text-xs font-medium z-10">
                   {tags.length === 0 && !isAddingTag && (
                     <span 
-                      className="text-[#888888]/50 hover:text-foreground cursor-pointer transition-colors"
                       onClick={() => setIsAddingTag(true)}
+                      className="px-2 py-1 border border-dashed border-white/10 rounded-md text-[#888888]/60 hover:text-foreground hover:bg-white/5 cursor-pointer transition-colors"
                     >
                       Add tags...
                     </span>
                   )}
                   {tags.map((tag) => (
-                    <span key={tag} className="hover:text-foreground cursor-pointer transition-colors">
-                      {tag}
-                    </span>
+                    <button 
+                      key={tag.id} 
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const newTags = tags.filter(t => t.id !== tag.id);
+                        setTags(newTags);
+                        await updateTopic(topic.id, { tags: newTags.map(t => t.name) });
+                      }}
+                      className="group relative flex items-center justify-center px-2 py-1 bg-white/5 border border-white/5 rounded-md hover:bg-white/10 hover:border-white/20 text-[#a0a0a0] hover:text-foreground transition-colors overflow-hidden"
+                      title="Click to remove tag"
+                    >
+                      <span className="group-hover:opacity-30 transition-opacity duration-300">{tag.name}</span>
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <X className="w-3.5 h-3.5" />
+                      </div>
+                    </button>
                   ))}
                   
                   {isAddingTag ? (
-                    <input
-                      type="text"
-                      value={newTagText}
-                      onChange={(e) => setNewTagText(e.target.value)}
-                      onBlur={() => {
-                        if (newTagText.trim()) {
-                          const tag = newTagText.startsWith('#') ? newTagText.trim() : `#${newTagText.trim()}`;
-                          if (!tags.includes(tag)) setTags([...tags, tag]);
-                        }
-                        setNewTagText('');
-                        setIsAddingTag(false);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          if (newTagText.trim()) {
-                            const tag = newTagText.startsWith('#') ? newTagText.trim() : `#${newTagText.trim()}`;
-                            if (!tags.includes(tag)) setTags([...tags, tag]);
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={newTagText}
+                        onChange={(e) => setNewTagText(e.target.value)}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            if (newTagText.trim() && suggestedTags.length === 0) {
+                              handleCommitTag(newTagText);
+                            } else {
+                              setIsAddingTag(false);
+                              setNewTagText('');
+                            }
+                          }, 150);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (newTagText.trim()) handleCommitTag(newTagText);
+                          } else if (e.key === 'Escape') {
+                            setNewTagText('');
+                            setIsAddingTag(false);
                           }
-                          setNewTagText('');
-                          setIsAddingTag(false);
-                        } else if (e.key === 'Escape') {
-                          setNewTagText('');
-                          setIsAddingTag(false);
-                        }
-                      }}
-                      autoFocus
-                      className="bg-transparent border-none outline-none text-foreground p-0 w-24 placeholder:text-[#888888]/50"
-                      placeholder="Add tag..."
-                    />
+                        }}
+                        autoFocus
+                        className="px-2 py-1 bg-white/5 border border-white/10 rounded-md outline-none text-foreground w-32 placeholder:text-[#888888]/50"
+                        placeholder="tag..."
+                      />
+                      {suggestedTags.length > 0 && (
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e1e1e] border border-white/10 rounded-md shadow-xl overflow-hidden z-50">
+                          {suggestedTags.map(st => (
+                            <div 
+                              key={st.id} 
+                              className="px-3 py-2 text-sm text-[#a0a0a0] hover:bg-white/5 hover:text-foreground cursor-pointer"
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // prevent input blur
+                                handleCommitTag(st.name);
+                              }}
+                            >
+                              {st.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <button 
                       onClick={() => setIsAddingTag(true)}
-                      className="hover:text-foreground transition-colors" 
+                      className="flex items-center justify-center w-[25px] h-[25px] rounded-md border border-[#888888]/50 hover:bg-white/10 text-[#888888] hover:text-foreground transition-colors" 
                       title="Add tag"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-3.5 h-3.5 text-[#888888]/50 hover:text-foreground" />
                     </button>
                   )}
                 </div>
@@ -284,16 +533,54 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
                 <div className="flex flex-wrap justify-between items-start gap-4 relative">
                   {/* Scroll-revealed Back Button */}
                   <Link 
-                    href="/" 
+                    href={`/subject/${topic.subject.id}`} 
                     className={`absolute -left-10 top-[5px] p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all duration-300 z-20 ${isScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}
                     title="Go back"
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </Link>
 
-                  <h1 className={`${canvasContainerWidth < 650 ? 'text-2xl' : 'text-3xl'} font-bold text-foreground transition-all duration-300 leading-snug`}>
-                    {topic.title}
-                  </h1>
+                  <h1 
+                    ref={titleInputRef}
+                    contentEditable={isEditingTitle}
+                    suppressContentEditableWarning
+                    dangerouslySetInnerHTML={initialTitleHtml.current}
+                    onDoubleClick={(e) => {
+                      setIsEditingTitle(true);
+                      setTimeout(() => {
+                        const el = titleInputRef.current;
+                        if (!el) return;
+                        el.focus();
+                        const range = document.createRange();
+                        const sel = window.getSelection();
+                        range.selectNodeContents(el);
+                        range.collapse(false); // Move cursor to the end
+                        sel?.removeAllRanges();
+                        sel?.addRange(range);
+                      }, 0);
+                    }}
+                    onBlur={(e) => {
+                      setIsEditingTitle(false);
+                      const newTitle = e.currentTarget.textContent || '';
+                      if (!newTitle.trim()) {
+                        e.currentTarget.textContent = 'Untitled Topic';
+                        setTitle('Untitled Topic');
+                        updateTopicTitle(topic.subjectId, topic.id, 'Untitled Topic');
+                      }
+                    }}
+                    onInput={(e) => {
+                      const newTitle = e.currentTarget.textContent || '';
+                      setTitle(newTitle);
+                      updateTopicTitle(topic.subjectId, topic.id, newTitle);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className={`outline-none ${isEditingTitle ? 'cursor-text ring-0' : 'cursor-pointer'} ${canvasContainerWidth < 650 ? 'text-2xl' : 'text-3xl'} font-bold text-foreground transition-all duration-300 leading-snug`}
+                  />
                   
                   {/* Full View: Button on Title Row */}
                   {canvasContainerWidth >= 650 && (
@@ -301,23 +588,53 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
                       <div className={`transition-opacity duration-500 ${isSaving ? 'opacity-100' : 'opacity-0'}`}>
                         <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Saving to local storage" />
                       </div>
-                      <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80 hover:text-foreground hover:bg-accent px-3 py-1.5 rounded-md transition-colors">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Mark as Revised
+                      <button 
+                        onClick={handleRevisionAction}
+                        disabled={isPending || revisionButtonState === 'completed' || revisionButtonState === 'wait'}
+                        className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all duration-300
+                          ${revisionButtonState === 'start' ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 shadow-sm cursor-pointer' : 
+                            revisionButtonState === 'due' ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm cursor-pointer' : 
+                            revisionButtonState === 'early' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 shadow-sm cursor-pointer' : 
+                            revisionButtonState === 'completed' ? 'bg-white/5 text-[#888888] opacity-50 cursor-not-allowed border border-white/5' :
+                            'bg-white/5 text-[#888888] cursor-pointer border border-white/10 shadow-sm'}`}
+                      >
+                        {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 
+                         revisionButtonState === 'start' ? <PlayCircle className="w-3.5 h-3.5" /> : 
+                         revisionButtonState === 'wait' ? <Calendar className="w-3.5 h-3.5" /> :
+                         <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {revisionButtonText}
                       </button>
                     </div>
                   )}
                 </div>
                 
-                <div className={`flex flex-wrap ${canvasContainerWidth < 650 ? 'justify-between' : ''} items-center gap-4 text-[13px]`}>
+                <div className={`flex flex-wrap ${canvasContainerWidth < 650 ? 'justify-between' : ''} items-center gap-4 text-[13px] relative`}>
                   <div className="flex flex-wrap items-center gap-4">
-                    <span className="flex items-center gap-1.5 text-muted-foreground/80 bg-muted/40 px-2 py-0.5 rounded-md">
-                      <Clock className="w-3.5 h-3.5" /> Day {topic.day} Revision
+                    <span className="flex items-center gap-1 text-[#888888] text-[11px] pl-1 opacity-70 font-medium">
+                      {new Date(topic.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </span>
-                    <span className="flex items-center gap-1.5 text-muted-foreground/60">
-                      <Calendar className="w-3.5 h-3.5" /> Next due: Today
-                    </span>
+                    {/* Narrow View Info Button */}
+                    {canvasContainerWidth < 650 && (
+                      <button 
+                        onClick={() => setIsInfoModalOpen(true)}
+                        className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                        Info
+                      </button>
+                    )}
                   </div>
+
+                  {/* Desktop View Info Button (Absolute right to prevent any layout shift) */}
+                  {canvasContainerWidth >= 650 && (
+                    <button 
+                      onClick={() => setIsInfoModalOpen(true)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                      Info
+                    </button>
+                  )}
 
                   {/* Narrow View: Button on Metadata Row */}
                   {canvasContainerWidth < 650 && (
@@ -325,9 +642,21 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
                       <div className={`transition-opacity duration-500 ${isSaving ? 'opacity-100' : 'opacity-0'}`}>
                         <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Saving to local storage" />
                       </div>
-                      <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80 hover:text-foreground hover:bg-accent px-3 py-1.5 rounded-md transition-colors">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Mark as Revised
+                      <button 
+                        onClick={handleRevisionAction}
+                        disabled={isPending || revisionButtonState === 'completed' || revisionButtonState === 'wait'}
+                        className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all duration-300
+                          ${revisionButtonState === 'start' ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 shadow-sm cursor-pointer' : 
+                            revisionButtonState === 'due' ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm cursor-pointer' : 
+                            revisionButtonState === 'early' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 shadow-sm cursor-pointer' : 
+                            revisionButtonState === 'completed' ? 'bg-white/5 text-[#888888] opacity-50 cursor-not-allowed border border-white/5' :
+                            'bg-white/5 text-[#888888] border-white/10 shadow-sm cursor-pointer'}`}
+                      >
+                        {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 
+                         revisionButtonState === 'start' ? <PlayCircle className="w-3.5 h-3.5" /> : 
+                         revisionButtonState === 'wait' ? <Calendar className="w-3.5 h-3.5" /> :
+                         <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {revisionButtonText}
                       </button>
                     </div>
                   )}
@@ -347,8 +676,8 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
           >
             <div ref={canvasWrapperRef} className="pb-32 w-full h-full relative ">
               <TopicCanvas 
-                topicId={topic  .id} 
-                initialContent={topic.content} 
+                topicId={topic.id} 
+                initialContent={initialCanvasContent} 
                 onMentionClick={handleMentionClick} 
                 containerWidth={canvasContainerWidth} 
                 onSavingChange={setIsSaving}
@@ -415,7 +744,7 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
 
           {/* Sidebar Content */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pb-20">
-            {activeTab === 'links' && <TopicLinksTimeline onMentionClick={handleMentionClick} />}
+            {activeTab === 'links' && <TopicLinksTimeline contextLinks={contextLinks} onMentionClick={handleMentionClick} />}
 
             {activeTab === 'notes' && (
               <div className="space-y-4">
@@ -454,6 +783,12 @@ export function TopicWorkspace({ topic }: TopicWorkspaceProps) {
           </div>
         </div>
       </div>
+      {/* Info Modal */}
+      <TopicHistoryModal 
+        isOpen={isInfoModalOpen} 
+        onClose={() => setIsInfoModalOpen(false)} 
+        topic={topic} 
+      />
     </div>
   );
 }
