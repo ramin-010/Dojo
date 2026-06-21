@@ -137,14 +137,14 @@ export function useCanvasHandlers({
         if (block.blockId === editingBlockId && editingDims) {
           blockHeight = editingDims.height;
         }
-        const bottom = block.y + blockHeight + 100;
+        const bottom = block.y + blockHeight + 400;
         if (bottom > maxBottom) maxBottom = bottom;
       }
     }
 
     if (!editingBlockId && cursorPos && editingDims) {
-      const bottom = cursorPos.y + editingDims.height + 100;
-      if (bottom > maxBottom) maxBottom = bottom;
+      const bottom = cursorPos.y + editingDims.height + 300; //canvas height extend buffer
+      if (bottom > maxBottom) maxBottom = bottom; 
     }
 
     return maxBottom;

@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, Plus } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 export default function TopicLoading() {
   return (
@@ -18,6 +18,11 @@ export default function TopicLoading() {
                 <div className="flex items-center gap-1 text-xs font-medium px-2.5 py-1">
                   <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground opacity-50" />
                   <div className="w-20 h-4 bg-white/10 rounded" />
+                </div>
+                <div className="w-px h-3 bg-border/50 mx-1" />
+                <div className="flex items-center gap-1 text-xs font-medium px-2.5 py-1">
+                  <div className="w-20 h-4 bg-white/10 rounded" />
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground opacity-50" />
                 </div>
                 <div className="w-px h-3 bg-border/50 mx-1" />
                 <div className="flex items-center gap-1 text-xs font-medium px-2 py-1">

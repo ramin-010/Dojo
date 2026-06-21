@@ -16,6 +16,7 @@ export {
   updateTopic,
   deleteTopic,
   reorderTopics,
+  getAdjacentTopics,
 } from './topic.actions';
 
 export {

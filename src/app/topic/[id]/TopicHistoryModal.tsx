@@ -42,7 +42,7 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" 
+          className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" 
           onClick={onClose}
         >
           <motion.div 
@@ -50,7 +50,7 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="bg-[#1c1c1c] border border-white/5 shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
+            className="bg-[#1a1a1a] border border-white/5 shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
             onClick={(e) => e.stopPropagation()}
           >
             {/* Left Column */}
@@ -143,7 +143,7 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
             </div>
 
             {/* Right Column */}
-            <div className="flex-1 p-6 bg-[#161616] overflow-y-auto custom-scrollbar relative max-h-[75vh]">
+            <div className="flex-1 p-6 bg-[#121212] overflow-y-auto custom-scrollbar relative max-h-[75vh]">
               {/* <div className="text-white/30 mb-6 ml-2">
                 <GitBranch className="w-5 h-5 transform -rotate-90 stroke-[1.5]" />
               </div> */}

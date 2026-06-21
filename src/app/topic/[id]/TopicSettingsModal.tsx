@@ -17,7 +17,7 @@ export function TopicSettingsModal({ isOpen, onClose, topicId }: TopicSettingsMo
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" 
+          className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" 
           onClick={onClose}
         >
           <motion.div 
@@ -25,7 +25,7 @@ export function TopicSettingsModal({ isOpen, onClose, topicId }: TopicSettingsMo
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="bg-[#1c1c1c] border border-white/5 shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
+            className="bg-[#1a1a1a] border border-white/5 shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
             onClick={(e) => e.stopPropagation()}
           >
             {/* Left Column */}
@@ -63,12 +63,12 @@ export function TopicSettingsModal({ isOpen, onClose, topicId }: TopicSettingsMo
             </div>
 
             {/* Right Column */}
-            <div className="flex-1 p-6 bg-[#161616] overflow-y-auto custom-scrollbar relative max-h-[75vh]">
+            <div className="flex-1 p-6 bg-[#121212] overflow-y-auto custom-scrollbar relative max-h-[75vh]">
               <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30 mb-8 pl-2">Topic Actions</h3>
               
               <div className="flex flex-col gap-4 pl-2">
                 {/* Rename Topic Action */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-[#1c1c1c] group hover:border-white/10 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 group hover:border-white/10 transition-colors">
                   <div className="flex flex-col gap-1">
                     <span className="text-[14px] font-medium text-white/90 flex items-center gap-2">
                       <Edit2 className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />

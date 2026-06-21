@@ -160,13 +160,13 @@ export function TopicCanvas({
   }, [selectedBlockId, selectedConnectionId, blocks, connections, deleteBlock, setSelectedBlockId, setSelectedConnectionId, setConnections]);
 
   if (!isLoaded) {
-    return <div className="w-full h-full min-h-[600px] bg-background relative flex items-center justify-center">
+    return <div className="w-full min-h-full min-h-[600px] bg-background relative flex items-center justify-center">
       <div className="text-muted-foreground animate-pulse">Loading canvas...</div>
     </div>;
   }
 
   return (
-    <div className="w-full h-full min-h-[600px] bg-background relative overflow-hidden" onClick={(e) => {
+    <div className="w-full min-h-full min-h-[600px] bg-background relative overflow-hidden" onClick={(e) => {
       if (e.target === e.currentTarget) {
         setSelectedBlockId(null);
         setSelectedConnectionId(null);

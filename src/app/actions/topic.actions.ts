@@ -201,3 +201,26 @@ export async function reorderTopics(
   revalidatePath(`/subject/${subjectId}`);
   revalidatePath('/');
 }
+
+/** Get the previous and next topics for navigation */
+export async function getAdjacentTopics(subjectId: string, currentTopicId: string) {
+  const allTopics = await prisma.topic.findMany({
+    where: { subjectId },
+    orderBy: [
+      { sortOrder: 'asc' },
+      { createdAt: 'asc' }
+    ],
+    select: { id: true, title: true }
+  });
+
+  const currentIndex = allTopics.findIndex(t => t.id === currentTopicId);
+  
+  if (currentIndex === -1) {
+    return { prevTopic: null, nextTopic: null };
+  }
+
+  const prevTopic = currentIndex > 0 ? allTopics[currentIndex - 1] : null;
+  const nextTopic = currentIndex < allTopics.length - 1 ? allTopics[currentIndex + 1] : null;
+
+  return { prevTopic, nextTopic };
+}

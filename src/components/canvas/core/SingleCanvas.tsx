@@ -193,7 +193,7 @@ export function SingleCanvas({
 
   return (
     <div
-      className="relative group transition-all duration-200 rounded-lg mx-auto"
+      className="relative group transition-all duration-200 h-full rounded-lg mx-auto"
       style={{ width: CANVAS_WIDTH }}
     >
       <div

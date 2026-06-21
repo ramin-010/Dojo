@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getTopicById, getAllSubjectTags } from '@/app/actions';
+import { getTopicById, getAllSubjectTags, getAdjacentTopics } from '@/app/actions';
 import { TopicWorkspace } from './TopicWorkspace';
 
 export default async function TopicPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +12,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
   }
 
   const allSubjectTags = await getAllSubjectTags(topic.subjectId);
+  const adjacentTopics = await getAdjacentTopics(topic.subjectId, topic.id);
 
-  return <TopicWorkspace topic={topic} allSubjectTags={allSubjectTags} />;
+  return <TopicWorkspace topic={topic} allSubjectTags={allSubjectTags} adjacentTopics={adjacentTopics} />;
 }
