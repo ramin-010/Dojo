@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react';
-import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu, MoreHorizontal, PlayCircle, Loader2, Info } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, CheckCircle2, X, Link as LinkIcon, FileText, Globe, ChevronLeft, ChevronRight, Plus, Menu, MoreHorizontal, PlayCircle, Loader2, Info, Settings } from "lucide-react";
 import Link from "next/link";
 import { TopicCanvas } from "@/components/canvas/TopicCanvas";
 import { TopicLinksTimeline } from './TopicLinksTimeline';
@@ -11,6 +11,7 @@ import { startTopicRevisions, completeRevision, updateTopic, createTopic } from 
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopicHistoryModal } from './TopicHistoryModal';
+import { TopicSettingsModal } from './TopicSettingsModal';
 
 export type SidebarTab = 'links' | 'notes' | 'resources';
 
@@ -33,6 +34,7 @@ interface TopicWorkspaceProps {
       scheduledFor: Date | string;
       completedAt: Date | string | null;
       status: string;
+      createdAt: Date | string;
     }[];
     mentionsOut: {
       id: string;
@@ -69,6 +71,7 @@ export function TopicWorkspace({ topic, allSubjectTags }: TopicWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('links');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const router = useRouter();
   const [isCreatingTopic, setIsCreatingTopic] = useState(false);
@@ -328,9 +331,6 @@ export function TopicWorkspace({ topic, allSubjectTags }: TopicWorkspaceProps) {
     if (typeof topic.canvasData === 'string') return topic.canvasData;
     return JSON.stringify(topic.canvasData);
   }, [topic.canvasData]);
-
-  // Format date for context links display
-  // Already defined above
 
   // Derive context links from real mention data
   const contextLinks = useMemo(() => ({
@@ -613,8 +613,30 @@ export function TopicWorkspace({ topic, allSubjectTags }: TopicWorkspaceProps) {
                     <span className="flex items-center gap-1 text-[#888888] text-[11px] pl-1 opacity-70 font-medium">
                       {new Date(topic.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </span>
-                    {/* Narrow View Info Button */}
+                    {/* Narrow View Info & Settings Buttons */}
                     {canvasContainerWidth < 650 && (
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => setIsSettingsModalOpen(true)}
+                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          Actions
+                        </button>
+                        <button 
+                          onClick={() => setIsInfoModalOpen(true)}
+                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                          Info
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop View Info & Settings Buttons (Absolute right to prevent any layout shift) */}
+                  {canvasContainerWidth >= 650 && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-4">
                       <button 
                         onClick={() => setIsInfoModalOpen(true)}
                         className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
@@ -622,18 +644,15 @@ export function TopicWorkspace({ topic, allSubjectTags }: TopicWorkspaceProps) {
                         <Info className="w-3.5 h-3.5" />
                         Info
                       </button>
-                    )}
-                  </div>
-
-                  {/* Desktop View Info Button (Absolute right to prevent any layout shift) */}
-                  {canvasContainerWidth >= 650 && (
-                    <button 
-                      onClick={() => setIsInfoModalOpen(true)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
-                    >
-                      <Info className="w-3.5 h-3.5" />
-                      Info
-                    </button>
+                      <button 
+                        onClick={() => setIsSettingsModalOpen(true)}
+                        className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        Actions
+                      </button>
+                      
+                    </div>
                   )}
 
                   {/* Narrow View: Button on Metadata Row */}
@@ -788,6 +807,12 @@ export function TopicWorkspace({ topic, allSubjectTags }: TopicWorkspaceProps) {
         isOpen={isInfoModalOpen} 
         onClose={() => setIsInfoModalOpen(false)} 
         topic={topic} 
+      />
+      {/* Settings Modal */}
+      <TopicSettingsModal 
+        isOpen={isSettingsModalOpen} 
+        onClose={() => setIsSettingsModalOpen(false)} 
+        topicId={topic.id}
       />
     </div>
   );

@@ -156,6 +156,7 @@ model Revision {
   scheduledFor DateTime  // Midnight of the due day
   completedAt  DateTime? 
   status       String    @default("pending") // "pending", "done", "missed"
+  createdAt    DateTime  @default(now())
 }
 
 // Powers the "Recent Activity" list on the Subject profile
