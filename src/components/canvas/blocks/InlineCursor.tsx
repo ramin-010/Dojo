@@ -15,6 +15,10 @@ import { SlashCommands } from '../extensions/SlashCommands';
 import { CalloutExtension } from '../extensions/CalloutExtension';
 import { SavedResourceExtension } from '../extensions/SavedResourceExtension';
 import { FloatingToolbar } from '../extensions/FloatingToolbar';
+import { CustomMention } from '../extensions/MentionExtension';
+import { createMentionSuggestions } from '../extensions/MentionExtension';
+import { searchTopicsInSubject, searchAllSubjects, addTopicMention } from '@/app/actions';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FONT_SIZE } from '../core/types';
 
@@ -35,6 +39,8 @@ interface InlineCursorProps {
   initialMinWidth?: number;
   onMoveCursor?: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  topicId?: string;
+  subjectId?: string;
 }
 
 interface ToolbarPosition {
@@ -42,9 +48,10 @@ interface ToolbarPosition {
   left: number;
 }
 
-export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, onChange, onDimensionsChange, zoom = 1, maxWidth, initialMinWidth, color, textColor, fontSize, onMoveCursor, onResourceAdd }: InlineCursorProps) {
+export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, onChange, onDimensionsChange, zoom = 1, maxWidth, initialMinWidth, color, textColor, fontSize, onMoveCursor, onResourceAdd, topicId, subjectId }: InlineCursorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isToolbarClickRef = useRef(false);
+  const router = useRouter();
 
   const [showFloatingToolbar, setShowFloatingToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState<ToolbarPosition>({ top: 0, left: 0 });
@@ -96,6 +103,58 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
       }),
       SlashCommands,
       CalloutExtension,
+      CustomMention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: createMentionSuggestions(
+          async (query: string) => {
+            if (!topicId || !subjectId) return [];
+            if (query.startsWith('/')) {
+              const match = query.match(/^\/([^\/]+)\/(.*)$/);
+              if (match) {
+                const subjectName = match[1];
+                const topicQuery = match[2];
+                const subjects = await searchAllSubjects(subjectName);
+                const exactSubject = subjects.find((s: any) => s.name === subjectName);
+                if (exactSubject) {
+                  const topics = await searchTopicsInSubject(exactSubject.id, topicQuery);
+                  return topics.map((t: any) => ({
+                    id: t.id,
+                    title: t.title,
+                    subject: exactSubject.name,
+                    isSubject: false
+                  }));
+                }
+                return [];
+              } else {
+                const sq = query.slice(1).trim();
+                const subjects = await searchAllSubjects(sq);
+                return subjects.map((s: any) => ({
+                  id: s.id,
+                  title: s.name,
+                  subject: 'Cross-Subject',
+                  isSubject: true
+                }));
+              }
+            } else {
+              const topics = await searchTopicsInSubject(subjectId, query);
+              return topics.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                subject: 'Current Subject',
+                isSubject: false
+              }));
+            }
+          },
+          async (targetId: string) => {
+            if (topicId && targetId) {
+              await addTopicMention(topicId, targetId);
+              router.refresh();
+            }
+          }
+        ),
+      }),
       SavedResourceExtension.configure({
         onResourceAdd: (data) => {
           if (onResourceAdd) {

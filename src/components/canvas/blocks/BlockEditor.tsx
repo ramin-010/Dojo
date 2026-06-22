@@ -13,9 +13,12 @@ import Underline from '@tiptap/extension-underline';
 import { Bold, Italic, Underline as UnderlineIcon, CheckSquare, Highlighter, Link as LinkIcon, Trash2, Code } from 'lucide-react';
 import { SlashCommands } from '../extensions/SlashCommands';
 import { CalloutExtension } from '../extensions/CalloutExtension';
-import { CustomMention, getMentionSuggestions } from '../extensions/MentionExtension';
+import { CustomMention } from '../extensions/MentionExtension';
+import { createMentionSuggestions } from '../extensions/MentionExtension';
 import { SavedResourceExtension } from '../extensions/SavedResourceExtension';
+import { searchTopicsInSubject, searchAllSubjects, addTopicMention } from '@/app/actions';
 import { debounce } from 'lodash';
+import { useRouter } from 'next/navigation';
 
 interface BlockEditorProps {
   content: string;
@@ -28,6 +31,8 @@ interface BlockEditorProps {
   onDelete?: () => void;
   onMentionClick?: (id: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  topicId?: string;
+  subjectId?: string;
 }
 
 export function BlockEditor({
@@ -40,13 +45,16 @@ export function BlockEditor({
   onKeyDown,
   onDelete,
   onMentionClick,
-  onResourceAdd
+  onResourceAdd,
+  topicId,
+  subjectId
 }: BlockEditorProps) {
   
   const [showBubbleMenu, setShowBubbleMenu] = useState(false);
   const [bubbleMenuPos, setBubbleMenuPos] = useState({ top: 0, left: 0 });
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const debouncedOnChange = useMemo(
     () => debounce((html: string) => {
@@ -88,7 +96,54 @@ export function BlockEditor({
         HTMLAttributes: {
           class: 'mention',
         },
-        suggestion: getMentionSuggestions,
+        suggestion: createMentionSuggestions(
+          async (query: string) => {
+            if (!topicId || !subjectId) return [];
+            
+            if (query.startsWith('/')) {
+              const match = query.match(/^\/([^\/]+)\/(.*)$/);
+              if (match) {
+                const subjectName = match[1];
+                const topicQuery = match[2];
+                const subjects = await searchAllSubjects(subjectName);
+                const exactSubject = subjects.find((s: any) => s.name === subjectName);
+                if (exactSubject) {
+                  const topics = await searchTopicsInSubject(exactSubject.id, topicQuery);
+                  return topics.map((t: any) => ({
+                    id: t.id,
+                    title: t.title,
+                    subject: exactSubject.name,
+                    isSubject: false
+                  }));
+                }
+                return [];
+              } else {
+                const sq = query.slice(1).trim();
+                const subjects = await searchAllSubjects(sq);
+                return subjects.map((s: any) => ({
+                  id: s.id,
+                  title: s.name,
+                  subject: 'Cross-Subject',
+                  isSubject: true
+                }));
+              }
+            } else {
+              const topics = await searchTopicsInSubject(subjectId, query);
+              return topics.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                subject: 'Current Subject',
+                isSubject: false
+              }));
+            }
+          },
+          async (targetId: string) => {
+            if (topicId && targetId) {
+              await addTopicMention(topicId, targetId);
+              router.refresh();
+            }
+          }
+        ),
       }),
       SavedResourceExtension.configure({
         onResourceAdd: (data) => {

@@ -126,6 +126,8 @@ interface BlockContentProps {
   fileName?: string;
   fileSize?: number;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  topicId?: string;
+  subjectId?: string;
 }
 
 export const BlockContent: React.FC<BlockContentProps> = ({ 
@@ -143,7 +145,9 @@ export const BlockContent: React.FC<BlockContentProps> = ({
   isUploading,
   fileName,
   fileSize,
-  onResourceAdd
+  onResourceAdd,
+  topicId,
+  subjectId
 }) => {
   if (type === 'text') {
     if (isEditing) {
@@ -156,6 +160,8 @@ export const BlockContent: React.FC<BlockContentProps> = ({
           onDelete={onDelete}
           onMentionClick={onMentionClick}
           onResourceAdd={onResourceAdd}
+          topicId={topicId}
+          subjectId={subjectId}
         />
       );
     }

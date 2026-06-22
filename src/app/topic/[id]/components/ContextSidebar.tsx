@@ -8,6 +8,8 @@ import { ResourcesTab } from './ResourcesTab';
 import { SidebarTab, ContextLinks, QuickNoteDisplay, TopicResource } from '../types';
 
 interface ContextSidebarProps {
+  topicId: string;
+  subjectId: string;
   isOpen: boolean;
   onClose: () => void;
   sidebarWidth: number;
@@ -23,9 +25,12 @@ interface ContextSidebarProps {
   onDeleteResource?: (id: string, url: string) => void;
   onDeleteMultipleResources?: (ids: string[]) => void;
   onRenameResource?: (id: string, newTitle: string) => void;
+  onDeleteMention?: (id: string, isOutbound: boolean) => void;
 }
 
 export function ContextSidebar({
+  topicId,
+  subjectId,
   isOpen,
   onClose,
   sidebarWidth,
@@ -41,6 +46,7 @@ export function ContextSidebar({
   onDeleteResource,
   onDeleteMultipleResources,
   onRenameResource,
+  onDeleteMention,
 }: ContextSidebarProps) {
   return (
     <>
@@ -109,8 +115,11 @@ export function ContextSidebar({
             {/* ── Links Tab ─────────────────────────────────────────────── */}
             {activeTab === 'links' && (
               <TopicLinksTimeline
+                topicId={topicId}
+                subjectId={subjectId}
                 contextLinks={contextLinks}
                 onMentionClick={onMentionClick}
+                onDeleteMention={onDeleteMention}
               />
             )}
 

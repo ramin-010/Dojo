@@ -29,6 +29,8 @@ interface CanvasBlockLayerProps {
   editingBlockId?: string | null;
   onMentionClick?: (id: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  topicId?: string;
+  subjectId?: string;
 }
 
 interface BlockWrapperProps {
@@ -52,6 +54,8 @@ interface BlockWrapperProps {
   editingBlockId?: string | null;
   onMentionClick?: (id: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  topicId?: string;
+  subjectId?: string;
 }
 
 const BlockWrapperComponent = ({
@@ -75,6 +79,8 @@ const BlockWrapperComponent = ({
   editingBlockId,
   onMentionClick,
   onResourceAdd,
+  topicId,
+  subjectId,
 }: BlockWrapperProps) => {
   const isResizingRef = useRef(false);
   const resizeStartRef = useRef<{ width: number; fontSize: number } | null>(null);
@@ -215,6 +221,8 @@ const BlockWrapperComponent = ({
         fileName={block.fileName}
         fileSize={block.fileSize}
         onResourceAdd={onResourceAdd}
+        topicId={topicId}
+        subjectId={subjectId}
       />
     </Rnd>
   );
@@ -255,6 +263,8 @@ function CanvasBlockLayerComponent({
   editingBlockId,
   onMentionClick,
   onResourceAdd,
+  topicId,
+  subjectId,
 }: CanvasBlockLayerProps) {
   const connectedBlockIds = useMemo(() => {
     const set = new Set<string>();
@@ -292,6 +302,8 @@ function CanvasBlockLayerComponent({
           editingBlockId={editingBlockId}
           onMentionClick={onMentionClick}
           onResourceAdd={onResourceAdd}
+          topicId={topicId}
+          subjectId={subjectId}
         />
       ))}
     </>

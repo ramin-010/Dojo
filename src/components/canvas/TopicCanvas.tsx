@@ -9,6 +9,7 @@ import { CANVAS_WIDTH } from './core/types';
 
 interface TopicCanvasProps {
   topicId: string;
+  subjectId?: string;
   initialContent?: string;
   onChange?: (content: string) => void;
   title?: string;
@@ -23,6 +24,7 @@ interface TopicCanvasProps {
 
 export function TopicCanvas({
   topicId,
+  subjectId,
   initialContent,
   onChange,
   title,
@@ -202,6 +204,7 @@ export function TopicCanvas({
         }}>
           <SingleCanvas
             canvasId={topicId}
+            subjectId={subjectId}
             blocks={blocks}
             connections={connections}
             selectedBlockId={selectedBlockId}

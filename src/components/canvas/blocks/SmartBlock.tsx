@@ -41,6 +41,8 @@ function SmartBlockComponent({
   fileName,
   fileSize,
   onResourceAdd,
+  topicId,
+  subjectId,
 }: SmartBlockProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -171,6 +173,8 @@ function SmartBlockComponent({
             onMentionClick={onMentionClick}
             height={height}
             onResourceAdd={onResourceAdd}
+            topicId={topicId}
+            subjectId={subjectId}
           />
           <TaskProgressBar taskStats={type === 'text' ? taskStats : null} />
         </>

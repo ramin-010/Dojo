@@ -18,6 +18,7 @@ export const VERTICAL_PADDING = 5;
 
 interface SingleCanvasProps {
   canvasId: string;
+  subjectId?: string;
   blocks: CanvasBlockData[];
   connections: Connection[];
   selectedBlockId: string | null;
@@ -48,6 +49,7 @@ interface SingleCanvasProps {
 
 export function SingleCanvas({
   canvasId,
+  subjectId,
   blocks,
   connections,
   selectedBlockId,
@@ -283,6 +285,8 @@ export function SingleCanvas({
           onMentionClick={onMentionClick}
           editingBlockId={h.editingBlockId}
           onResourceAdd={onResourceAdd}
+          topicId={canvasId}
+          subjectId={subjectId}
         />
 
         <ConnectionLayer
@@ -352,6 +356,8 @@ export function SingleCanvas({
             zoom={zoom}
             onMoveCursor={h.handleMoveCursor}
             onResourceAdd={onResourceAdd}
+            topicId={canvasId}
+            subjectId={subjectId}
           />
         )}
 

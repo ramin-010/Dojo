@@ -28,6 +28,8 @@ export interface SmartBlockProps {
   fileName?: string;
   fileSize?: number;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  topicId?: string;
+  subjectId?: string;
 }
 
 export interface TaskStats {

@@ -70,14 +70,14 @@ export async function getTopicById(topicId: string) {
       mentionsOut: {
         include: {
           targetTopic: {
-            select: { id: true, title: true, updatedAt: true },
+            select: { id: true, title: true, updatedAt: true, subjectId: true, subject: { select: { name: true } } },
           },
         },
       },
       mentionsIn: {
         include: {
           sourceTopic: {
-            select: { id: true, title: true, updatedAt: true },
+            select: { id: true, title: true, updatedAt: true, subjectId: true, subject: { select: { name: true } } },
           },
         },
       },
@@ -378,5 +378,84 @@ export async function createTextResourceLink(
 
   revalidatePath(`/topic/${topicId}`);
   return { type: 'resource', data: resource };
+}
+
+/** Instantly create a TopicMention record */
+export async function addTopicMention(sourceTopicId: string, targetTopicId: string) {
+  try {
+    const mention = await prisma.topicMention.create({
+      data: {
+        sourceTopicId,
+        targetTopicId,
+      }
+    });
+    revalidatePath(`/topic/${sourceTopicId}`);
+    revalidatePath(`/topic/${targetTopicId}`);
+    return { success: true, mention };
+  } catch (error: any) {
+    // If it already exists (Unique constraint violation P2002), we consider it a success
+    if (error.code === 'P2002') {
+      return { success: true, message: 'Already exists' };
+    }
+    console.error('[Actions] Error adding topic mention:', error);
+    return { success: false, error: 'Failed to add mention' };
+  }
+}
+
+/** Permanently delete a TopicMention record */
+export async function deleteTopicMention(id: string) {
+  try {
+    const mention = await prisma.topicMention.delete({
+      where: { id }
+    });
+    revalidatePath(`/topic/${mention.sourceTopicId}`);
+    revalidatePath(`/topic/${mention.targetTopicId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[Actions] Error deleting topic mention:', error);
+    return { success: false, error: 'Failed to delete mention' };
+  }
+}
+
+/** Search topics within a specific subject */
+export async function searchTopicsInSubject(subjectId: string, query: string) {
+  return await prisma.topic.findMany({
+    where: {
+      subjectId,
+      title: { contains: query, mode: 'insensitive' }
+    },
+    select: { id: true, title: true },
+    take: 10,
+    orderBy: { updatedAt: 'desc' }
+  });
+}
+
+/** Search all subjects */
+export async function searchAllSubjects(query: string) {
+  return await prisma.subject.findMany({
+    where: {
+      name: { contains: query, mode: 'insensitive' }
+    },
+    select: { id: true, name: true, color: true },
+    take: 10,
+    orderBy: { lastActiveAt: 'desc' }
+  });
+}
+
+/** Fetch all subjects for the dropdown */
+export async function getAllSubjectsForMention() {
+  return await prisma.subject.findMany({
+    select: { id: true, name: true, color: true },
+    orderBy: { lastActiveAt: 'desc' }
+  });
+}
+
+/** Fetch all topics for a specific subject for the dropdown */
+export async function getAllTopicsInSubjectForMention(subjectId: string) {
+  return await prisma.topic.findMany({
+    where: { subjectId },
+    select: { id: true, title: true, subjectId: true, subject: { select: { name: true } } },
+    orderBy: { updatedAt: 'desc' }
+  });
 }
 

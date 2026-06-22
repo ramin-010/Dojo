@@ -78,6 +78,7 @@ export interface TopicWorkspaceProps {
 
 export interface ContextLink {
   id: string;
+  topicId: string;
   path: string;
   taggedAt: string;
   updatedAt: string;

@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation';
 import { TopicCanvas } from '@/components/canvas/TopicCanvas';
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
-import { createTopic, deleteResourcePermanently, getTopicResources, createTextResourceLink, renameResource, deleteMultipleResourcesPermanently } from '@/app/actions';
+import { createTopic, deleteResourcePermanently, getTopicResources, createTextResourceLink, renameResource, deleteMultipleResourcesPermanently, deleteTopicMention } from '@/app/actions';
 import { TopicHistoryModal } from './TopicHistoryModal';
 import { TopicSettingsModal } from './TopicSettingsModal';
 import { toast } from 'sonner';
@@ -165,14 +165,20 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
   const contextLinks = useMemo(
     () => ({
       outbound: topic.mentionsOut.map((m) => ({
-        id: m.targetTopic.id,
-        path: m.targetTopic.title,
+        id: m.id,
+        topicId: m.targetTopic.id,
+        path: m.targetTopic.subjectId !== topic.subjectId 
+          ? `${m.targetTopic.subject?.name || 'Other Subject'} / ${m.targetTopic.title}` 
+          : m.targetTopic.title,
         taggedAt: formatDate(m.createdAt),
         updatedAt: formatDate(m.targetTopic.updatedAt),
       })),
       inbound: topic.mentionsIn.map((m) => ({
-        id: m.sourceTopic.id,
-        path: m.sourceTopic.title,
+        id: m.id,
+        topicId: m.sourceTopic.id,
+        path: m.sourceTopic.subjectId !== topic.subjectId 
+          ? `${m.sourceTopic.subject?.name || 'Other Subject'} / ${m.sourceTopic.title}` 
+          : m.sourceTopic.title,
         taggedAt: formatDate(m.createdAt),
         updatedAt: formatDate(m.sourceTopic.updatedAt),
       })),
@@ -206,6 +212,18 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
     setIsSidebarOpen(true);
     setSidebarWidth(window.innerWidth / 2);
   };
+
+  const handleDeleteMention = useCallback(async (mentionId: string, isOutbound: boolean) => {
+    const toastId = `del-mention-${mentionId}`;
+    toast.loading('Unlinking topic...', { id: toastId });
+    try {
+      await deleteTopicMention(mentionId);
+      toast.success('Link removed', { id: toastId });
+      router.refresh();
+    } catch (e) {
+      toast.error('Failed to remove link', { id: toastId });
+    }
+  }, []);
 
   const handleBlockRemoved = useCallback((block: any) => {
     if (!block.url) return;
@@ -683,6 +701,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
             <div ref={canvasWrapperRef} className="w-full min-h-full relative">
               <TopicCanvas
                 topicId={topic.id}
+                subjectId={topic.subject.id}
                 initialContent={initialCanvasContent}
                 onMentionClick={handleMentionClick}
                 containerWidth={canvasContainerWidth}
@@ -698,6 +717,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
 
       {/* ── Context Sidebar ─────────────────────────────────────────────────── */}
       <ContextSidebar
+        topicId={topic.id}
+        subjectId={topic.subjectId}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         sidebarWidth={sidebarWidth}
@@ -713,6 +734,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
         onDeleteResource={handleResourceDelete}
         onDeleteMultipleResources={handleMultipleResourceDelete}
         onRenameResource={handleResourceRename}
+        onDeleteMention={handleDeleteMention}
       />
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}

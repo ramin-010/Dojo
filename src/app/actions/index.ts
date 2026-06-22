@@ -22,6 +22,12 @@ export {
   getTopicResources,
   createTextResourceLink,
   renameResource,
+  deleteTopicMention,
+  addTopicMention,
+  searchTopicsInSubject,
+  searchAllSubjects,
+  getAllSubjectsForMention,
+  getAllTopicsInSubjectForMention
 } from './topic.actions';
 
 export {

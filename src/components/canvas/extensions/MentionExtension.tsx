@@ -3,23 +3,42 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy from 'tippy.js';
 import { MentionList } from './MentionList';
 
-// Dummy data for topics search
-const DUMMY_TOPICS = [
-  { id: 't1', title: 'Generics in TS', subject: 'TS Prep' },
-  { id: 't2', title: 'Client Component Boundaries', subject: 'Next.js Architecture' },
-  { id: 't3', title: 'Data Fetching in Next 15', subject: 'Next.js Architecture' },
-  { id: 't4', title: 'Caching Strategies', subject: 'Performance' },
-  { id: 't5', title: 'Utility Types', subject: 'TS Prep' },
-  { id: 't6', title: 'Advanced Generic Patterns', subject: 'OS Code Reading' },
-];
+export const createMentionSuggestions = (
+  fetchMentions: (query: string) => Promise<any[]>,
+  onMentionAdd: (id: string) => void
+) => {
+  const queryCache = new Map<string, any[]>();
+  let debounceTimeout: NodeJS.Timeout;
+  let activePromiseResolve: ((value: any[]) => void) | null = null;
+  let lastResults: any[] = [];
 
-export const getMentionSuggestions = {
-  items: ({ query }: { query: string }) => {
-    return DUMMY_TOPICS.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) || 
-      item.subject.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 5);
-  },
+  return {
+    allowSpaces: true,
+    items: ({ query }: { query: string }) => {
+      return new Promise<any[]>((resolve) => {
+        if (queryCache.has(query)) {
+          lastResults = queryCache.get(query)!;
+          resolve(lastResults);
+          return;
+        }
+
+        if (activePromiseResolve) {
+          activePromiseResolve(lastResults);
+        }
+        activePromiseResolve = resolve;
+
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const results = await fetchMentions(query);
+          queryCache.set(query, results);
+          lastResults = results;
+          if (activePromiseResolve === resolve) {
+            resolve(results);
+            activePromiseResolve = null;
+          }
+        }, 150);
+      });
+    },
 
   render: () => {
     let component: ReactRenderer;
@@ -28,7 +47,10 @@ export const getMentionSuggestions = {
     return {
       onStart: (props: any) => {
         component = new ReactRenderer(MentionList, {
-          props,
+          props: {
+            ...props,
+            onMentionAdd,
+          },
           editor: props.editor,
         });
 
@@ -74,6 +96,7 @@ export const getMentionSuggestions = {
       },
     };
   },
+  };
 };
 
 export const CustomMention = Mention.extend({
@@ -102,7 +125,7 @@ export const CustomMention = Mention.extend({
       'span',
       {
         ...HTMLAttributes,
-        class: 'mention bg-accent/10 text-accent font-medium px-1.5 py-0.5 rounded-md hover:bg-accent/20 transition-colors cursor-pointer',
+        class: 'mention inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full px-2.5 py-1 cursor-pointer select-none mx-1 shadow-sm hover:bg-blue-500/20 transition-all duration-200 align-middle relative -top-[1px] text-[13px] font-medium leading-none',
         'data-mention-id': node.attrs.id,
       },
       `@${node.attrs.label}`,
