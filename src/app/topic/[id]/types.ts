@@ -16,13 +16,13 @@ export interface TopicRevision {
 export interface TopicMentionOut {
   id: string;
   createdAt: Date | string;
-  targetTopic: { id: string; title: string; updatedAt: Date | string };
+  targetTopic: { id: string; title: string; updatedAt: Date | string; subjectId: string; subject: { name: string } };
 }
 
 export interface TopicMentionIn {
   id: string;
   createdAt: Date | string;
-  sourceTopic: { id: string; title: string; updatedAt: Date | string };
+  sourceTopic: { id: string; title: string; updatedAt: Date | string; subjectId: string; subject: { name: string } };
 }
 
 export interface TopicResource {
@@ -35,13 +35,25 @@ export interface TopicResource {
   createdAt: Date | string;
 }
 
+export interface NoteCategory {
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+}
+
 export interface TopicQuickNote {
   id: string;
   content: string;
+  title: string | null;
+  isPinned: boolean;
+  categoryId: string | null;
+  category: NoteCategory | null;
   isSubjectLevel: boolean;
   topicId: string | null;
   subjectId: string;
   createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 /** The full topic shape that getTopicById returns (serialized from server) */
@@ -69,9 +81,10 @@ export interface TopicWorkspaceProps {
     name: string;
   }[];
   adjacentTopics: {
-    prevTopic: { id: string; title: string } | null;
-    nextTopic: { id: string; title: string } | null;
+    prev: { id: string; title: string } | null;
+    next: { id: string; title: string } | null;
   };
+  noteCategories: NoteCategory[];
 }
 
 // ─── Derived display types used across sidebar / links timeline ───────────────

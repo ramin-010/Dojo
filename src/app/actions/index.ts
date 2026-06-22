@@ -45,3 +45,12 @@ export {
   searchTags,
   getAllSubjectTags,
 } from './tag.actions';
+
+export {
+  createQuickNote,
+  getQuickNotes,
+  togglePinQuickNote,
+  deleteQuickNote,
+  getWorkspaceNoteCategories,
+} from './quicknote.actions';
+

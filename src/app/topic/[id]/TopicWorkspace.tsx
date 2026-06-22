@@ -34,7 +34,7 @@ import { ContextSidebar } from './components/ContextSidebar';
 
 export type { SidebarTab };
 
-export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicWorkspaceProps) {
+export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCategories }: TopicWorkspaceProps) {
   // ── Sidebar open / tab state ───────────────────────────────────────────────
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('links');
@@ -439,13 +439,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
 
               <div className="flex items-center gap-1 ">
                 {/* Previous Topic Button */}
-                {adjacentTopics?.prevTopic ? (
+                {adjacentTopics?.prev ? (
                   <button 
-                    onClick={() => router.push(`/topic/${adjacentTopics.prevTopic?.id}`)}
+                    onClick={() => router.push(`/topic/${adjacentTopics.prev?.id}`)}
                     className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-white/1 hover:text-foreground hover:bg-white/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
                   >
                     <ChevronLeft className="w-3.5 h-3.5 " />
-                    <span className="truncate text-[13.5px] text-[#ffffff]/60 hover:text-[#ffffff]/80">{adjacentTopics.prevTopic.title}</span>
+                    <span className="truncate text-[13.5px] text-[#ffffff]/60 hover:text-[#ffffff]/80">{adjacentTopics.prev.title}</span>
                   </button>
                 ) : (
                   <button className="flex items-center gap-1 text-[8px] font-medium text-muted-foreground px-2.5 py-1 rounded-md max-w-[150px] opacity-40">
@@ -457,12 +457,12 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
                 <div className="w-px h-3 bg-border/50 " />
 
                 {/* Next Topic Button */}
-                {adjacentTopics?.nextTopic ? (
+                {adjacentTopics?.next ? (
                   <button 
-                    onClick={() => router.push(`/topic/${adjacentTopics.nextTopic?.id}`)}
+                    onClick={() => router.push(`/topic/${adjacentTopics.next?.id}`)}
                     className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-white/1 hover:bg-white/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
                   >
-                    <span className="truncate text-[13.5px] text-[#ffffff]/60 hover:text-[#ffffff]/80">{adjacentTopics.nextTopic.title}</span>
+                    <span className="truncate text-[13.5px] text-[#ffffff]/60 hover:text-[#ffffff]/80">{adjacentTopics.next.title}</span>
                     <ChevronRight className="w-3.5 h-3.5 " />
                   </button>
                 ) : (
@@ -727,7 +727,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
         activeTab={activeTab}
         onTabChange={setActiveTab}
         contextLinks={contextLinks}
-        quickNotes={quickNotes}
+        quickNotes={topic.quickNotes || []}
+        noteCategories={noteCategories || []}
         resources={localResources}
         activeUrls={activeUrls}
         onMentionClick={handleMentionClick}

@@ -85,7 +85,13 @@ export async function getTopicById(topicId: string) {
         orderBy: { createdAt: 'desc' },
       },
       quickNotes: {
-        orderBy: { createdAt: 'desc' },
+        include: {
+          category: true,
+        },
+        orderBy: [
+          { isPinned: 'desc' },
+          { createdAt: 'desc' }
+        ],
       },
     },
   });

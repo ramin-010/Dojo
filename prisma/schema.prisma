@@ -24,7 +24,8 @@ model Workspace {
   userId    String
   user      User      @relation(fields: [userId], references: [id])
   name      String
-  subjects  Subject[]
+  subjects       Subject[]
+  noteCategories NoteCategory[]
 }
 
 // ====================================================================
@@ -76,6 +77,20 @@ model ResourceLink {
   createdAt       DateTime @default(now())
 }
 
+model NoteCategory {
+  id          String      @id @default(uuid())
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  name        String      // e.g., "Idea", "To-Do"
+  color       String?     // Tailwind class or hex
+  icon        String?     // Lucide icon name
+  
+  notes       QuickNote[]
+
+  @@unique([workspaceId, name])
+}
+
 model QuickNote {
   id              String   @id @default(uuid())
   
@@ -85,10 +100,17 @@ model QuickNote {
   topicId         String?
   topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
   
+  title           String?
+  isPinned        Boolean  @default(false)
+  
+  categoryId      String?
+  category        NoteCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
   isSubjectLevel  Boolean  @default(true)
   
   content         String   
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ====================================================================

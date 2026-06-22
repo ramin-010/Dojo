@@ -189,7 +189,7 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
 
       </div>
 
-      <ResourceFooter totalCount={mappedResources.length} />
+      {/* <ResourceFooter totalCount={mappedResources.length} /> */}
 
       <ResourcePreviewModal 
         resource={previewResource} 

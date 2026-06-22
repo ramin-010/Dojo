@@ -5,7 +5,8 @@ import React from 'react';
 import { X, Link as LinkIcon } from 'lucide-react';
 import { TopicLinksTimeline } from '../TopicLinksTimeline';
 import { ResourcesTab } from './ResourcesTab';
-import { SidebarTab, ContextLinks, QuickNoteDisplay, TopicResource } from '../types';
+import { TopicQuickNotes } from '../TopicQuickNotes';
+import { SidebarTab, ContextLinks, TopicQuickNote, TopicResource, NoteCategory } from '../types';
 
 interface ContextSidebarProps {
   topicId: string;
@@ -18,7 +19,8 @@ interface ContextSidebarProps {
   activeTab: SidebarTab;
   onTabChange: (tab: SidebarTab) => void;
   contextLinks: ContextLinks;
-  quickNotes: QuickNoteDisplay[];
+  quickNotes: TopicQuickNote[];
+  noteCategories: NoteCategory[];
   resources: TopicResource[];
   activeUrls?: string[];
   onMentionClick: (topicId: string) => void;
@@ -40,6 +42,7 @@ export function ContextSidebar({
   onTabChange,
   contextLinks,
   quickNotes,
+  noteCategories,
   resources,
   activeUrls = [],
   onMentionClick,
@@ -125,57 +128,12 @@ export function ContextSidebar({
 
             {/* ── Notes Tab ─────────────────────────────────────────────── */}
             {activeTab === 'notes' && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Quick Notes
-                  </h3>
-                  <button className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded font-medium transition-colors">
-                    + New Note
-                  </button>
-                </div>
-
-                {quickNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="p-3 rounded-lg border border-divider bg-background hover:border-accent/50 transition-colors group cursor-pointer"
-                    onClick={() => onMentionClick(note.id)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span
-                        className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                          note.type === 'topic-same-subject'
-                            ? 'bg-blue-500/10 text-blue-500'
-                            : note.type === 'topic-diff-subject'
-                            ? 'bg-purple-500/10 text-purple-500'
-                            : 'bg-emerald-500/10 text-emerald-500'
-                        }`}
-                      >
-                        {note.type === 'topic-same-subject'
-                          ? 'Direct Note'
-                          : note.type === 'topic-diff-subject'
-                          ? 'Cross-Subject Note'
-                          : 'Subject-Level Note'}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {note.date}
-                      </span>
-                    </div>
-                    <div className="text-sm text-foreground mb-3 leading-relaxed">
-                      {note.content}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-accent/5 p-1.5 rounded border border-divider/50">
-                      <LinkIcon className="w-3 h-3" />
-                      <span className="truncate">
-                        Linked to:{' '}
-                        <span className="font-medium text-foreground/80">
-                          {note.linkedItemTitle}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TopicQuickNotes 
+                quickNotes={quickNotes}
+                noteCategories={noteCategories}
+                topicId={topicId}
+                subjectId={subjectId}
+              />
             )}
 
             {/* ── Resources Tab ─────────────────────────────────────────── */}
