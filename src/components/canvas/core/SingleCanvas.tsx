@@ -41,7 +41,9 @@ interface SingleCanvasProps {
   onConnectionsChange: (connections: Connection[]) => void;
   onSelectConnection: (id: string | null) => void;
   onAddImage?: (canvasId: string, file: File, x?: number, y?: number) => void;
+  onAddFile?: (canvasId: string, file: File, x?: number, y?: number) => void;
   onMentionClick?: (topicId: string) => void;
+  onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
 }
 
 export function SingleCanvas({
@@ -68,7 +70,9 @@ export function SingleCanvas({
   onConnectionsChange,
   onSelectConnection,
   onAddImage,
+  onAddFile,
   onMentionClick,
+  onResourceAdd,
 }: SingleCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -137,15 +141,22 @@ export function SingleCanvas({
       const items = e.clipboardData?.items;
       if (!items) return;
 
-      // Image paste — unchanged
+      // Check for files (images or others)
       for (const item of Array.from(items)) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
+        if (item.kind === 'file') {
           const file = item.getAsFile();
-          if (file && onAddImage) {
-            await onAddImage(canvasId, file, x, y);
+          if (file) {
+            if (file.type.startsWith('image/')) {
+              e.preventDefault();
+              if (onAddImage) await onAddImage(canvasId, file, x, y);
+              return;
+            } else {
+              // It's a non-image file (PDF, Doc, Zip, etc)
+              e.preventDefault();
+              if (onAddFile) await onAddFile(canvasId, file, x, y);
+              return;
+            }
           }
-          return;
         }
       }
 
@@ -271,6 +282,7 @@ export function SingleCanvas({
           onEditRequest={h.handleEditRequest}
           onMentionClick={onMentionClick}
           editingBlockId={h.editingBlockId}
+          onResourceAdd={onResourceAdd}
         />
 
         <ConnectionLayer
@@ -339,6 +351,7 @@ export function SingleCanvas({
             onDimensionsChange={(w, h_) => h.setEditingDims({ width: w, height: h_ })}
             zoom={zoom}
             onMoveCursor={h.handleMoveCursor}
+            onResourceAdd={onResourceAdd}
           />
         )}
 

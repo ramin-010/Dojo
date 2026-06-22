@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 };
 
 import { getSubjectsWithTopics } from "@/app/actions";
+import { Toaster } from 'sonner';
 
 export default async function RootLayout({
   children,
@@ -37,6 +38,13 @@ export default async function RootLayout({
           {children}
         </main>
         
+        <Toaster theme="dark" position="bottom-right" toastOptions={{
+          style: {
+            background: '#18181b', // zinc-900
+            border: '1px solid #27272a', // zinc-800
+            color: '#e4e4e7', // zinc-200
+          }
+        }} />
       </body>
     </html>
   );

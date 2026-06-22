@@ -71,6 +71,8 @@ model ResourceLink {
   url             String
   title           String
   category        String   
+  cloudPublicId   String?  // If present, this is a self-hosted cloud asset
+  fileType        String?  // Original mime-type for uploaded files
   createdAt       DateTime @default(now())
 }
 

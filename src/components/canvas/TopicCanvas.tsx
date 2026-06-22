@@ -16,6 +16,9 @@ interface TopicCanvasProps {
   onMentionClick?: (topicId: string) => void;
   containerWidth?: number;
   onSavingChange?: (isSaving: boolean) => void;
+  onActiveUrlsChange?: (urls: string[]) => void;
+  onBlockRemoved?: (block: any) => void;
+  onResourceAdded?: (resource: any) => void;
 }
 
 export function TopicCanvas({
@@ -27,6 +30,9 @@ export function TopicCanvas({
   onMentionClick,
   containerWidth,
   onSavingChange,
+  onActiveUrlsChange,
+  onBlockRemoved,
+  onResourceAdded,
 }: TopicCanvasProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
@@ -75,8 +81,22 @@ export function TopicCanvas({
     updateBlock,
     deleteBlock,
     addImageBlock,
+    addFileBlock,
     hydrate,
-  } = useCanvasState(topicId, initialContent, handleCanvasChange);
+  } = useCanvasState(topicId, initialContent, handleCanvasChange, onBlockRemoved, onResourceAdded);
+
+  // Expose active URLs for sidebar bifurcation
+  const activeUrls = useMemo(() => {
+    return new Set(
+      blocks
+        .filter(b => (b.type === 'image' || b.type === 'file') && b.url)
+        .map(b => b.url as string)
+    );
+  }, [blocks]);
+
+  useEffect(() => {
+    onActiveUrlsChange?.(Array.from(activeUrls));
+  }, [activeUrls, onActiveUrlsChange]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -198,7 +218,9 @@ export function TopicCanvas({
             onConnectionsChange={setConnections}
             onSelectConnection={setSelectedConnectionId}
             onAddImage={addImageBlock}
+            onAddFile={addFileBlock}
             onMentionClick={onMentionClick}
+            onResourceAdd={onResourceAdded}
           />
         </div>
       </div>

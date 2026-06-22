@@ -8,7 +8,7 @@ import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperat
 import {
   Heading1, Heading2, Heading3, List, ListOrdered,
   Quote, Code, Minus, CheckSquare, Type,
-  Info, AlertTriangle, Lightbulb, AlertOctagon
+  Info, AlertTriangle, Lightbulb, AlertOctagon, Globe
 } from 'lucide-react';
 
 interface CommandItem {

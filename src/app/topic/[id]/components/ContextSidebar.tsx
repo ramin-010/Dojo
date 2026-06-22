@@ -4,7 +4,8 @@
 import React from 'react';
 import { X, Link as LinkIcon } from 'lucide-react';
 import { TopicLinksTimeline } from '../TopicLinksTimeline';
-import { SidebarTab, ContextLinks, QuickNoteDisplay } from '../types';
+import { ResourcesTab } from './ResourcesTab';
+import { SidebarTab, ContextLinks, QuickNoteDisplay, TopicResource } from '../types';
 
 interface ContextSidebarProps {
   isOpen: boolean;
@@ -16,7 +17,12 @@ interface ContextSidebarProps {
   onTabChange: (tab: SidebarTab) => void;
   contextLinks: ContextLinks;
   quickNotes: QuickNoteDisplay[];
+  resources: TopicResource[];
+  activeUrls?: string[];
   onMentionClick: (topicId: string) => void;
+  onDeleteResource?: (id: string, url: string) => void;
+  onDeleteMultipleResources?: (ids: string[]) => void;
+  onRenameResource?: (id: string, newTitle: string) => void;
 }
 
 export function ContextSidebar({
@@ -29,7 +35,12 @@ export function ContextSidebar({
   onTabChange,
   contextLinks,
   quickNotes,
+  resources,
+  activeUrls = [],
   onMentionClick,
+  onDeleteResource,
+  onDeleteMultipleResources,
+  onRenameResource,
 }: ContextSidebarProps) {
   return (
     <>
@@ -64,21 +75,8 @@ export function ContextSidebar({
           }}
         >
           {/* Header & Tabs */}
-          <div className="flex flex-col border-b border-divider">
-            <div className="flex items-center justify-between px-6 py-5 pb-4">
-              <h2 className="font-semibold text-foreground text-[15px]">
-                Context Panel
-              </h2>
-              <button
-                onClick={onClose}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                title="Close Panel"
-              >
-                <X className="w-[18px] h-[18px]" />
-              </button>
-            </div>
-
-            <div className="flex px-6 space-x-6">
+          <div className="flex items-center justify-between px-6 border-b border-divider pt-4">
+            <div className="flex space-x-6">
               {(['links', 'notes', 'resources'] as SidebarTab[]).map((tab) => (
                 <button
                   key={tab}
@@ -96,10 +94,18 @@ export function ContextSidebar({
                 </button>
               ))}
             </div>
+            
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors pb-3"
+              title="Close Panel"
+            >
+              <X className="w-[18px] h-[18px]" />
+            </button>
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pb-20">
+          <div className="flex-1 overflow-y-auto custom-scrollbar ">
             {/* ── Links Tab ─────────────────────────────────────────────── */}
             {activeTab === 'links' && (
               <TopicLinksTimeline
@@ -165,9 +171,13 @@ export function ContextSidebar({
 
             {/* ── Resources Tab ─────────────────────────────────────────── */}
             {activeTab === 'resources' && (
-              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground italic text-center px-4">
-                Resources section coming soon...
-              </div>
+              <ResourcesTab 
+                resources={resources} 
+                activeUrls={activeUrls} 
+                onDeleteResource={onDeleteResource}
+                onDeleteMultipleResources={onDeleteMultipleResources}
+                onRenameResource={onRenameResource}
+              />
             )}
           </div>
         </div>

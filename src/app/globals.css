@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-foreground: #e5e5e5;
@@ -194,4 +195,15 @@ input, textarea, button {
 
 .tiptap ul[data-type="taskList"] li label {
   margin-top: 0.25rem;
+}
+
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }

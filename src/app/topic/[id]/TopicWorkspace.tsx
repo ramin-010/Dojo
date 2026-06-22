@@ -1,7 +1,7 @@
 // src/app/topic/[id]/TopicWorkspace.tsx
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -17,9 +17,10 @@ import { useRouter } from 'next/navigation';
 import { TopicCanvas } from '@/components/canvas/TopicCanvas';
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
-import { createTopic } from '@/app/actions';
+import { createTopic, deleteResourcePermanently, getTopicResources, createTextResourceLink, renameResource, deleteMultipleResourcesPermanently } from '@/app/actions';
 import { TopicHistoryModal } from './TopicHistoryModal';
 import { TopicSettingsModal } from './TopicSettingsModal';
+import { toast } from 'sonner';
 
 // ── Local pieces ───────────────────────────────────────────────────────────────
 import { TopicWorkspaceProps, SidebarTab } from './types';
@@ -38,6 +39,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('links');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
+  const [activeUrls, setActiveUrls] = useState<string[]>([]);
+  const [localResources, setLocalResources] = useState<any[]>(topic.resources || []);
 
   // ── Modal state ────────────────────────────────────────────────────────────
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
@@ -203,6 +206,157 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
     setIsSidebarOpen(true);
     setSidebarWidth(window.innerWidth / 2);
   };
+
+  const handleBlockRemoved = useCallback((block: any) => {
+    if (!block.url) return;
+    
+    const toastId = `del-${block.url}`;
+
+    const renderToast = (isDeleting: boolean) => {
+      toast('Removed from canvas', {
+        id: toastId,
+        duration: isDeleting ? 100000 : 5000,
+        action: {
+          label: isDeleting ? (
+            <div className="flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Deleting...</span>
+            </div>
+          ) : (
+            'Delete Permanently'
+          ),
+          onClick: async (e) => {
+            e.preventDefault();
+            if (isDeleting) return;
+
+            renderToast(true);
+
+            try {
+              toast.dismiss(toastId);
+              const delToastId = toast.loading('Deleting permanently...');
+              await deleteResourcePermanently(block.url);
+              setLocalResources(prev => prev.filter(r => r.url !== block.url));
+              toast.success('Resource permanently deleted', { id: delToastId });
+            } catch (err) {
+              console.error('Failed to permanently delete resource:', err);
+              toast.error('Failed to delete resource');
+            }
+          }
+        }
+      });
+    };
+
+    renderToast(false);
+  }, []);
+
+  const handleResourceAdded = useCallback(async (data: any) => {
+    if (!data) return;
+    
+    // Phase 1: DB object passed from cloud upload
+    if (data.id) {
+      setLocalResources(prev => [data, ...prev]);
+      return;
+    }
+
+    // Phase 2: { text, type } passed from Tiptap SavedResourceExtension
+    if (data.text && data.type) {
+       try {
+         const result = await createTextResourceLink(topic.id, data.text, data.type);
+         if (result.type === 'resource') {
+            setLocalResources(prev => [result.data, ...prev]);
+            toast.success('Resource saved');
+         } else {
+            toast.success('Resource saved');
+         }
+       } catch (err) {
+         console.error('Failed to save text resource:', err);
+         toast.error('Failed to save resource');
+       }
+    }
+  }, [topic.id]);
+
+  const handleResourceDelete = useCallback(async (id: string, url: string) => {
+    const toastId = `del-sidebar-${id}`;
+    toast('Delete this resource?', {
+      id: toastId,
+      duration: 5000,
+      action: {
+        label: 'Confirm Delete',
+        onClick: async (e) => {
+          e.preventDefault();
+          toast.dismiss(toastId); // Dismiss the confirmation toast immediately
+          const delToastId = toast.loading('Deleting...');
+          try {
+            await deleteResourcePermanently(id); // ID is safe and specific
+            setLocalResources(prev => prev.filter(r => r.id !== id));
+            toast.success('Resource deleted permanently', { id: delToastId });
+          } catch (err) {
+            console.error('Delete error', err);
+            toast.error('Failed to delete', { id: delToastId });
+          }
+        }
+      }
+    });
+  }, []);
+
+  const handleMultipleResourceDelete = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const toastId = `del-multi-${ids.length}`;
+    toast(`Delete all ${ids.length} resources?`, {
+      id: toastId,
+      duration: 5000,
+      action: {
+        label: 'Confirm Delete All',
+        onClick: async (e) => {
+          e.preventDefault();
+          toast.dismiss(toastId);
+          const delToastId = toast.loading(`Deleting ${ids.length} resources...`);
+          try {
+            await deleteMultipleResourcesPermanently(ids);
+            setLocalResources(prev => prev.filter(r => !ids.includes(r.id)));
+            toast.success('Resources deleted permanently', { id: delToastId });
+          } catch (err) {
+            console.error('Delete error', err);
+            toast.error('Failed to delete resources', { id: delToastId });
+          }
+        }
+      }
+    });
+  }, []);
+
+  const handleResourceRename = useCallback(async (id: string, newTitle: string) => {
+    // Optimistic update
+    const prevResources = [...localResources];
+    setLocalResources(prev => prev.map(r => r.id === id ? { ...r, title: newTitle } : r));
+    try {
+      await renameResource(id, newTitle);
+    } catch (e) {
+      console.error('Rename error', e);
+      toast.error('Failed to rename resource');
+      setLocalResources(prevResources);
+    }
+  }, [localResources]);
+
+  // Fetch fresh resources if we switch to the resources tab
+  useEffect(() => {
+    if (activeTab === 'resources') {
+      let isMounted = true;
+      const fetchResources = async () => {
+        try {
+          const fresh = await getTopicResources(topic.id);
+          if (isMounted) setLocalResources(fresh);
+        } catch (e) {
+          console.error("Failed to fetch fresh resources", e);
+        }
+      };
+      
+      const timer = setTimeout(fetchResources, 300);
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
+    }
+  }, [activeTab, topic.id]);
 
   // ── Overlay opacity (darkens main when sidebar is very wide) ──────────────
   const fullFadeWidth =
@@ -533,13 +687,16 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
                 onMentionClick={handleMentionClick}
                 containerWidth={canvasContainerWidth}
                 onSavingChange={setIsSaving}
+                onActiveUrlsChange={setActiveUrls}
+                onBlockRemoved={handleBlockRemoved}
+                onResourceAdded={handleResourceAdded}
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Right Context Sidebar ───────────────────────────────────────────── */}
+      {/* ── Context Sidebar ─────────────────────────────────────────────────── */}
       <ContextSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -550,7 +707,12 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics }: TopicW
         onTabChange={setActiveTab}
         contextLinks={contextLinks}
         quickNotes={quickNotes}
+        resources={localResources}
+        activeUrls={activeUrls}
         onMentionClick={handleMentionClick}
+        onDeleteResource={handleResourceDelete}
+        onDeleteMultipleResources={handleMultipleResourceDelete}
+        onRenameResource={handleResourceRename}
       />
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}

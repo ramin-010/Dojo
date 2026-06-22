@@ -1,6 +1,6 @@
 export interface SmartBlockProps {
   id: string;
-  type?: 'text' | 'image' | 'embed' | 'code';
+  type?: 'text' | 'image' | 'embed' | 'code' | 'file';
   content: string;
   language?: string;
   url?: string;
@@ -24,6 +24,10 @@ export interface SmartBlockProps {
   onEditRequest?: (id: string) => void;
   isConnected?: boolean;
   onMentionClick?: (topicId: string) => void;
+  isUploading?: boolean;
+  fileName?: string;
+  fileSize?: number;
+  onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
 }
 
 export interface TaskStats {

@@ -30,6 +30,8 @@ export interface TopicResource {
   url: string;
   title: string;
   category: string;
+  cloudPublicId?: string | null;
+  fileType?: string | null;
   createdAt: Date | string;
 }
 

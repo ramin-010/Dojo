@@ -17,6 +17,11 @@ export {
   deleteTopic,
   reorderTopics,
   getAdjacentTopics,
+  deleteResourcePermanently,
+  deleteMultipleResourcesPermanently,
+  getTopicResources,
+  createTextResourceLink,
+  renameResource,
 } from './topic.actions';
 
 export {

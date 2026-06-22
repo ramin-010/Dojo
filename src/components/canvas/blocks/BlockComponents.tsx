@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GripVertical, X, Palette } from 'lucide-react';
+import { GripVertical, X, Palette, FileText, Download, Loader2, Image as ImageIcon } from 'lucide-react';
 // import { EmbedBlock } from './EmbedBlock';
 // import { CodeBlock } from './CodeBlock';
 import { BlockEditor } from './BlockEditor';
@@ -111,7 +111,7 @@ export const TaskProgressBar: React.FC<TaskProgressBarProps> = ({ taskStats }) =
 };
 
 interface BlockContentProps {
-  type: 'text' | 'image' | 'embed' | 'code' | 'stack';
+  type: 'text' | 'image' | 'embed' | 'code' | 'stack' | 'file';
   content: string;
   url?: string;
   language?: string;
@@ -122,6 +122,10 @@ interface BlockContentProps {
   onLanguageChange?: (language: string) => void;
   onMentionClick?: (topicId: string) => void;
   height?: number | 'auto';
+  isUploading?: boolean;
+  fileName?: string;
+  fileSize?: number;
+  onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
 }
 
 export const BlockContent: React.FC<BlockContentProps> = ({ 
@@ -135,7 +139,11 @@ export const BlockContent: React.FC<BlockContentProps> = ({
   onDelete,
   onLanguageChange,
   onMentionClick,
-  height
+  height,
+  isUploading,
+  fileName,
+  fileSize,
+  onResourceAdd
 }) => {
   if (type === 'text') {
     if (isEditing) {
@@ -147,6 +155,7 @@ export const BlockContent: React.FC<BlockContentProps> = ({
           onBlur={onBlur}
           onDelete={onDelete}
           onMentionClick={onMentionClick}
+          onResourceAdd={onResourceAdd}
         />
       );
     }
@@ -185,6 +194,20 @@ export const BlockContent: React.FC<BlockContentProps> = ({
   }
 
   if (type === 'image') {
+    if (isUploading) {
+      return (
+        <div className="w-full h-full min-h-[100px] flex items-center justify-center bg-[#1c1c1c] rounded-lg border border-[#2c2c2c] relative overflow-hidden">
+          {/* Subtle minimalist shimmer */}
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/[0.03] to-transparent" />
+          
+          <div className="flex flex-col items-center gap-2.5 relative z-10">
+            <Loader2 className="w-4 h-4 animate-spin text-[#666666]" />
+            <span className="text-[10px] font-semibold tracking-widest uppercase text-[#555555]">Uploading</span>
+          </div>
+        </div>
+      );
+    }
+
     const imgSrc = url || content;
     if (!imgSrc) {
       return (
@@ -221,6 +244,56 @@ export const BlockContent: React.FC<BlockContentProps> = ({
          {/* Placeholder for CodeBlock */}
          <div className="text-xs text-foreground/40 mb-1 border-b border-foreground/10 pb-1">{language || 'code'}</div>
          <pre className="text-sm flex-1 overflow-auto"><code className="whitespace-pre-wrap">{content}</code></pre>
+      </div>
+    );
+  }
+
+  if (type === 'file') {
+    if (isUploading) {
+      return (
+        <div className="w-full h-full flex items-center justify-between bg-background border rounded-lg p-3 shadow-sm animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-muted/50 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 text-muted-foreground/40 animate-spin" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="h-4 w-32 bg-muted/50 rounded" />
+              <div className="h-3 w-16 bg-muted/50 rounded" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        className="w-full h-full flex items-center justify-between bg-background border border-border rounded-lg p-3 shadow-sm pointer-events-auto hover:bg-muted/30 transition-colors group"
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-10 h-10 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-medium truncate" title={fileName || 'File'}>
+              {fileName || 'Unknown File'}
+            </span>
+            {fileSize && (
+              <span className="text-xs text-muted-foreground">
+                {(fileSize / 1024 / 1024).toFixed(2)} MB
+              </span>
+            )}
+          </div>
+        </div>
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title="Download File"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Download className="w-4 h-4" />
+        </a>
       </div>
     );
   }

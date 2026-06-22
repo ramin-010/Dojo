@@ -37,6 +37,10 @@ function SmartBlockComponent({
   fontSize,
   isConnected,
   onMentionClick,
+  isUploading,
+  fileName,
+  fileSize,
+  onResourceAdd,
 }: SmartBlockProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -158,11 +162,15 @@ function SmartBlockComponent({
             url={url}
             language={language}
             isEditing={isEditing}
+            isUploading={isUploading}
+            fileName={fileName}
+            fileSize={fileSize}
             onUpdate={(newContent) => onUpdateBlock?.(id, { content: newContent })}
             onBlur={() => setIsEditing(false)}
             onLanguageChange={(lang) => onUpdateBlock?.(id, { language: lang })}
             onMentionClick={onMentionClick}
             height={height}
+            onResourceAdd={onResourceAdd}
           />
           <TaskProgressBar taskStats={type === 'text' ? taskStats : null} />
         </>

@@ -13,6 +13,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import { SlashCommands } from '../extensions/SlashCommands';
 import { CalloutExtension } from '../extensions/CalloutExtension';
+import { SavedResourceExtension } from '../extensions/SavedResourceExtension';
 import { FloatingToolbar } from '../extensions/FloatingToolbar';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FONT_SIZE } from '../core/types';
@@ -33,6 +34,7 @@ interface InlineCursorProps {
   maxWidth?: number;
   initialMinWidth?: number;
   onMoveCursor?: (direction: 'up' | 'down' | 'left' | 'right') => void;
+  onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
 }
 
 interface ToolbarPosition {
@@ -40,7 +42,7 @@ interface ToolbarPosition {
   left: number;
 }
 
-export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, onChange, onDimensionsChange, zoom = 1, maxWidth, initialMinWidth, color, textColor, fontSize, onMoveCursor }: InlineCursorProps) {
+export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, onChange, onDimensionsChange, zoom = 1, maxWidth, initialMinWidth, color, textColor, fontSize, onMoveCursor, onResourceAdd }: InlineCursorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isToolbarClickRef = useRef(false);
 
@@ -94,6 +96,13 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
       }),
       SlashCommands,
       CalloutExtension,
+      SavedResourceExtension.configure({
+        onResourceAdd: (data) => {
+          if (onResourceAdd) {
+            onResourceAdd(data);
+          }
+        }
+      }),
     ],
     content: initialContent || '',
     autofocus: 'end',
@@ -141,7 +150,11 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
       }
     },
     onUpdate: ({ editor }) => {
-      onChangeRef.current?.(editor.getHTML());
+      // Delay the onChange callback to the next tick to prevent React flushSync errors
+      // caused by updating parent state during Tiptap's synchronous node view rendering.
+      setTimeout(() => {
+        onChangeRef.current?.(editor.getHTML());
+      }, 0);
     },
     onBlur: () => {
       let capturedWidth = wrapperRef.current?.offsetWidth || 0;
@@ -174,6 +187,12 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
           isToolbarClickRef.current = false;
           return;
         }
+        
+        // Don't commit if focus just moved to a child element (e.g. an inline node input box)
+        if (wrapperRef.current && wrapperRef.current.contains(document.activeElement)) {
+          return;
+        }
+
         const html = editor.getHTML();
         const text = editor.getText();
         if (text.trim().length === 0) {

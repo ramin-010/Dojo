@@ -14,6 +14,7 @@ import { Bold, Italic, Underline as UnderlineIcon, CheckSquare, Highlighter, Lin
 import { SlashCommands } from '../extensions/SlashCommands';
 import { CalloutExtension } from '../extensions/CalloutExtension';
 import { CustomMention, getMentionSuggestions } from '../extensions/MentionExtension';
+import { SavedResourceExtension } from '../extensions/SavedResourceExtension';
 import { debounce } from 'lodash';
 
 interface BlockEditorProps {
@@ -26,6 +27,7 @@ interface BlockEditorProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   onDelete?: () => void;
   onMentionClick?: (id: string) => void;
+  onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
 }
 
 export function BlockEditor({
@@ -37,7 +39,8 @@ export function BlockEditor({
   autoFocus = false,
   onKeyDown,
   onDelete,
-  onMentionClick
+  onMentionClick,
+  onResourceAdd
 }: BlockEditorProps) {
   
   const [showBubbleMenu, setShowBubbleMenu] = useState(false);
@@ -86,6 +89,13 @@ export function BlockEditor({
           class: 'mention',
         },
         suggestion: getMentionSuggestions,
+      }),
+      SavedResourceExtension.configure({
+        onResourceAdd: (data) => {
+          if (onResourceAdd) {
+            onResourceAdd(data);
+          }
+        }
       }),
     ],
     content: content,

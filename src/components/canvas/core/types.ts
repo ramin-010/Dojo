@@ -5,7 +5,7 @@ export type { BlockDims } from '@/types/canvas';
 
 export interface CanvasBlockData {
   blockId: string;
-  type: 'text' | 'image' | 'embed' | 'code';
+  type: 'text' | 'image' | 'embed' | 'code' | 'file';
   content: string;
   x: number;
   y: number;
@@ -17,7 +17,10 @@ export interface CanvasBlockData {
   fontSize?: number; 
   url?: string;
   imageId?: string;
-  isUploaded?: boolean;
+  isUploading?: boolean;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
 }
 
 export interface CanvasData {

@@ -4,7 +4,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { CanvasBlockData, GUIDE_LINE_SPACING } from './types';
 import { Connection } from '@/types/canvas';
-import { canvasImageStorage } from '@/lib/storage/canvasImageStorage';
+import { uploadToCloud } from '@/lib/utils/upload';
+import { toast } from 'sonner';
 
 export interface TopicCanvasData {
   blocks: CanvasBlockData[];
@@ -40,7 +41,9 @@ export function parseContent(raw: string | undefined): TopicCanvasData {
 export function useCanvasState(
   canvasId: string,
   initialContent: string | undefined,
-  onChange?: (content: string) => void
+  onChange?: (content: string) => void,
+  onBlockRemoved?: (block: CanvasBlockData) => void,
+  onResourceAdded?: (resource: any) => void
 ) {
   const [blocks, setBlocks] = useState<CanvasBlockData[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -57,32 +60,8 @@ export function useCanvasState(
       const contentStr = typeof initialContent === 'string' ? initialContent : JSON.stringify(initialContent);
       const data = parseContent(contentStr);
 
-      const hydratedBlocks = await Promise.all(
-        data.blocks.map(async (block) => {
-          if (block.type !== 'image' || !block.imageId) return block;
-
-          if (block.isUploaded && block.url && !block.url.startsWith('blob:') 
-              && block.url !== 'PENDING_UPLOAD' && block.url !== 'IDB_IMAGE') {
-            return block;
-          }
-
-          // We must regenerate the blob URL because it expires on page reload
-
-          try {
-            const blob = await canvasImageStorage.getImage(block.imageId);
-            if (blob) {
-              return { ...block, url: canvasImageStorage.createObjectURL(blob) };
-            }
-          } catch (err) {
-            console.error('[useCanvasState] Failed to hydrate image:', block.imageId, err);
-          }
-          return block;
-        })
-      );
-
       skipNextOnChangeRef.current = true;
-
-      setBlocks(hydratedBlocks);
+      setBlocks(data.blocks);
       setConnections(data.connections);
       
       initializedRef.current = true;
@@ -95,28 +74,7 @@ export function useCanvasState(
   const hydrate = useCallback(async (content: string) => {
     const data = parseContent(content);
     
-    const hydratedBlocks = await Promise.all(
-      data.blocks.map(async (block) => {
-        if (block.type !== 'image' || !block.imageId) return block;
-
-        if (block.isUploaded && block.url && !block.url.startsWith('blob:') 
-            && block.url !== 'PENDING_UPLOAD' && block.url !== 'IDB_IMAGE') {
-          return block;
-        }
-
-        // We must regenerate the blob URL because it expires on page reload
-
-        try {
-          const blob = await canvasImageStorage.getImage(block.imageId);
-          if (blob) {
-            return { ...block, url: canvasImageStorage.createObjectURL(blob) };
-          }
-        } catch (err) {}
-        return block;
-      })
-    );
-
-    setBlocks(hydratedBlocks);
+    setBlocks(data.blocks);
     setConnections(data.connections);
     lastContentRef.current = content;
 
@@ -184,12 +142,12 @@ export function useCanvasState(
   const deleteBlock = useCallback((blockId: string) => {
     setBlocks(prev => {
       const block = prev.find(b => b.blockId === blockId);
-      if (block?.type === 'image' && block.imageId) {
-        canvasImageStorage.deleteImage(block.imageId).catch(err =>
-          console.error(`[useCanvasState] Failed to delete image ${block.imageId}:`, err)
-        );
-        if (block.url?.startsWith('blob:')) {
+      if (block) {
+        if (block.type === 'image' && block.url?.startsWith('blob:')) {
           URL.revokeObjectURL(block.url);
+        }
+        if ((block.type === 'image' || block.type === 'file') && block.url && !block.url.startsWith('blob:')) {
+          setTimeout(() => onBlockRemoved?.(block), 0);
         }
       }
       return prev.filter(b => b.blockId !== blockId);
@@ -216,12 +174,6 @@ export function useCanvasState(
 
     addImageBlock: useCallback(async (targetCanvasId: string, file: File, x: number = 40, y: number = 40) => {
       const imageId = uuidv4();
-      try {
-        await canvasImageStorage.storeImage(imageId, file);
-      } catch (err) {
-        console.error('[useCanvasState] Failed to store image:', err);
-        return null;
-      }
       const blobUrl = URL.createObjectURL(file);
 
       const dimensions = await new Promise<{ width: number, height: number }>((resolve) => {
@@ -248,17 +200,64 @@ export function useCanvasState(
         blockId,
         type: 'image',
         content: '',
-        url: blobUrl,
+        url: '', // Skeleton loader until uploaded
         imageId,
-        isUploaded: false,
+        isUploading: true,
         x,
         y,
         width: finalWidth,
         height: finalHeight,
       };
+      
       setBlocks(prev => [...prev, newBlock]);
       setSelectedBlockId(blockId);
+      URL.revokeObjectURL(blobUrl);
+
+      // Start asynchronous upload
+      uploadToCloud(file, imageId, targetCanvasId).then(result => {
+        setBlocks(prev => prev.map(b => b.blockId === blockId ? { 
+          ...b, 
+          url: result.url, 
+          isUploading: false 
+        } : b));
+        if (result.resource) {
+          onResourceAdded?.(result.resource);
+        }
+      }).catch(err => {
+        console.error('[useCanvasState] Image upload failed:', err);
+        // On error, remove the block or show error state. Removing for now.
+        setBlocks(prev => prev.filter(b => b.blockId !== blockId));
+      });
+
       return blockId;
-    }, []),
+    }, [onResourceAdded]),
+
+    addFileBlock: useCallback(async (targetCanvasId: string, file: File, x: number = 40, y: number = 40) => {
+      const fileId = uuidv4();
+      const toastId = toast.loading(`Uploading ${file.name}...`);
+
+      // Show canvas border while uploading
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('canvas-drag-state', { detail: { isDragging: true } }));
+      }
+
+      // Start asynchronous upload
+      uploadToCloud(file, fileId, targetCanvasId).then(result => {
+        toast.success(`File saved to resources tab`, { id: toastId });
+        if (result.resource) {
+          onResourceAdded?.(result.resource);
+        }
+      }).catch(err => {
+        console.error('[useCanvasState] File upload failed:', err);
+        toast.error(`Failed to upload ${file.name}`, { id: toastId });
+      }).finally(() => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('canvas-drag-state', { detail: { isDragging: false } }));
+        }
+      });
+
+      // No block is created on the canvas for standard files
+      return '';
+    }, [onResourceAdded]),
   };
 }
