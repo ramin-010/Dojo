@@ -130,7 +130,7 @@ interface BlockContentProps {
   subjectId?: string;
 }
 
-export const BlockContent: React.FC<BlockContentProps> = ({ 
+export const BlockContent = React.memo<BlockContentProps>(({ 
   type, 
   content, 
   url, 
@@ -305,4 +305,4 @@ export const BlockContent: React.FC<BlockContentProps> = ({
   }
 
   return null;
-};
+});

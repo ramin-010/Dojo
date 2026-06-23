@@ -96,8 +96,13 @@ export function TopicCanvas({
     );
   }, [blocks]);
 
+  const prevUrlsRef = useRef<string>('');
   useEffect(() => {
-    onActiveUrlsChange?.(Array.from(activeUrls));
+    const currentUrls = Array.from(activeUrls).sort().join(',');
+    if (currentUrls !== prevUrlsRef.current) {
+      prevUrlsRef.current = currentUrls;
+      onActiveUrlsChange?.(Array.from(activeUrls));
+    }
   }, [activeUrls, onActiveUrlsChange]);
 
   useEffect(() => {

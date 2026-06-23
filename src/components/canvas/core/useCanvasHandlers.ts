@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useMemo, useState } from 'react';
+import { useCallback, useRef, useMemo, useState, useLayoutEffect } from 'react';
 import { CanvasBlockData, CANVAS_WIDTH, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
 import { Connection, BlockDims } from '@/types/canvas';
 import { DragController } from '@/components/canvas/rendering/DragController';
@@ -58,6 +58,7 @@ export interface CanvasHandlers {
   getCanvasPoint: (e: { clientX: number; clientY: number }) => { x: number; y: number };
   handleDragStopWithController: (id: string, x: number, y: number) => void;
   handleDragStart: (id: string) => void;
+  registerBlockHeight: (id: string, h: number) => void;
   handleDimensionsChange: (id: string, width: number, height: number) => void;
   handleAddBlockFromMenu: (type: CanvasBlockData['type'], _x?: number, _y?: number, content?: string) => void;
   handleSingleClick: (e: React.MouseEvent) => void;
@@ -96,7 +97,15 @@ export function useCanvasHandlers({
   containerRef,
   headerRef,
 }: UseCanvasHandlersParams): CanvasHandlers {
-  const [dragControllerInstance] = useState(() => new DragController());
+  const dragControllerInstance = useMemo(() => new DragController(), []);
+
+  // Block height registry (avoids getBoundingClientRect in render)
+  const blockHeightMapRef = useRef<Map<string, number>>(new Map());
+
+  const registerBlockHeight = useCallback((id: string, h: number) => {
+    blockHeightMapRef.current.set(id, h);
+  }, []);
+
   const [activeDragStart, setActiveDragStart] = useState<CanvasDragStart | null>(null);
   const [showCoverPicker, setShowCoverPicker] = useState(false);
 
@@ -108,6 +117,11 @@ export function useCanvasHandlers({
   const cursorKeyRef = useRef<string>('new-cursor');
   const editingBlockIdRef = useRef<string | null>(null);
   editingBlockIdRef.current = editingBlockId;
+
+  const blocksRef = useRef(blocks);
+  useLayoutEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
 
   const editingBlockData = useMemo(() => {
     if (!editingBlockId) return null;
@@ -133,7 +147,7 @@ export function useCanvasHandlers({
 
     if (blocks.length > 0) {
       for (const block of blocks) {
-        let blockHeight = typeof block.height === 'number' ? block.height : 200;
+        let blockHeight = typeof block.height === 'number' ? block.height : (blockHeightMapRef.current.get(block.blockId) ?? 200);
         if (block.blockId === editingBlockId && editingDims) {
           blockHeight = editingDims.height;
         }
@@ -165,8 +179,7 @@ export function useCanvasHandlers({
       } else if (typeof b.height === 'number') {
         h = b.height;
       } else {
-        const el = document.getElementById(`smart-block-${b.blockId}`) || document.getElementById(b.blockId);
-        h = el ? el.getBoundingClientRect().height / (zoom || 1) : 200;
+        h = blockHeightMapRef.current.get(b.blockId) ?? 200;
       }
       return { id: b.blockId, x: b.x, y: b.y, width: w, height: h };
     });
@@ -190,7 +203,7 @@ export function useCanvasHandlers({
   const handleDragStop = useCallback(
     (id: string, x: number, y: number) => {
       setIsDraggingBlock(false);
-      const block = blocks.find(b => b.blockId === id);
+      const block = blocksRef.current.find(b => b.blockId === id);
       const snappedY = block?.type === 'text' ? snapToGuide(y) : y;
       const headerHeight = headerRef.current?.offsetHeight || 0;
       const minY = Math.max(headerHeight, VERTICAL_PADDING);
@@ -199,7 +212,7 @@ export function useCanvasHandlers({
       const clampedX = Math.max(SIDE_PADDING, Math.min(x, Math.max(SIDE_PADDING, maxX)));
       onUpdateBlock(id, { x: clampedX, y: clampedY });
     },
-    [onUpdateBlock, blocks, headerRef]
+    [onUpdateBlock, headerRef]
   );
 
   const handleDragStart = useCallback(
@@ -228,7 +241,7 @@ export function useCanvasHandlers({
 
   const handleAddBlockFromMenu = useCallback(
     (type: CanvasBlockData['type'], _x?: number, _y?: number, content?: string) => {
-      blocks.forEach(b => {
+      blocksRef.current.forEach(b => {
         if (b.type === 'text' && !b.content?.trim()) {
           onDeleteBlock(b.blockId);
         }
@@ -238,7 +251,7 @@ export function useCanvasHandlers({
         onUpdateBlock(blockId, { content });
       }
     },
-    [canvasId, onAddBlock, blocks, onDeleteBlock, onUpdateBlock]
+    [canvasId, onAddBlock, onDeleteBlock, onUpdateBlock]
   );
 
   const handleSingleClick = useCallback(
@@ -246,7 +259,7 @@ export function useCanvasHandlers({
       const isPlaceholder = (e.target as HTMLElement).closest('.empty-canvas-placeholder');
       if (e.target !== containerRef.current && !isPlaceholder) return;
 
-      blocks.forEach(b => {
+      blocksRef.current.forEach(b => {
         if (b.type === 'text' && !b.content?.trim()) {
           onDeleteBlock(b.blockId);
         }
@@ -289,7 +302,7 @@ export function useCanvasHandlers({
         setEditingBlockId(null);
       }
     },
-    [canvasId, onCanvasClick, blocks, onDeleteBlock, onSelectBlock, onSelectConnection, zoom, selectedBlockId, selectedConnectionId, cursorPos, showTitle, isActive, containerRef, headerRef]
+    [canvasId, onCanvasClick, onDeleteBlock, onSelectBlock, onSelectConnection, zoom, selectedBlockId, selectedConnectionId, cursorPos, showTitle, isActive, containerRef, headerRef]
   );
 
   const handleCursorCommit = useCallback(
@@ -331,7 +344,7 @@ export function useCanvasHandlers({
   }, [editingBlockId, onDeleteBlock]);
 
   const handleEditRequest = useCallback((blockId: string) => {
-    const block = blocks.find(b => b.blockId === blockId);
+    const block = blocksRef.current.find(b => b.blockId === blockId);
     if (block && block.type === 'text') {
       setIsNewBlockEditing(false);
       cursorKeyRef.current = blockId;
@@ -339,7 +352,7 @@ export function useCanvasHandlers({
       setCursorPos({ x: block.x, y: block.y });
       onSelectBlock(blockId);
     }
-  }, [blocks, onSelectBlock]);
+  }, [onSelectBlock]);
 
   const handlePasteAsNewBlock = useCallback((x: number, y: number, html: string) => {
     // Create a block with the clipboard HTML
@@ -431,6 +444,7 @@ export function useCanvasHandlers({
     getCanvasPoint,
     handleDragStopWithController,
     handleDragStart,
+    registerBlockHeight,
     handleDimensionsChange,
     handleAddBlockFromMenu,
     handleSingleClick,

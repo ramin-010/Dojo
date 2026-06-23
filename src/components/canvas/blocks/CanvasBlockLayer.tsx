@@ -31,6 +31,7 @@ interface CanvasBlockLayerProps {
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
   topicId?: string;
   subjectId?: string;
+  onRegisterHeight?: (id: string, height: number) => void;
 }
 
 interface BlockWrapperProps {
@@ -56,6 +57,7 @@ interface BlockWrapperProps {
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
   topicId?: string;
   subjectId?: string;
+  onRegisterHeight?: (id: string, height: number) => void;
 }
 
 const BlockWrapperComponent = ({
@@ -81,6 +83,7 @@ const BlockWrapperComponent = ({
   onResourceAdd,
   topicId,
   subjectId,
+  onRegisterHeight,
 }: BlockWrapperProps) => {
   const isResizingRef = useRef(false);
   const resizeStartRef = useRef<{ width: number; fontSize: number } | null>(null);
@@ -223,6 +226,7 @@ const BlockWrapperComponent = ({
         onResourceAdd={onResourceAdd}
         topicId={topicId}
         subjectId={subjectId}
+        onRegisterHeight={onRegisterHeight}
       />
     </Rnd>
   );
@@ -265,6 +269,7 @@ function CanvasBlockLayerComponent({
   onResourceAdd,
   topicId,
   subjectId,
+  onRegisterHeight,
 }: CanvasBlockLayerProps) {
   const connectedBlockIds = useMemo(() => {
     const set = new Set<string>();
@@ -304,6 +309,7 @@ function CanvasBlockLayerComponent({
           onResourceAdd={onResourceAdd}
           topicId={topicId}
           subjectId={subjectId}
+          onRegisterHeight={onRegisterHeight}
         />
       ))}
     </>

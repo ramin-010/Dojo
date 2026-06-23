@@ -110,6 +110,11 @@ export function SingleCanvas({
     headerRef,
   });
 
+  const hRef = React.useRef(h);
+  React.useLayoutEffect(() => {
+    hRef.current = h;
+  }, [h]);
+
   // Paste handler — reads clipboard HTML/text and routes through InlineCursor
   React.useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
@@ -175,7 +180,7 @@ export function SingleCanvas({
           const trimmed = html.trim();
           if (!trimmed) return;
           // Open InlineCursor with the HTML — Tiptap parses it through its schema
-          h.handlePasteAsNewBlock(x, y, trimmed);
+          hRef.current.handlePasteAsNewBlock(x, y, trimmed);
         });
       } else if (textItem) {
         e.preventDefault();
@@ -195,14 +200,14 @@ export function SingleCanvas({
             .split(/\n\n+/)
             .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
             .join('');
-          h.handlePasteAsNewBlock(x, y, html);
+          hRef.current.handlePasteAsNewBlock(x, y, html);
         });
       }
     };
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [isActive, canvasId, onAddImage, onAddBlock, onUpdateBlock, zoom, h]);
+  }, [isActive, canvasId, onAddImage, onAddBlock, onUpdateBlock, zoom]);
 
   return (
     <div
@@ -239,21 +244,13 @@ export function SingleCanvas({
             h.isDraggingBlock ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {Array.from({ length: h.guideLineCount }, (_, i) => {
-            const y = (i + 1) * GUIDE_LINE_SPACING;
-            return (
-              <div
-                key={i}
-                className="absolute left-0 right-0"
-                style={{
-                  top: y,
-                  height: '1px',
-                  background: 'hsl(var(--muted-foreground))',
-                  opacity: 0.05,
-                }}
-              />
-            );
-          })}
+          <div
+            className="absolute inset-0 opacity-[0.05]"
+            style={{
+              backgroundImage: `linear-gradient(to bottom, transparent calc(${GUIDE_LINE_SPACING}px - 1px), hsl(var(--muted-foreground)) calc(${GUIDE_LINE_SPACING}px - 1px))`,
+              backgroundSize: `100% ${GUIDE_LINE_SPACING}px`,
+            }}
+          />
         </div>
 
         <NativeConnectionLayer
@@ -287,6 +284,7 @@ export function SingleCanvas({
           onResourceAdd={onResourceAdd}
           topicId={canvasId}
           subjectId={subjectId}
+          onRegisterHeight={h.registerBlockHeight}
         />
 
         <ConnectionLayer

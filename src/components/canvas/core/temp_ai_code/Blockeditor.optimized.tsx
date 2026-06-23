@@ -1,0 +1,440 @@
+// 'use client';
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // PERFORMANCE NOTES
+// // ─────────────────────────────────────────────────────────────────────────────
+// // PRIMARY OPTIMIZATION: Tiptap is fully decoupled from canvas React state
+// // during active editing. The original code called onChange (→ setBlocks)
+// // every 300ms while typing, causing the entire canvas to re-render on every
+// // debounce tick. With a 2000-line document this meant:
+// //   - JSON.stringify of a 200KB+ HTML string every 300ms
+// //   - setBlocks creating new object refs for ALL blocks
+// //   - BlockWrapper memo failing → all blocks re-rendering
+// //   - getBoundingClientRect on every block (forced synchronous reflow)
+// //   - ResizeObserver firing again → feedback loop
+// //
+// // NEW FLOW:
+// //   typing → localHtmlRef only (zero React state updates)
+// //   blur   → onChange(localHtmlRef.current) called once
+// //   external content change → setContent only when editor is not focused
+// // ─────────────────────────────────────────────────────────────────────────────
+
+// import React, { useState, useMemo, useRef, useEffect } from 'react';
+// import { createPortal } from 'react-dom';
+// import { useEditor, EditorContent } from '@tiptap/react';
+// import StarterKit from '@tiptap/starter-kit';
+// import Placeholder from '@tiptap/extension-placeholder';
+// import Link from '@tiptap/extension-link';
+// import TaskList from '@tiptap/extension-task-list';
+// import TaskItem from '@tiptap/extension-task-item';
+// import Highlight from '@tiptap/extension-highlight';
+// import Underline from '@tiptap/extension-underline';
+// import {
+//   Bold,
+//   Italic,
+//   Underline as UnderlineIcon,
+//   Highlighter,
+//   Code,
+// } from 'lucide-react';
+// import { SlashCommands } from '../extensions/SlashCommands';
+// import { CalloutExtension } from '../extensions/CalloutExtension';
+// import { CustomMention } from '../extensions/MentionExtension';
+// import { createMentionSuggestions } from '../extensions/MentionExtension';
+// import { SavedResourceExtension } from '../extensions/SavedResourceExtension';
+// import { searchTopicsInSubject, searchAllSubjects, addTopicMention } from '@/app/actions';
+// import { useRouter } from 'next/navigation';
+
+// interface BlockEditorProps {
+//   content: string;
+//   onChange: (newContent: string) => void;
+//   onFocus?: () => void;
+//   onBlur?: () => void;
+//   readOnly?: boolean;
+//   autoFocus?: boolean;
+//   onKeyDown?: (e: React.KeyboardEvent) => void;
+//   onDelete?: () => void;
+//   onMentionClick?: (id: string) => void;
+//   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+//   topicId?: string;
+//   subjectId?: string;
+// }
+
+// export function BlockEditor({
+//   content,
+//   onChange,
+//   onFocus,
+//   onBlur,
+//   readOnly = false,
+//   autoFocus = false,
+//   onKeyDown,
+//   onDelete,
+//   onMentionClick,
+//   onResourceAdd,
+//   topicId,
+//   subjectId,
+// }: BlockEditorProps) {
+//   const [showBubbleMenu, setShowBubbleMenu] = useState(false);
+//   const [bubbleMenuPos, setBubbleMenuPos] = useState({ top: 0, left: 0 });
+//   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+//   const menuRef = useRef<HTMLDivElement>(null);
+//   const router = useRouter();
+
+//   // ── OPTIMIZATION: Local content cache ──────────────────────────────────────
+//   // This ref holds the current in-editor HTML. It is updated on every Tiptap
+//   // onUpdate but does NOT trigger any React state update. Canvas state only
+//   // receives this value on blur (when user finishes editing the block).
+//   const localHtmlRef = useRef<string>(content);
+
+//   // Track whether the editor is currently focused so we can make the right
+//   // decision in the content-sync effect below.
+//   const isFocusedRef = useRef(false);
+
+//   // Keep a stable reference to onChange so we don't need it in deps arrays.
+//   const onChangeRef = useRef(onChange);
+//   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
+//   const editor = useEditor({
+//     immediatelyRender: false,
+//     extensions: [
+//       StarterKit.configure({
+//         heading: { levels: [2, 3] },
+//         bulletList: { keepMarks: true, keepAttributes: false },
+//         orderedList: { keepMarks: true, keepAttributes: false },
+//       }) as any,
+//       Placeholder.configure({
+//         placeholder: "Type '/' for commands...",
+//         includeChildren: true,
+//         showOnlyCurrent: true,
+//       }),
+//       Link.configure({
+//         openOnClick: false,
+//         HTMLAttributes: {
+//           class: 'text-blue-500 underline cursor-pointer hover:text-blue-600',
+//         },
+//       }),
+//       TaskList,
+//       TaskItem.configure({ nested: true }),
+//       Highlight.configure({ multicolor: true }),
+//       Underline,
+//       SlashCommands,
+//       CalloutExtension,
+//       CustomMention.configure({
+//         HTMLAttributes: { class: 'mention' },
+//         suggestion: createMentionSuggestions(
+//           async (query: string) => {
+//             if (!topicId || !subjectId) return [];
+//             if (query.startsWith('/')) {
+//               const match = query.match(/^\/([^\/]+)\/(.*)$/);
+//               if (match) {
+//                 const subjectName = match[1];
+//                 const topicQuery = match[2];
+//                 const subjects = await searchAllSubjects(subjectName);
+//                 const exactSubject = subjects.find(
+//                   (s: any) => s.name === subjectName
+//                 );
+//                 if (exactSubject) {
+//                   const topics = await searchTopicsInSubject(
+//                     exactSubject.id,
+//                     topicQuery
+//                   );
+//                   return topics.map((t: any) => ({
+//                     id: t.id,
+//                     title: t.title,
+//                     subject: exactSubject.name,
+//                     isSubject: false,
+//                   }));
+//                 }
+//                 return [];
+//               } else {
+//                 const sq = query.slice(1).trim();
+//                 const subjects = await searchAllSubjects(sq);
+//                 return subjects.map((s: any) => ({
+//                   id: s.id,
+//                   title: s.name,
+//                   subject: 'Cross-Subject',
+//                   isSubject: true,
+//                 }));
+//               }
+//             } else {
+//               const topics = await searchTopicsInSubject(subjectId, query);
+//               return topics.map((t: any) => ({
+//                 id: t.id,
+//                 title: t.title,
+//                 subject: 'Current Subject',
+//                 isSubject: false,
+//               }));
+//             }
+//           },
+//           async (targetId: string) => {
+//             if (topicId && targetId) {
+//               await addTopicMention(topicId, targetId);
+//               router.refresh();
+//             }
+//           }
+//         ),
+//       }),
+//       SavedResourceExtension.configure({
+//         onResourceAdd: (data) => {
+//           if (onResourceAdd) onResourceAdd(data);
+//         },
+//       }),
+//     ],
+//     content: content,
+//     editable: !readOnly,
+//     autofocus: autoFocus,
+
+//     editorProps: {
+//       attributes: {
+//         class:
+//           'prose prose-sm dark:prose-invert focus:outline-none max-w-none leading-normal text-foreground',
+//       },
+//       handleKeyDown: (view, event) => {
+//         if (
+//           (event.ctrlKey || event.metaKey) &&
+//           (event.key === 'Delete' || event.key === 'Backspace')
+//         ) {
+//           event.preventDefault();
+//           onDelete?.();
+//           return true;
+//         }
+//         if (onKeyDown) onKeyDown(event as any);
+//         return false;
+//       },
+//       handleClick: (view, pos, event) => {
+//         const target = event.target as HTMLElement;
+//         const mentionId = target.getAttribute('data-mention-id');
+//         if (mentionId && onMentionClick) {
+//           onMentionClick(mentionId);
+//           return true;
+//         }
+//         return false;
+//       },
+//     },
+
+//     // ── OPTIMIZATION: onUpdate writes to localHtmlRef only ──────────────────
+//     // NO onChange call here. NO setBlocks. NO canvas re-render on keystrokes.
+//     // The editor manages its own document state internally (ProseMirror).
+//     // Canvas state (and therefore React) only gets updated on blur.
+//     onUpdate: ({ editor }) => {
+//       localHtmlRef.current = editor.getHTML();
+//     },
+
+//     onFocus: () => {
+//       isFocusedRef.current = true;
+//       onFocus?.();
+//     },
+
+//     // ── OPTIMIZATION: Commit to canvas state only on blur ───────────────────
+//     // This is the single point where the in-editor content flows back into
+//     // the React canvas state. One setBlocks call per editing session, not
+//     // one per 300ms debounce tick.
+//     onBlur: () => {
+//       isFocusedRef.current = false;
+//       onChangeRef.current(localHtmlRef.current);
+//       onBlur?.();
+//     },
+//   });
+
+//   // ── OPTIMIZATION: Content sync from external sources only ─────────────────
+//   // The original code ran editor.getHTML() on every content prop change to
+//   // compare — a full document serialization on every render. Now we:
+//   //   1. Only sync when the editor is NOT focused (external change, not user typing)
+//   //   2. Compare against localHtmlRef (no getHTML() call needed)
+//   //   3. Pass false as second arg to setContent to suppress the update event
+//   //      (prevents the onUpdate → localHtmlRef cycle from triggering)
+//   useEffect(() => {
+//     if (!editor || isFocusedRef.current) return;
+//     if (content !== localHtmlRef.current) {
+//       editor.commands.setContent(content, false); // false = don't emit 'update'
+//       localHtmlRef.current = content;
+//     }
+//   }, [content, editor]);
+
+//   useEffect(() => {
+//     if (editor && editor.isEditable !== !readOnly) {
+//       editor.setEditable(!readOnly);
+//     }
+//   }, [readOnly, editor]);
+
+//   // ── Bubble menu position tracking (unchanged from original) ───────────────
+//   useEffect(() => {
+//     if (!editor) return;
+//     const updateMenu = () => {
+//       const { from, to } = editor.state.selection;
+//       const hasSelection = from !== to;
+//       if (hasSelection && !readOnly) {
+//         const { view } = editor;
+//         const start = view.coordsAtPos(from);
+//         const end = view.coordsAtPos(to);
+//         const centerLeft = (start.left + end.left) / 2;
+//         const topPos = start.top - 40;
+//         setBubbleMenuPos({ top: topPos, left: centerLeft });
+//         setShowBubbleMenu(true);
+//       } else {
+//         setShowBubbleMenu(false);
+//       }
+//     };
+//     editor.on('selectionUpdate', updateMenu);
+//     return () => { editor.off('selectionUpdate', updateMenu); };
+//   }, [editor, readOnly]);
+
+//   if (!editor) return null;
+
+//   return (
+//     <div className="relative w-full h-full">
+//       {showBubbleMenu &&
+//         typeof window !== 'undefined' &&
+//         createPortal(
+//           <div
+//             ref={menuRef}
+//             className="fixed z-[9999] flex items-center gap-1 p-1 rounded-lg bg-popover border border-border shadow-xl backdrop-blur-sm animate-in fade-in zoom-in-95 duration-100"
+//             style={{
+//               top: bubbleMenuPos.top,
+//               left: bubbleMenuPos.left,
+//               transform: 'translateX(-50%)',
+//             }}
+//             onMouseDown={e => {
+//               e.preventDefault();
+//               e.stopPropagation();
+//             }}
+//           >
+//             <button
+//               onClick={() => editor.chain().focus().toggleBold().run()}
+//               className={`p-1.5 rounded hover:bg-accent ${
+//                 editor.isActive('bold')
+//                   ? 'text-accent-foreground bg-accent'
+//                   : 'text-foreground/70'
+//               }`}
+//               title="Bold"
+//             >
+//               <Bold className="w-4 h-4" />
+//             </button>
+//             <button
+//               onClick={() => editor.chain().focus().toggleItalic().run()}
+//               className={`p-1.5 rounded hover:bg-accent ${
+//                 editor.isActive('italic')
+//                   ? 'text-accent-foreground bg-accent'
+//                   : 'text-foreground/70'
+//               }`}
+//               title="Italic"
+//             >
+//               <Italic className="w-4 h-4" />
+//             </button>
+//             <button
+//               onClick={() => editor.chain().focus().toggleUnderline().run()}
+//               className={`p-1.5 rounded hover:bg-accent ${
+//                 editor.isActive('underline')
+//                   ? 'text-accent-foreground bg-accent'
+//                   : 'text-foreground/70'
+//               }`}
+//               title="Underline"
+//             >
+//               <UnderlineIcon className="w-4 h-4" />
+//             </button>
+//             <div className="w-[1px] h-4 bg-border mx-1" />
+//             <button
+//               onClick={() =>
+//                 editor.chain().focus().toggleHeading({ level: 2 }).run()
+//               }
+//               className={`p-1.5 rounded hover:bg-accent ${
+//                 editor.isActive('heading', { level: 2 })
+//                   ? 'text-accent-foreground bg-accent'
+//                   : 'text-foreground/70'
+//               }`}
+//               title="Heading 1"
+//             >
+//               <span className="font-bold text-xs">H1</span>
+//             </button>
+//             <button
+//               onClick={() =>
+//                 editor.chain().focus().toggleHeading({ level: 3 }).run()
+//               }
+//               className={`p-1.5 rounded hover:bg-accent ${
+//                 editor.isActive('heading', { level: 3 })
+//                   ? 'text-accent-foreground bg-accent'
+//                   : 'text-foreground/70'
+//               }`}
+//               title="Heading 2"
+//             >
+//               <span className="font-bold text-xs">H2</span>
+//             </button>
+//             <div className="w-[1px] h-4 bg-border mx-1" />
+//             <div className="relative">
+//               <button
+//                 onClick={() => setShowHighlightPicker(!showHighlightPicker)}
+//                 className={`p-1.5 rounded hover:bg-accent ${
+//                   editor.isActive('highlight')
+//                     ? 'text-accent-foreground bg-accent'
+//                     : 'text-foreground/70'
+//                 }`}
+//                 title="Highlight"
+//               >
+//                 <Highlighter className="w-4 h-4" />
+//               </button>
+//               {showHighlightPicker && (
+//                 <div
+//                   className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-popover border border-border rounded-xl shadow-2xl z-50 min-w-[160px]"
+//                   onMouseDown={e => e.preventDefault()}
+//                 >
+//                   <p className="text-[10px] text-foreground/50 mb-2 text-center">
+//                     Highlight Color
+//                   </p>
+//                   <div className="grid grid-cols-3 gap-2">
+//                     {[
+//                       { color: 'rgba(254, 240, 138, 0.25)', name: 'Yellow' },
+//                       { color: 'rgba(187, 247, 208, 0.25)', name: 'Green' },
+//                       { color: 'rgba(147, 197, 253, 0.25)', name: 'Blue' },
+//                       { color: 'rgba(252, 165, 165, 0.25)', name: 'Red' },
+//                       { color: 'rgba(216, 180, 254, 0.25)', name: 'Purple' },
+//                       { color: 'rgba(253, 186, 116, 0.25)', name: 'Orange' },
+//                       { color: 'rgba(251, 207, 232, 0.25)', name: 'Pink' },
+//                       { color: 'rgba(94, 234, 212, 0.35)', name: 'Teal' },
+//                       { color: 'rgba(148, 163, 184, 0.4)', name: 'Gray' },
+//                     ].map(item => (
+//                       <button
+//                         key={item.color}
+//                         onClick={() => {
+//                           editor
+//                             .chain()
+//                             .focus()
+//                             .toggleHighlight({ color: item.color })
+//                             .run();
+//                           setShowHighlightPicker(false);
+//                         }}
+//                         className="w-8 h-8 rounded-lg border-2 border-border hover:scale-105 hover:border-white/50 transition-all"
+//                         style={{ backgroundColor: item.color }}
+//                         title={item.name}
+//                       />
+//                     ))}
+//                   </div>
+//                   <button
+//                     onClick={() => {
+//                       editor.chain().focus().unsetHighlight().run();
+//                       setShowHighlightPicker(false);
+//                     }}
+//                     className="w-full mt-2 px-2 py-1 text-[10px] text-foreground/50 hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+//                   >
+//                     Remove highlight
+//                   </button>
+//                 </div>
+//               )}
+//             </div>
+//             <button
+//               onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+//               className={`p-1.5 rounded hover:bg-accent ${
+//                 editor.isActive('codeBlock')
+//                   ? 'text-accent-foreground bg-accent'
+//                   : 'text-foreground/70'
+//               }`}
+//               title="Code Block"
+//             >
+//               <Code className="w-4 h-4" />
+//             </button>
+//           </div>,
+//           document.body
+//         )}
+
+//       <EditorContent editor={editor} className="min-h-[24px]" />
+//     </div>
+//   );
+// }

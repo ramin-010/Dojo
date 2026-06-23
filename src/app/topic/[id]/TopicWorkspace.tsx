@@ -113,7 +113,11 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       if (resizeRafRef.current) cancelAnimationFrame(resizeRafRef.current);
       resizeRafRef.current = requestAnimationFrame(() => {
         for (const entry of entries) {
-          setCanvasContainerWidth(entry.contentRect.width);
+          const newWidth = entry.contentRect.width;
+          setCanvasContainerWidth(prev => {
+            if (Math.abs(newWidth - prev) > 10) return newWidth;
+            return prev;
+          });
         }
       });
     });
@@ -377,17 +381,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   }, [activeTab, topic.id]);
 
   // ── Overlay opacity (darkens main when sidebar is very wide) ──────────────
-  const fullFadeWidth =
-    typeof window !== 'undefined' ? window.innerWidth / 2 : 960;
-  const overlayOpacity = isSidebarOpen
-    ? Math.min(
-        0.6,
-        Math.max(
-          0,
-          ((sidebarWidth - 384) / Math.max(1, fullFadeWidth - 384)) * 0.6,
-        ),
-      )
-    : 0;
+  // Overlay opacity and sidebar width are now driven purely by CSS variables during drag
+  // to prevent React re-rendering the entire workspace at 60fps.
 
   // ──────────────────────────────────────────────────────────────────────────
   return (
@@ -397,7 +392,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         className={`flex-1 h-full overflow-y-auto overflow-x-hidden min-w-[500px] relative ${
           isDragging ? '' : 'transition-all duration-300 ease-in-out'
         }`}
-        style={{ marginRight: isSidebarOpen ? `${sidebarWidth}px` : '0px' }}
+        style={{ marginRight: isSidebarOpen ? 'var(--sidebar-width, 384px)' : '0px' }}
         onScroll={handleScroll}
       >
         {/* Floating Sidebar Toggle */}
@@ -415,10 +410,10 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         )}
 
         {/* Dark Overlay */}
-        {overlayOpacity > 0 && (
+        {isSidebarOpen && (
           <div
             className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-75 z-50"
-            style={{ opacity: overlayOpacity }}
+            style={{ opacity: 'var(--sidebar-overlay-opacity, 0)' }}
           />
         )}
 

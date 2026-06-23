@@ -71,6 +71,7 @@ export function BlockEditor({
 
   const editor = useEditor({
     immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] }, 

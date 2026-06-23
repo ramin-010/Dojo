@@ -43,6 +43,7 @@ function SmartBlockComponent({
   onResourceAdd,
   topicId,
   subjectId,
+  onRegisterHeight,
 }: SmartBlockProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,23 +56,30 @@ function SmartBlockComponent({
   const dimUpdateTimeout = useRef<any>(null);
 
   useEffect(() => {
-    if (!blockRef.current || !onDimensionsChange) return;
+    if (!blockRef.current) return;
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const width = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
         const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
         
-        const now = Date.now();
-        if (now - lastDimUpdate.current > 100) {
-           onDimensionsChange(id, width, height);
-           lastDimUpdate.current = now;
-        } else {
-           if (dimUpdateTimeout.current) clearTimeout(dimUpdateTimeout.current);
-           dimUpdateTimeout.current = setTimeout(() => {
+        // Always register height synchronously for layout (no state update, no reflow)
+        if (onRegisterHeight) {
+          onRegisterHeight(id, height);
+        }
+        
+        if (onDimensionsChange) {
+          const now = Date.now();
+          if (now - lastDimUpdate.current > 100) {
              onDimensionsChange(id, width, height);
-             lastDimUpdate.current = Date.now();
-           }, 100);
+             lastDimUpdate.current = now;
+          } else {
+             if (dimUpdateTimeout.current) clearTimeout(dimUpdateTimeout.current);
+             dimUpdateTimeout.current = setTimeout(() => {
+               onDimensionsChange(id, width, height);
+               lastDimUpdate.current = Date.now();
+             }, 100);
+          }
         }
       }
     });
@@ -81,7 +89,7 @@ function SmartBlockComponent({
       observer.disconnect();
       if (dimUpdateTimeout.current) clearTimeout(dimUpdateTimeout.current);
     };
-  }, [id, onDimensionsChange]);
+  }, [id, onDimensionsChange, onRegisterHeight]);
 
   const taskStats = useMemo(() => calculateTaskStats(content), [content]);
 
@@ -201,7 +209,13 @@ const arePropsEqual = (prev: SmartBlockProps, next: SmartBlockProps) => {
     prev.fontSize === next.fontSize &&
     prev.onEditRequest === next.onEditRequest &&
     prev.isConnected === next.isConnected &&
-    prev.onMentionClick === next.onMentionClick
+    prev.onMentionClick === next.onMentionClick &&
+    prev.isUploading === next.isUploading &&
+    prev.fileName === next.fileName &&
+    prev.fileSize === next.fileSize &&
+    prev.topicId === next.topicId &&
+    prev.subjectId === next.subjectId &&
+    prev.onResourceAdd === next.onResourceAdd
   );
 };
 

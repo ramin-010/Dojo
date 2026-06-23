@@ -30,6 +30,7 @@ export interface SmartBlockProps {
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
   topicId?: string;
   subjectId?: string;
+  onRegisterHeight?: (id: string, height: number) => void;
 }
 
 export interface TaskStats {
