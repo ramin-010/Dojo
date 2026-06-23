@@ -27,6 +27,9 @@ interface AppState {
   
   isSaving: boolean;
   setIsSaving: (saving: boolean) => void;
+  
+  isSplitViewActive: boolean;
+  setIsSplitViewActive: (active: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -68,4 +71,7 @@ export const useAppStore = create<AppState>((set) => ({
   
   isSaving: false,
   setIsSaving: (saving) => set({ isSaving: saving }),
+  
+  isSplitViewActive: false,
+  setIsSplitViewActive: (active) => set({ isSplitViewActive: active }),
 }));

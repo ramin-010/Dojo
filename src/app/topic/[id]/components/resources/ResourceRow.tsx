@@ -18,6 +18,8 @@ export interface ResourceRowProps {
   onClick?: () => void;
   onDelete?: (id: string, url: string) => void;
   onRename?: (id: string, newTitle: string) => Promise<void> | void;
+  onDragStartSidebarItem?: (data: any) => void;
+  onOpenSplitView?: (data: any) => void;
 }
 
 export function ResourceRow({
@@ -34,6 +36,8 @@ export function ResourceRow({
   onClick,
   onDelete,
   onRename,
+  onDragStartSidebarItem,
+  onOpenSplitView,
 }: ResourceRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -140,6 +144,16 @@ export function ResourceRow({
 
   return (
     <div 
+      draggable
+      onDragStart={(e) => {
+        const data = { id, title, url, category, addedAt, isOnCanvas, domain, fileSize, fileFormat, thumbnailUrl };
+        if (onDragStartSidebarItem) {
+          onDragStartSidebarItem({ type: 'resource', id, data });
+        }
+        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'resource', id, data }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      onDragEnd={() => onDragStartSidebarItem?.(null)}
       className="flex items-center gap-2.5 p-2 rounded-xl border border-white/5 bg-black/10 hover:border-white/10 hover:bg-black/20 transition-all group cursor-pointer"
       onClick={onClick}
     >
@@ -255,6 +269,20 @@ export function ResourceRow({
                 Rename
               </button>
             )}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(false);
+                onOpenSplitView?.({
+                  type: 'resource',
+                  id,
+                  data: { id, title, url, category, addedAt, isOnCanvas, domain, fileSize, fileFormat, thumbnailUrl }
+                });
+              }}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-blue-400 transition-colors"
+            >
+              Open in Split View
+            </button>
             <button 
               onClick={(e) => {
                 e.stopPropagation();

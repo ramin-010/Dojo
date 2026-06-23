@@ -1,4 +1,4 @@
-import { MoreHorizontal, Search, FolderOpen, Hash } from 'lucide-react';
+import { MoreHorizontal, Search, FolderOpen, Hash, Columns, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAllSubjectsForMention, getAllTopicsInSubjectForMention, addTopicMention } from '@/app/actions';
@@ -22,13 +22,17 @@ export function TopicLinksTimeline({
   subjectId,
   contextLinks, 
   onMentionClick,
-  onDeleteMention 
+  onDeleteMention,
+  onDragStartSidebarItem,
+  onOpenSplitView,
 }: { 
   topicId: string;
   subjectId: string;
   contextLinks: ContextLinksData; 
   onMentionClick: (id: string) => void;
   onDeleteMention?: (id: string, isOutbound: boolean) => void;
+  onDragStartSidebarItem?: (data: any) => void;
+  onOpenSplitView?: (data: any) => void;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -50,7 +54,7 @@ export function TopicLinksTimeline({
       setAllSubjects(subjects.map(s => ({ ...s, isSubject: true, title: s.name })));
     }
     if (!topicCaches[subjectId]) {
-      const topics = await getAllTopicsInSubjectForMention(subjectId);
+      const topics = await getAllTopicsInSubjectForMention(subjectId, topicId);
       setTopicCaches(prev => ({ ...prev, [subjectId]: topics }));
     }
   };
@@ -74,7 +78,7 @@ export function TopicLinksTimeline({
             );
             setResults(res.slice(0, 15)); // Limit visual results for performance
           } else {
-            getAllTopicsInSubjectForMention(exactSubject.id).then(topics => {
+            getAllTopicsInSubjectForMention(exactSubject.id, topicId).then(topics => {
               setTopicCaches(prev => ({ ...prev, [exactSubject.id]: topics }));
             });
           }
@@ -99,7 +103,7 @@ export function TopicLinksTimeline({
         setResults(res);
       } else {
         // Fallback fetch if somehow missed in handleFocus
-        getAllTopicsInSubjectForMention(subjectId).then(topics => {
+        getAllTopicsInSubjectForMention(subjectId, topicId).then(topics => {
            setTopicCaches(prev => ({ ...prev, [subjectId]: topics }));
         });
       }
@@ -241,7 +245,20 @@ export function TopicLinksTimeline({
             
             <div className="flex flex-col">
               {localLinks.outbound.map((link, i) => (
-                <div key={link.id} className="relative group cursor-pointer hover:bg-white/[0.03] py-3.5 pr-5 pl-[48px] transition-colors" onClick={() => onMentionClick(link.topicId)}>
+                <div 
+                  key={link.id} 
+                  draggable
+                  onDragStart={(e) => {
+                    if (onDragStartSidebarItem) {
+                      onDragStartSidebarItem({ type: 'topic_link', id: link.topicId, data: link });
+                    }
+                    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'topic_link', id: link.topicId, data: link }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onDragEnd={() => onDragStartSidebarItem?.(null)}
+                  className="relative group cursor-pointer hover:bg-white/[0.03] py-3.5 pr-5 pl-[48px] transition-colors" 
+                  onClick={() => onMentionClick(link.topicId)}
+                >
                   {/* Horizontal curve branching off the trunk */}
                   <svg style={{ position: 'absolute', left: 25, top: 14 }} width="18" height="10" viewBox="0 0 18 10" fill="none">
                     <path d="M0 0 Q0 9 9 9 L18 9" stroke="#525252" strokeWidth="2" fill="none" />
@@ -256,6 +273,13 @@ export function TopicLinksTimeline({
                         {link.path}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          className="text-muted-foreground/50 hover:text-blue-400 transition-colors px-1 py-0.5 rounded scale-[0.9]"
+                          onClick={(e) => { e.stopPropagation(); onOpenSplitView?.({ type: 'topic_link', id: link.topicId, data: link }); }}
+                          title="Open in Split View"
+                        >
+                          <Columns className="w-4 h-4" />
+                        </button>
                         {onDeleteMention && (
                           <button 
                             className="text-red-500/50 hover:text-red-500 transition-colors px-2 py-0.5 rounded text-[10px] scale-[0.9] font-medium border border-red-500/20 hover:bg-red-500/10"
@@ -291,14 +315,27 @@ export function TopicLinksTimeline({
             
             <div className="flex flex-col">
               {localLinks.inbound.map((link, i) => (
-                <div key={link.id} className="relative group cursor-pointer hover:bg-white/[0.03] py-3.5 pr-5 pl-[48px] transition-colors" onClick={() => onMentionClick(link.topicId)}>
+                <div 
+                  key={link.id} 
+                  draggable
+                  onDragStart={(e) => {
+                    if (onDragStartSidebarItem) {
+                      onDragStartSidebarItem({ type: 'topic_link', id: link.topicId, data: link });
+                    }
+                    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'topic_link', id: link.topicId, data: link }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onDragEnd={() => onDragStartSidebarItem?.(null)}
+                  className="relative group cursor-pointer hover:bg-white/[0.03] py-3.5 pr-5 pl-[48px] transition-colors" 
+                  onClick={() => onMentionClick(link.topicId)}
+                >
                   {/* Horizontal curve branching off the trunk */}
                   <svg style={{ position: 'absolute', left: 25, top: 14 }} width="18" height="10" viewBox="0 0 18 10" fill="none">
                     <path d="M0 0 Q0 9 9 9 L18 9" stroke="#525252" strokeWidth="2" fill="none" />
                   </svg>
                   
                   {/* Dot at end of branch */}
-                  <div className="absolute top-[20px] w-[7px] h-[7px] rounded-full bg-blue-500 ring-[3px] ring-background group-hover:ring-zinc-950 transition-colors z-10" style={{ left: 41 }} />
+                  <div className="absolute top-[20px] w-[7px] h-[7px] rounded-full bg-emerald-500 ring-[3px] ring-background group-hover:ring-zinc-950 transition-colors z-10" style={{ left: 41 }} />
 
                   <div className="flex-1 flex flex-col gap-1 ml-2">
                     <div className="flex items-start justify-between gap-3">
@@ -306,9 +343,16 @@ export function TopicLinksTimeline({
                         {link.path}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          className="text-muted-foreground/50 hover:text-blue-400 transition-colors px-1 py-0.5 rounded scale-[0.9]"
+                          onClick={(e) => { e.stopPropagation(); onOpenSplitView?.({ type: 'topic_link', id: link.topicId, data: link }); }}
+                          title="Open in Split View"
+                        >
+                          <Columns className="w-4 h-4" />
+                        </button>
                         {onDeleteMention && (
                           <button 
-                            className="text-red-500/50 hover:text-red-500 transition-colors px-2 py-0.5 rounded text-xs scale-[0.9] font-medium border border-red-500/20 hover:bg-red-500/10"
+                            className="text-red-500/50 hover:text-red-500 transition-colors px-2 py-0.5 rounded text-[10px] scale-[0.9] font-medium border border-red-500/20 hover:bg-red-500/10"
                             onClick={(e) => { e.stopPropagation(); handleDelete(link.id, false); }}
                           >
                             Unlink

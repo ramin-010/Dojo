@@ -388,6 +388,10 @@ export async function createTextResourceLink(
 
 /** Instantly create a TopicMention record */
 export async function addTopicMention(sourceTopicId: string, targetTopicId: string) {
+  if (sourceTopicId === targetTopicId) {
+    return { success: false, error: 'Cannot link a topic to itself' };
+  }
+  
   try {
     const mention = await prisma.topicMention.create({
       data: {
@@ -424,10 +428,11 @@ export async function deleteTopicMention(id: string) {
 }
 
 /** Search topics within a specific subject */
-export async function searchTopicsInSubject(subjectId: string, query: string) {
+export async function searchTopicsInSubject(subjectId: string, query: string, excludeTopicId?: string) {
   return await prisma.topic.findMany({
     where: {
       subjectId,
+      id: excludeTopicId ? { not: excludeTopicId } : undefined,
       title: { contains: query, mode: 'insensitive' }
     },
     select: { id: true, title: true },
@@ -457,9 +462,12 @@ export async function getAllSubjectsForMention() {
 }
 
 /** Fetch all topics for a specific subject for the dropdown */
-export async function getAllTopicsInSubjectForMention(subjectId: string) {
+export async function getAllTopicsInSubjectForMention(subjectId: string, excludeTopicId?: string) {
   return await prisma.topic.findMany({
-    where: { subjectId },
+    where: { 
+      subjectId,
+      id: excludeTopicId ? { not: excludeTopicId } : undefined
+    },
     select: { id: true, title: true, subjectId: true, subject: { select: { name: true } } },
     orderBy: { updatedAt: 'desc' }
   });

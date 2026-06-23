@@ -28,6 +28,8 @@ interface ContextSidebarProps {
   onDeleteMultipleResources?: (ids: string[]) => void;
   onRenameResource?: (id: string, newTitle: string) => void;
   onDeleteMention?: (id: string, isOutbound: boolean) => void;
+  onDragStartSidebarItem?: (data: any) => void;
+  onOpenSplitView?: (data: any) => void;
 }
 
 export function ContextSidebar({
@@ -50,6 +52,8 @@ export function ContextSidebar({
   onDeleteMultipleResources,
   onRenameResource,
   onDeleteMention,
+  onDragStartSidebarItem,
+  onOpenSplitView,
 }: ContextSidebarProps) {
   return (
     <>
@@ -123,6 +127,8 @@ export function ContextSidebar({
                 contextLinks={contextLinks}
                 onMentionClick={onMentionClick}
                 onDeleteMention={onDeleteMention}
+                onDragStartSidebarItem={onDragStartSidebarItem}
+                onOpenSplitView={onOpenSplitView}
               />
             )}
 
@@ -133,17 +139,21 @@ export function ContextSidebar({
                 noteCategories={noteCategories}
                 topicId={topicId}
                 subjectId={subjectId}
+                onDragStartSidebarItem={onDragStartSidebarItem}
+                onOpenSplitView={onOpenSplitView}
               />
             )}
 
             {/* ── Resources Tab ─────────────────────────────────────────── */}
             {activeTab === 'resources' && (
               <ResourcesTab 
-                resources={resources} 
+                resources={resources || []} 
                 activeUrls={activeUrls} 
-                onDeleteResource={onDeleteResource}
-                onDeleteMultipleResources={onDeleteMultipleResources}
-                onRenameResource={onRenameResource}
+                onDelete={onDeleteResource}
+                onDeleteMultiple={onDeleteMultipleResources}
+                onRename={onRenameResource}
+                onDragStartSidebarItem={onDragStartSidebarItem}
+                onOpenSplitView={onOpenSplitView}
               />
             )}
           </div>

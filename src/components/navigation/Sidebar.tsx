@@ -34,7 +34,8 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
   const { 
     subjects, setSubjects, 
     isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed, 
-    initializeSidebarState 
+    initializeSidebarState,
+    isSplitViewActive
   } = useAppStore();
 
   React.useEffect(() => {
@@ -102,9 +103,9 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
 
   return (
     <aside 
-      className={`${isCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-50`}
+      className={`${isSplitViewActive ? 'w-0 border-r-0 opacity-0 pointer-events-none' : isCollapsed ? 'w-16 border-r' : 'w-64 border-r'} bg-sidebar flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-50`}
     >
-      <div className={`flex items-center h-14 border-b border-border/50 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'}`}>
+      <div className={`flex items-center h-14 border-b border-border/50 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} ${isSplitViewActive ? 'hidden' : ''}`}>
         {!isCollapsed && <span className="font-bold text-base tracking-tight text-foreground">Revise</span>}
         <button 
           onClick={toggleSidebar}

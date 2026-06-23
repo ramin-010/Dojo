@@ -109,7 +109,7 @@ export function BlockEditor({
                 const subjects = await searchAllSubjects(subjectName);
                 const exactSubject = subjects.find((s: any) => s.name === subjectName);
                 if (exactSubject) {
-                  const topics = await searchTopicsInSubject(exactSubject.id, topicQuery);
+                  const topics = await searchTopicsInSubject(exactSubject.id, topicQuery, topicId);
                   return topics.map((t: any) => ({
                     id: t.id,
                     title: t.title,
@@ -129,7 +129,7 @@ export function BlockEditor({
                 }));
               }
             } else {
-              const topics = await searchTopicsInSubject(subjectId, query);
+              const topics = await searchTopicsInSubject(subjectId, query, topicId);
               return topics.map((t: any) => ({
                 id: t.id,
                 title: t.title,

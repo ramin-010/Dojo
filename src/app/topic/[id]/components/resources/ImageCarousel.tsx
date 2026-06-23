@@ -10,9 +10,11 @@ export interface ImageCardProps {
   onClick?: () => void;
   onDelete?: (id: string, url: string) => void;
   onRename?: (id: string, newTitle: string) => Promise<void> | void;
+  onDragStartSidebarItem?: (data: any) => void;
+  onOpenSplitView?: (data: any) => void;
 }
 
-function ImageCard({ id, title, thumbnailUrl, addedAt, onClick, onDelete, onRename }: ImageCardProps) {
+function ImageCard({ id, title, thumbnailUrl, addedAt, onClick, onDelete, onRename, onDragStartSidebarItem, onOpenSplitView }: ImageCardProps) {
   const [showMenu, setShowMenu] = React.useState(false);
   const [isRenaming, setIsRenaming] = React.useState(false);
   const [isSavingRename, setIsSavingRename] = React.useState(false);
@@ -65,6 +67,16 @@ function ImageCard({ id, title, thumbnailUrl, addedAt, onClick, onDelete, onRena
 
   return (
     <div 
+      draggable
+      onDragStart={(e) => {
+        const data = { id, title, url: thumbnailUrl, category: 'image', addedAt, thumbnailUrl };
+        if (onDragStartSidebarItem) {
+          onDragStartSidebarItem({ type: 'resource', id, data });
+        }
+        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'resource', id, data }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      onDragEnd={() => onDragStartSidebarItem?.(null)}
       className="flex flex-col gap-1.5 min-w-[120px] max-w-[120px] cursor-pointer group relative"
       onClick={onClick}
     >
@@ -94,6 +106,20 @@ function ImageCard({ id, title, thumbnailUrl, addedAt, onClick, onDelete, onRena
               className="w-full text-left px-3 py-1.5 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-white transition-colors"
             >
               Rename
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(false);
+                onOpenSplitView?.({
+                  type: 'resource',
+                  id,
+                  data: { id, title, url: thumbnailUrl, category: 'image', addedAt, thumbnailUrl }
+                });
+              }}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-blue-400 transition-colors"
+            >
+              Open in Split View
             </button>
             <button 
               onClick={(e) => {

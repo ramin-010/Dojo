@@ -10,10 +10,13 @@ import { ResourcePreviewModal } from './resources/ResourcePreviewModal';
 
 interface ResourcesTabProps {
   resources: TopicResource[];
+  topicId?: string;
   activeUrls?: string[];
-  onDeleteResource?: (id: string, url: string) => void;
-  onDeleteMultipleResources?: (ids: string[]) => void;
-  onRenameResource?: (id: string, newTitle: string) => void;
+  onDelete?: (id: string, url: string) => void;
+  onDeleteMultiple?: (ids: string[]) => void;
+  onRename?: (id: string, newTitle: string) => void;
+  onDragStartSidebarItem?: (data: any) => void;
+  onOpenSplitView?: (data: any) => void;
 }
 
 function getRelativeTime(dateString: string | Date) {
@@ -35,7 +38,15 @@ function getRelativeTime(dateString: string | Date) {
   return `${Math.floor(diffInDays / 365)}y ago`;
 }
 
-export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onDeleteMultipleResources, onRenameResource }: ResourcesTabProps) {
+export function ResourcesTab({ 
+  resources, 
+  activeUrls = [], 
+  onDelete, 
+  onDeleteMultiple, 
+  onRename,
+  onDragStartSidebarItem,
+  onOpenSplitView
+}: ResourcesTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory>('All');
   const [previewResource, setPreviewResource] = useState<ResourceRowProps | null>(null);
@@ -118,7 +129,7 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
       </div>
       {selectedCategory !== 'All' && itemsForDeletion && itemsForDeletion.length > 0 && (
         <button 
-          onClick={() => onDeleteMultipleResources?.(itemsForDeletion)}
+          onClick={() => onDeleteMultiple?.(itemsForDeletion)}
           className="text-[10px] scale-[0.9] font-medium text-red-400 hover:text-red-500 transition-colors"
         >
           Delete all
@@ -158,7 +169,7 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
           <div className="mb-4">
             {renderSectionHeader(<Clock className="w-3.5 h-3.5 text-muted-foreground" />, 'Recent')}
             <div className="flex flex-col gap-0.5">
-              {recent.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDeleteResource} onRename={onRenameResource} />)}
+              {recent.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDelete} onRename={onRename} onDragStartSidebarItem={onDragStartSidebarItem} onOpenSplitView={onOpenSplitView} />)}
             </div>
           </div>
         )}
@@ -172,8 +183,10 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
                 ...img, 
                 thumbnailUrl: img.thumbnailUrl || img.url, 
                 onClick: () => setPreviewResource({ ...img, category: 'image', url: img.thumbnailUrl || img.url }),
-                onDelete: onDeleteResource,
-                onRename: onRenameResource
+                onDelete: onDelete,
+                onRename: onRename,
+                onDragStartSidebarItem,
+                onOpenSplitView
               }))} 
             />
           </div>
@@ -184,7 +197,7 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
           <div className="mb-4">
             {renderSectionHeader(<Globe className="w-3.5 h-3.5 text-blue-500" />, `Links (${links.length})`, links.map(l => l.id))}
             <div className="flex flex-col gap-0.5">
-              {links.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDeleteResource} onRename={onRenameResource} />)}
+              {links.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDelete} onRename={onRename} onDragStartSidebarItem={onDragStartSidebarItem} onOpenSplitView={onOpenSplitView} />)}
             </div>
           </div>
         )}
@@ -194,7 +207,7 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
           <div className="mb-4">
             {renderSectionHeader(<FileIcon className="w-3.5 h-3.5 text-blue-500" />, `Files (${files.length})`, files.map(f => f.id))}
             <div className="flex flex-col gap-0.5">
-              {files.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDeleteResource} onRename={onRenameResource} />)}
+              {files.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDelete} onRename={onRename} onDragStartSidebarItem={onDragStartSidebarItem} onOpenSplitView={onOpenSplitView} />)}
             </div>
           </div>
         )}

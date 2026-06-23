@@ -20,6 +20,7 @@ interface TopicCanvasProps {
   onActiveUrlsChange?: (urls: string[]) => void;
   onBlockRemoved?: (block: any) => void;
   onResourceAdded?: (resource: any) => void;
+  readOnly?: boolean;
 }
 
 export function TopicCanvas({
@@ -35,6 +36,7 @@ export function TopicCanvas({
   onActiveUrlsChange,
   onBlockRemoved,
   onResourceAdded,
+  readOnly = false,
 }: TopicCanvasProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
@@ -218,6 +220,7 @@ export function TopicCanvas({
             title={title}
             showTitle={showTitle}
             zoom={autoZoom}
+            readOnly={readOnly}
             onSelectBlock={setSelectedBlockId}
             onUpdateBlock={updateBlock}
             onDeleteBlock={deleteBlock}

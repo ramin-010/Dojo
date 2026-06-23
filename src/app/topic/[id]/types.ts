@@ -3,6 +3,14 @@
 
 export type SidebarTab = 'links' | 'notes' | 'resources';
 
+export type SplitViewItemType = 'note' | 'resource' | 'topic_link';
+
+export interface SplitViewData {
+  type: SplitViewItemType;
+  id: string;
+  data: any; // The raw data of the dropped item
+}
+
 export interface TopicRevision {
   id: string;
   cycleNumber: number;

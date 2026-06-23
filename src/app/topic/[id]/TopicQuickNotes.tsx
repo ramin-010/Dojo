@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Pin, Clock, Lightbulb, CheckSquare, MessageSquare, Calendar, FileText, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Search, Pin, Clock, Lightbulb, CheckSquare, MessageSquare, Calendar, FileText, Trash2, Plus, Loader2, Columns } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopicQuickNote, NoteCategory } from './types';
 import { createQuickNote, togglePinQuickNote, deleteQuickNote } from '@/app/actions';
@@ -13,9 +13,11 @@ interface TopicQuickNotesProps {
   noteCategories: NoteCategory[];
   topicId: string;
   subjectId: string;
+  onDragStartSidebarItem?: (data: any) => void;
+  onOpenSplitView?: (data: any) => void;
 }
 
-export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId }: TopicQuickNotesProps) {
+export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId, onDragStartSidebarItem, onOpenSplitView }: TopicQuickNotesProps) {
   const [query, setQuery] = useState('');
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   
@@ -103,6 +105,15 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, note: TopicQuickNote) => {
+    if (onDragStartSidebarItem) {
+      onDragStartSidebarItem({ type: 'note', id: note.id, data: note });
+    }
+    // Also set dataTransfer to allow native drag and drop behavior
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'note', id: note.id, data: note }));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   const renderNoteCard = (note: TopicQuickNote) => {
     const categoryName = note.category?.name || 'Others';
     const displayTitle = note.title || note.content.split('\n')[0].slice(0, 50) + (note.content.length > 50 ? '...' : '');
@@ -113,6 +124,9 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
       <div 
         key={note.id} 
         onClick={() => setExpandedNoteId(isExpanded ? null : note.id)}
+        draggable
+        onDragStart={(e) => handleDragStart(e, note)}
+        onDragEnd={() => onDragStartSidebarItem?.(null)}
         className="group p-3.5 rounded-xl border border-white/5 bg-black/20 hover:bg-white/[0.03] hover:border-white/10 transition-all relative flex gap-3.5 cursor-pointer"
       >
         <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center mt-0.5 ${getCategoryBgClass(categoryName)}`}>
@@ -132,16 +146,25 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
         </div>
         <div className="flex flex-col items-center gap-1 shrink-0">
           <button 
+            onClick={(e) => { e.stopPropagation(); onOpenSplitView?.({ type: 'note', id: note.id, data: note }); }}
+            className="text-muted-foreground/40 hover:text-blue-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Open in Split View"
+          >
+            <Columns className="w-3.5 h-3.5" />
+          </button>
+          <button 
             onClick={(e) => { e.stopPropagation(); handleTogglePin(note.id, note.isPinned); }}
             className={`p-1 rounded-md transition-opacity ${note.isPinned ? 'text-white/80' : 'text-muted-foreground/40 hover:text-white/80 opacity-0 group-hover:opacity-100'}`}
+            title={note.isPinned ? "Unpin note" : "Pin note"}
           >
             <Pin className={`w-3.5 h-3.5 ${note.isPinned ? 'fill-current' : ''}`} />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); setNoteToDelete(note.id); }}
             className="text-muted-foreground/40 hover:text-red-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Delete note"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

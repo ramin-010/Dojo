@@ -11,6 +11,7 @@ import {
   Info,
   Settings,
   ChevronRight,
+  Columns,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -23,7 +24,7 @@ import { TopicSettingsModal } from './TopicSettingsModal';
 import { toast } from 'sonner';
 
 // ── Local pieces ───────────────────────────────────────────────────────────────
-import { TopicWorkspaceProps, SidebarTab } from './types';
+import { TopicWorkspaceProps, SidebarTab, SplitViewData } from './types';
 import { useTopicRevisions, formatDate } from './hooks/useTopicRevisions';
 import { useTopicTitle } from './hooks/useTopicTitle';
 import { useTopicTags } from './hooks/useTopicTags';
@@ -31,10 +32,14 @@ import { useSidebarResize } from './hooks/useSidebarResize';
 import { TagsBar } from './components/TagsBar';
 import { RevisionButton } from './components/RevisionButton';
 import { ContextSidebar } from './components/ContextSidebar';
+import { SplitViewer } from './components/SplitViewer';
 
 export type { SidebarTab };
 
 export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCategories }: TopicWorkspaceProps) {
+  // ── Split View State ───────────────────────────────────────────────────────
+  const [splitViewData, setSplitViewData] = useState<SplitViewData | null>(null);
+  const [isDraggingSidebarItem, setIsDraggingSidebarItem] = useState(false);
   // ── Sidebar open / tab state ───────────────────────────────────────────────
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('links');
@@ -98,8 +103,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     revisions: topic.revisions,
   });
 
-  // ── isSaving indicator (from store, passed to canvas) ─────────────────────
-  const { isSaving, setIsSaving } = useAppStore();
+  // ── isSaving & splitView indicator (from store, passed to canvas) ─────────────────────
+  const { isSaving, setIsSaving, setIsSplitViewActive } = useAppStore();
 
   // ── Canvas container width (RAF-throttled ResizeObserver) ─────────────────
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
@@ -384,19 +389,56 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   // Overlay opacity and sidebar width are now driven purely by CSS variables during drag
   // to prevent React re-rendering the entire workspace at 60fps.
 
+  const handleOpenSplitView = useCallback((data: SplitViewData) => {
+    setSplitViewData(data);
+    setIsSidebarOpen(false);
+    setIsSplitViewActive(true);
+  }, [setIsSplitViewActive]);
+
+  const handleCloseSplitView = useCallback(() => {
+    setSplitViewData(null);
+    setIsSplitViewActive(false);
+  }, [setIsSplitViewActive]);
+
+  const handleDragStartSidebarItem = useCallback((data: SplitViewData | null) => {
+    setIsDraggingSidebarItem(data !== null);
+  }, []);
+
+  const handleDropSplitView = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingSidebarItem(false);
+    
+    try {
+      const payload = e.dataTransfer.getData('application/json');
+      if (payload) {
+        const data = JSON.parse(payload) as SplitViewData;
+        if (data.type) {
+          handleOpenSplitView(data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to parse split view drop data', err);
+    }
+  }, [handleOpenSplitView]);
+
   // ──────────────────────────────────────────────────────────────────────────
   return (
     <div className="h-screen w-full bg-background flex overflow-hidden">
       {/* ── Main Content Area ──────────────────────────────────────────────── */}
       <div
-        className={`flex-1 h-full overflow-y-auto overflow-x-hidden min-w-[500px] relative ${
+        className={`h-full overflow-y-auto overflow-x-hidden relative ${
           isDragging ? '' : 'transition-all duration-300 ease-in-out'
         }`}
-        style={{ marginRight: isSidebarOpen ? 'var(--sidebar-width, 384px)' : '0px' }}
+        style={{ 
+          marginRight: isSidebarOpen ? 'var(--sidebar-width, 384px)' : '0px',
+          width: splitViewData ? '65vw' : 'auto',
+          flex: splitViewData ? 'none' : 1,
+          minWidth: splitViewData ? '1000px' : '500px',
+        }}
         onScroll={handleScroll}
       >
         {/* Floating Sidebar Toggle */}
-        {!isSidebarOpen && (
+        {!isSidebarOpen && !splitViewData && (
           <button
             onClick={() => {
               setIsSidebarOpen(true);
@@ -705,10 +747,33 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                 onBlockRemoved={handleBlockRemoved}
                 onResourceAdded={handleResourceAdded}
               />
+              
+              {/* Split View Dropzone Overlay */}
+              {isDraggingSidebarItem && (
+                <div 
+                  className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px]"
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                  onDragLeave={(e) => { e.preventDefault(); }}
+                  onDrop={handleDropSplitView}
+                >
+                  <div className="bg-background border-2 border-dashed border-blue-500/50 rounded-2xl p-10 flex flex-col items-center justify-center text-center shadow-2xl animate-in fade-in zoom-in-95 pointer-events-none">
+                    <Columns className="w-10 h-10 text-blue-500 mb-4 opacity-80" />
+                    <h3 className="text-xl font-bold text-foreground">Drop here for Side-by-Side view</h3>
+                    <p className="text-sm text-muted-foreground mt-2">Open the item next to your canvas</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── Split View Pane ─────────────────────────────────────────────────── */}
+      {splitViewData && (
+        <div className="flex-1 min-w-[300px] h-full overflow-hidden z-40 bg-background relative">
+          <SplitViewer data={splitViewData} onClose={handleCloseSplitView} />
+        </div>
+      )}
 
       {/* ── Context Sidebar ─────────────────────────────────────────────────── */}
       <ContextSidebar
@@ -731,6 +796,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         onDeleteMultipleResources={handleMultipleResourceDelete}
         onRenameResource={handleResourceRename}
         onDeleteMention={handleDeleteMention}
+        onDragStartSidebarItem={handleDragStartSidebarItem}
+        onOpenSplitView={handleOpenSplitView}
       />
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
