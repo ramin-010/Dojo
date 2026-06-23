@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 
 import { getSubjectsWithTopics } from "@/app/actions";
 import { Toaster } from 'sonner';
+import { GlobalQuickNoteModal } from "@/components/global/GlobalQuickNoteModal";
 
 export default async function RootLayout({
   children,
@@ -45,6 +46,7 @@ export default async function RootLayout({
             color: '#e4e4e7', // zinc-200
           }
         }} />
+        <GlobalQuickNoteModal />
       </body>
     </html>
   );

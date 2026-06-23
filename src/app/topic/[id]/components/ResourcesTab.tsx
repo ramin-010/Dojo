@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TopicResource } from '../types';
-import { Clock, Image as ImageIcon, Globe, File as FileIcon } from 'lucide-react';
+import { Clock, Image as ImageIcon, Globe, File as FileIcon, Layers } from 'lucide-react';
 import { ResourceSearchBar } from './resources/ResourceSearchBar';
 import { ResourceFilterPills, ResourceCategory } from './resources/ResourceFilterPills';
 import { ResourceRow, ResourceRowProps } from './resources/ResourceRow';
@@ -141,7 +141,19 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
 
       <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide pb-2">
         
-        {/* RECENT SECTION */}
+        {mappedResources.length === 0 ? (
+          <div className="text-center py-10 opacity-60">
+            <Layers className="w-8 h-8 mx-auto mb-3 opacity-50" />
+            <p className="text-[13px] font-medium">No resources yet</p>
+            <p className="text-[11px] mt-1">Extract links or images from the canvas to attach them here.</p>
+          </div>
+        ) : filteredBySearch.length === 0 ? (
+          <div className="text-center py-10 opacity-60">
+            <p className="text-[13px] font-medium">No resources match your search.</p>
+          </div>
+        ) : (
+          <>
+            {/* RECENT SECTION */}
         {(selectedCategory === 'All' && recent.length > 0) && (
           <div className="mb-4">
             {renderSectionHeader(<Clock className="w-3.5 h-3.5 text-muted-foreground" />, 'Recent')}
@@ -185,6 +197,8 @@ export function ResourcesTab({ resources, activeUrls = [], onDeleteResource, onD
               {files.map(r => <ResourceRow key={r.id} {...r} onClick={() => handleResourceClick(r)} onDelete={onDeleteResource} onRename={onRenameResource} />)}
             </div>
           </div>
+        )}
+          </>
         )}
 
       </div>

@@ -190,7 +190,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     () =>
       topic.quickNotes.map((note) => ({
         id: note.id,
-        type: (note.isSubjectLevel
+        type: (note.topicId === null
           ? 'subject'
           : 'topic-same-subject') as
           | 'subject'
@@ -198,7 +198,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
           | 'topic-diff-subject',
         content: note.content,
         date: timeAgo(note.createdAt),
-        linkedItemTitle: note.isSubjectLevel
+        linkedItemTitle: note.topicId === null
           ? topic.subject.name
           : topic.title,
       })),

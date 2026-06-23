@@ -172,7 +172,7 @@ export function TopicLinksTimeline({
   return (
     <div className="pb-4 pt-2">
       <div className="px-5 mb-6">
-        <p className="text-xs text-zinc-400 mb-3 mt-1">All the links attached to this topic.</p>
+        <p className="text-xs text-zinc-400 mb-4 mt-1">All the links attached to this topic.</p>
         <div className="relative flex items-center">
           <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground" />
           <input

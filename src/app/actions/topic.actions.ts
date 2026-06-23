@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
-import { DEV_USER_ID } from '@/lib/constants';
+import { DEV_USER_ID, DEV_WORKSPACE_ID } from '@/lib/constants';
 import { revalidatePath } from 'next/cache';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -373,9 +373,9 @@ export async function createTextResourceLink(
 
   const resource = await prisma.resourceLink.create({
     data: {
+      workspaceId: DEV_WORKSPACE_ID,
       subjectId: topic.subjectId,
       topicId: topicId,
-      isSubjectLevel: false,
       url: url,
       title: title,
       category: category,

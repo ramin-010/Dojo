@@ -19,7 +19,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
     <TopicWorkspace 
       topic={topic} 
       allSubjectTags={allSubjectTags} 
-      adjacentTopics={adjacentTopics} 
+      adjacentTopics={{ prev: adjacentTopics.prevTopic, next: adjacentTopics.nextTopic }}
       noteCategories={noteCategoriesResult.categories || []}
     />
   );

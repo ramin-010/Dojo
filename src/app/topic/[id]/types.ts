@@ -49,9 +49,9 @@ export interface TopicQuickNote {
   isPinned: boolean;
   categoryId: string | null;
   category: NoteCategory | null;
-  isSubjectLevel: boolean;
+  workspaceId: string;
   topicId: string | null;
-  subjectId: string;
+  subjectId: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }

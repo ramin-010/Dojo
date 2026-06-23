@@ -37,6 +37,47 @@ async function main() {
   });
   console.log(`✅ Workspace: ${workspace.name} (${workspace.id})`);
 
+  // 3. Create a Dummy Subject
+  const dummySubject = await prisma.subject.create({
+    data: {
+      workspaceId: workspace.id,
+      name: 'Software Engineering',
+      description: 'A study on building great software.',
+      color: 'blue',
+    },
+  });
+  console.log(`✅ Subject: ${dummySubject.name}`);
+
+  // 4. Create a Dummy Topic
+  const dummyTopic = await prisma.topic.create({
+    data: {
+      subjectId: dummySubject.id,
+      title: 'Database Architecture',
+      sortOrder: 1,
+    },
+  });
+  console.log(`✅ Topic: ${dummyTopic.title}`);
+
+  // 5. Create a Dummy Global Quick Note
+  await prisma.quickNote.create({
+    data: {
+      workspaceId: workspace.id,
+      title: 'Global Idea',
+      content: 'We should definitely look into vector embeddings for search.',
+    },
+  });
+
+  // 6. Create a Dummy Topic Quick Note
+  await prisma.quickNote.create({
+    data: {
+      workspaceId: workspace.id,
+      subjectId: dummySubject.id,
+      topicId: dummyTopic.id,
+      title: 'Topic Note',
+      content: 'Postgres handles JSONB extremely well for these schema variations.',
+    },
+  });
+  console.log(`✅ Quick Notes seeded`);
 
   console.log('\n🎉 Seed complete!');
 }

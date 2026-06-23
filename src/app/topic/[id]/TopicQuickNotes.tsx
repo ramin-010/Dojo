@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Pin, Clock, Lightbulb, CheckSquare, MessageSquare, Calendar, FileText, MoreVertical, Plus, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Pin, Clock, Lightbulb, CheckSquare, MessageSquare, Calendar, FileText, Trash2, Plus, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TopicQuickNote, NoteCategory } from './types';
 import { createQuickNote, togglePinQuickNote, deleteQuickNote } from '@/app/actions';
+
 import { toast } from 'sonner';
 
 interface TopicQuickNotesProps {
@@ -17,12 +19,8 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
   const [query, setQuery] = useState('');
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   
-  // Note creation state
-  const [isCreating, setIsCreating] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newContent, setNewContent] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
   // Filter notes
   const filteredNotes = quickNotes.filter(n => {
@@ -65,30 +63,20 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
     return 'bg-white/5';
   };
 
-  const handleCreateNote = async () => {
-    if (!newContent.trim()) {
-      toast.error('Note content is required');
-      return;
-    }
-
-    setIsSubmitting(true);
+  const handleSaveNote = async (data: { title: string; content: string; categoryName: string }) => {
     const result = await createQuickNote({
       subjectId,
       topicId,
-      content: newContent,
-      title: newTitle.trim() || undefined,
-      categoryName: newCategoryName.trim() || undefined,
+      content: data.content,
+      title: data.title.trim() || undefined,
+      categoryName: data.categoryName.trim() || undefined,
     });
-    setIsSubmitting(false);
 
     if (result.error) {
       toast.error(result.error);
+      throw new Error(result.error);
     } else {
       toast.success('Quick note added!');
-      setIsCreating(false);
-      setNewTitle('');
-      setNewContent('');
-      setNewCategoryName('');
     }
   };
 
@@ -102,8 +90,10 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this note?')) return;
+  const confirmDelete = async () => {
+    if (!noteToDelete) return;
+    const id = noteToDelete;
+    setNoteToDelete(null);
     const toastId = toast.loading('Deleting note...');
     const result = await deleteQuickNote(id);
     if (result.error) {
@@ -117,15 +107,20 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
     const categoryName = note.category?.name || 'Others';
     const displayTitle = note.title || note.content.split('\n')[0].slice(0, 50) + (note.content.length > 50 ? '...' : '');
     const displayContent = note.title ? note.content : note.content.split('\n').slice(1).join('\n') || note.content;
+    const isExpanded = expandedNoteId === note.id;
 
     return (
-      <div key={note.id} className="group p-3.5 rounded-xl border border-white/5 bg-black/20 hover:bg-white/[0.03] hover:border-white/10 transition-all relative flex gap-3.5">
+      <div 
+        key={note.id} 
+        onClick={() => setExpandedNoteId(isExpanded ? null : note.id)}
+        className="group p-3.5 rounded-xl border border-white/5 bg-black/20 hover:bg-white/[0.03] hover:border-white/10 transition-all relative flex gap-3.5 cursor-pointer"
+      >
         <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center mt-0.5 ${getCategoryBgClass(categoryName)}`}>
           {getCategoryIcon(categoryName)}
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-[13px] font-medium text-white/90 truncate mb-1">{displayTitle}</h4>
-          <p className="text-[12px] text-muted-foreground/70 leading-snug line-clamp-3 mb-2 whitespace-pre-wrap">{displayContent}</p>
+          <p className={`text-[12px] text-muted-foreground/70 leading-snug mb-2 whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-3'}`}>{displayContent}</p>
           <div className="flex items-center gap-2">
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getCategoryColorClass(categoryName)}`}>
               {categoryName}
@@ -137,16 +132,16 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
         </div>
         <div className="flex flex-col items-center gap-1 shrink-0">
           <button 
-            onClick={() => handleTogglePin(note.id, note.isPinned)}
+            onClick={(e) => { e.stopPropagation(); handleTogglePin(note.id, note.isPinned); }}
             className={`p-1 rounded-md transition-opacity ${note.isPinned ? 'text-white/80' : 'text-muted-foreground/40 hover:text-white/80 opacity-0 group-hover:opacity-100'}`}
           >
             <Pin className={`w-3.5 h-3.5 ${note.isPinned ? 'fill-current' : ''}`} />
           </button>
           <button 
-            onClick={() => handleDelete(note.id)}
+            onClick={(e) => { e.stopPropagation(); setNoteToDelete(note.id); }}
             className="text-muted-foreground/40 hover:text-red-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <MoreVertical className="w-4 h-4" /> {/* Use a proper delete or menu icon here, using more-vertical for now as in mockup */}
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -161,7 +156,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
       `}</style>
 
       {/* Header section */}
-      <div className="px-5 pt-4 pb-4">
+      <div className="px-5 mt-1 pb-4">
         <p className="text-xs text-zinc-400 mb-2 mt-2">All the quick notes attached to this topic.</p>
 
         {/* Search & Action */}
@@ -177,10 +172,9 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
             />
           </div>
           <button 
-            onClick={() => setIsCreating(!isCreating)}
-            className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 text-[11px] font-medium transition-colors shadow-sm shrink-0"
+            className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg px-2 py-1 flex items-center gap-1.5 text-[11px] font-medium transition-colors shadow-sm shrink-0"
           >
-            <Plus className={`w-3.5 h-3.5 transition-transform ${isCreating ? 'rotate-45' : ''}`} />
+            <Plus className="w-3.5 h-3.5" />
             New note
           </button>
         </div>
@@ -225,53 +219,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
       {/* Lists */}
       <div className="flex-1 overflow-y-auto px-5 pb-20 custom-scrollbar space-y-6">
         
-        {/* Create Note Inline Form */}
-        {isCreating && (
-          <div className="p-4 rounded-xl border border-[#2563eb]/30 bg-[#2563eb]/5 space-y-3 mb-6">
-            <input 
-              type="text" 
-              placeholder="Title (optional)" 
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full bg-transparent border-b border-white/10 pb-1 text-[13px] font-medium text-white focus:outline-none focus:border-white/30"
-            />
-            <textarea 
-              placeholder="What's on your mind?..." 
-              value={newContent}
-              onChange={(e) => setNewContent(e.target.value)}
-              className="w-full bg-transparent text-[13px] text-white/90 placeholder:text-muted-foreground/50 focus:outline-none resize-none h-20"
-            />
-            <div className="flex items-center justify-between pt-2">
-              <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="Category (e.g. Idea, To-Do)" 
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded px-2 py-1 text-[11px] text-white/90 w-40 focus:outline-none focus:border-white/20"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setIsCreating(false)}
-                  className="text-[11px] text-muted-foreground hover:text-white px-2 py-1"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleCreateNote}
-                  disabled={isSubmitting || !newContent.trim()}
-                  className="bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 text-white rounded px-3 py-1 text-[11px] font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  {isSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
-                  Save Note
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {quickNotes.length === 0 && !isCreating ? (
+        {quickNotes.length === 0 ? (
           <div className="text-center py-10 opacity-60">
             <FileText className="w-8 h-8 mx-auto mb-3 opacity-50" />
             <p className="text-[13px] font-medium">No quick notes yet</p>
@@ -314,6 +262,44 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
         )}
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {noteToDelete && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setNoteToDelete(null)}
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#1e1e1e] border border-white/10 rounded-xl p-5 shadow-2xl z-10 w-full max-w-sm"
+            >
+              <h3 className="text-lg font-medium text-white mb-2">Delete Note</h3>
+              <p className="text-sm text-white/60 mb-6">Are you sure you want to delete this note? This action cannot be undone.</p>
+              <div className="flex justify-end gap-3">
+                  <button 
+                    onClick={() => setNoteToDelete(null)}
+                    className="flex flex-1 items-center justify-center gap-1.5 py-1 text-muted-foreground"
+                  >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="px-4 py-2 text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 rounded-lg transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

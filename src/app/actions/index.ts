@@ -52,5 +52,6 @@ export {
   togglePinQuickNote,
   deleteQuickNote,
   getWorkspaceNoteCategories,
+  generateQuickNoteAI,
 } from './quicknote.actions';
 

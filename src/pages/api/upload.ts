@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { upflyUpload } from 'upfly';
 import { prisma } from '@/lib/db';
+import { DEV_WORKSPACE_ID } from '@/lib/constants';
 
 export const config = {
   api: {
@@ -85,9 +86,9 @@ export default async function handler(
         const isImage = mimetype?.startsWith('image/');
         createdResource = await prisma.resourceLink.create({
           data: {
+            workspaceId: DEV_WORKSPACE_ID,
             subjectId,
             topicId,
-            isSubjectLevel: false,
             url: cloudUrl,
             title: originalname || 'Uploaded File',
             category: isImage ? 'image' : 'file',

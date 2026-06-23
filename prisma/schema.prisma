@@ -26,6 +26,8 @@ model Workspace {
   name      String
   subjects       Subject[]
   noteCategories NoteCategory[]
+  quickNotes     QuickNote[]
+  resources      ResourceLink[]
 }
 
 // ====================================================================
@@ -58,16 +60,16 @@ model Subject {
 model ResourceLink {
   id              String   @id @default(uuid())
   
-  // REQUIRED: Data boundary (cascading deletes)
-  subjectId       String   
-  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  // REQUIRED: Data boundary
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
-  // OPTIONAL: Does it belong to a specific topic?
+  // OPTIONAL: Subject / Topic
+  subjectId       String?   
+  subject         Subject?  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
   topicId         String?
-  topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  
-  // Controls visibility logic (Only Subject, Only Topic, Both)
-  isSubjectLevel  Boolean  @default(true)
+  topic           Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
   
   url             String
   title           String
@@ -94,19 +96,20 @@ model NoteCategory {
 model QuickNote {
   id              String   @id @default(uuid())
   
-  subjectId       String   
-  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  subjectId       String?   
+  subject         Subject?  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   
   topicId         String?
-  topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic           Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
   
   title           String?
   isPinned        Boolean  @default(false)
   
   categoryId      String?
   category        NoteCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  
-  isSubjectLevel  Boolean  @default(true)
   
   content         String   
   createdAt       DateTime @default(now())

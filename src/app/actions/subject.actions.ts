@@ -49,11 +49,11 @@ export async function getSubjectById(subjectId: string) {
         orderBy: { sortOrder: 'asc' },
       },
       resources: {
-        where: { isSubjectLevel: true },
+        where: { topicId: null },
         orderBy: { createdAt: 'desc' },
       },
       quickNotes: {
-        where: { isSubjectLevel: true },
+        where: { topicId: null },
         orderBy: { createdAt: 'desc' },
       },
     },
