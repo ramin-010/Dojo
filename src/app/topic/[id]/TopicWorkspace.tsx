@@ -65,12 +65,6 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     
-    // Warn user about destructive wipe
-    if (!window.confirm("This will completely erase your current canvas and replace it with the AI-synthesized notes. Proceed?")) {
-      e.target.value = '';
-      return;
-    }
-
     setIsAiImporting(true);
     toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
 
@@ -124,15 +118,11 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       if (!geminiRes.ok) throw new Error('AI extraction failed');
       const { blocks } = await geminiRes.json();
 
-      // 3. Wipe & Replace Canvas
+      // 3. Append to Canvas seamlessly via Event Bus
       if (blocks && blocks.length > 0) {
-        // Find the TopicCanvas component's hydrate method via event or prop?
-        // Wait, we pass initialCanvasContent to TopicCanvas. But that's only initial.
-        // We need a way to force update the canvas. The standard way is to emit an event or update the DB and reload.
-        // Let's save directly to DB and trigger a reload.
-        await saveCanvasData(topic.id, { blocks, connections: [] });
-        toast.success('Notes successfully synthesized!', { id: 'ai-import' });
-        window.location.reload(); 
+        const newBlock = blocks[0];
+        window.dispatchEvent(new CustomEvent('CANVAS_INSERT_AI_BLOCK', { detail: { block: newBlock } }));
+        toast.success('Notes successfully synthesized and appended!', { id: 'ai-import' });
       } else {
         throw new Error('No blocks returned from AI');
       }

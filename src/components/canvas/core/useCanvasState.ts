@@ -112,6 +112,40 @@ export function useCanvasState(
     }, 300);
   }, [blocks, connections]);
 
+  // Listen for AI block insertions
+  useEffect(() => {
+    const handleInsertAiBlock = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const newBlock = customEvent.detail.block;
+      if (!newBlock) return;
+
+      setBlocks(prev => {
+        // Find the lowest block on the canvas to place the new one below it
+        let maxY = 40;
+        if (prev.length > 0) {
+          prev.forEach(b => {
+            const blockHeight = typeof b.height === 'number' ? b.height : 800; // rough estimate if auto
+            const bottom = b.y + blockHeight;
+            if (bottom > maxY) maxY = bottom;
+          });
+          maxY += 80; // Add some padding
+        }
+        
+        const blockToInsert = {
+          ...newBlock,
+          blockId: uuidv4(), // Force a unique ID to prevent React key collisions
+          y: maxY,
+          x: 40 // Align left
+        };
+
+        return [...prev, blockToInsert];
+      });
+    };
+
+    window.addEventListener('CANVAS_INSERT_AI_BLOCK', handleInsertAiBlock);
+    return () => window.removeEventListener('CANVAS_INSERT_AI_BLOCK', handleInsertAiBlock);
+  }, []);
+
   const addBlock = useCallback((targetCanvasId: string, type: CanvasBlockData['type'], x?: number, y?: number) => {
     const defaults: Record<string, Partial<CanvasBlockData>> = {
       text: { width: 450, height: 'auto', content: '' },
