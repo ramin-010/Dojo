@@ -210,7 +210,11 @@ export function TopicLinksTimeline({
                   </div>
                   <div className="flex flex-col">
                     <span className="text-white/90 font-medium">{item.title}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.subject || (item.isSubject ? 'Subject' : '')}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      {typeof item.subject === 'object' && item.subject?.name 
+                        ? item.subject.name 
+                        : item.subject || (item.isSubject ? 'Subject' : '')}
+                    </span>
                   </div>
                 </button>
               ))

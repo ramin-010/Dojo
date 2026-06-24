@@ -18,10 +18,12 @@ import { useRouter } from 'next/navigation';
 import { TopicCanvas } from '@/components/canvas/TopicCanvas';
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
-import { createTopic, deleteResourcePermanently, getTopicResources, createTextResourceLink, renameResource, deleteMultipleResourcesPermanently, deleteTopicMention } from '@/app/actions';
+import { createTopic, deleteResourcePermanently, getTopicResources, createTextResourceLink, renameResource, deleteMultipleResourcesPermanently, deleteTopicMention, saveCanvasData } from '@/app/actions';
 import { TopicHistoryModal } from './TopicHistoryModal';
 import { TopicSettingsModal } from './TopicSettingsModal';
 import { toast } from 'sonner';
+import { uploadToCloud } from '@/lib/utils/upload';
+import { Bot } from 'lucide-react';
 
 // ── Local pieces ───────────────────────────────────────────────────────────────
 import { TopicWorkspaceProps, SidebarTab, SplitViewData } from './types';
@@ -54,6 +56,95 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   // ── Topic creation ─────────────────────────────────────────────────────────
   const router = useRouter();
   const [isCreatingTopic, setIsCreatingTopic] = useState(false);
+
+  // ── AI Import State ────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAiImporting, setIsAiImporting] = useState(false);
+
+  const handleAiImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    // Warn user about destructive wipe
+    if (!window.confirm("This will completely erase your current canvas and replace it with the AI-synthesized notes. Proceed?")) {
+      e.target.value = '';
+      return;
+    }
+
+    setIsAiImporting(true);
+    toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
+
+    try {
+      const imageUrls: string[] = [];
+
+      // 1. Process via CV Pipeline & Upload to Cloudinary
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        toast.loading(`Enhancing image ${i + 1}/${files.length}...`, { id: 'ai-import' });
+        
+        // Call Python CV Proxy
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('output_mode', 'cream');
+        formData.append('denoise_strength', '10');
+
+        const cvRes = await fetch('/api/test-scan-cv', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!cvRes.ok) throw new Error('CV Processing failed');
+        const cvData = await cvRes.json();
+        const base64Data = cvData.url;
+
+        // Convert base64 back to file
+        const byteString = atob(base64Data.split(',')[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let j = 0; j < byteString.length; j++) {
+          ia[j] = byteString.charCodeAt(j);
+        }
+        const cleanBlob = new Blob([ab], { type: 'image/jpeg' });
+        const cleanFile = new File([cleanBlob], `clean_${file.name}`, { type: 'image/jpeg' });
+
+        toast.loading(`Uploading enhanced image ${i + 1}/${files.length}...`, { id: 'ai-import' });
+        // Upload to Cloudinary
+        const uploadResult = await uploadToCloud(cleanFile, undefined, topic.id, topic.subject.id);
+        imageUrls.push(uploadResult.url);
+      }
+
+      // 2. Call Gemini
+      toast.loading('AI is synthesizing your notes. This may take a minute...', { id: 'ai-import' });
+      const geminiRes = await fetch('/api/canvas/extract-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrls }),
+      });
+
+      if (!geminiRes.ok) throw new Error('AI extraction failed');
+      const { blocks } = await geminiRes.json();
+
+      // 3. Wipe & Replace Canvas
+      if (blocks && blocks.length > 0) {
+        // Find the TopicCanvas component's hydrate method via event or prop?
+        // Wait, we pass initialCanvasContent to TopicCanvas. But that's only initial.
+        // We need a way to force update the canvas. The standard way is to emit an event or update the DB and reload.
+        // Let's save directly to DB and trigger a reload.
+        await saveCanvasData(topic.id, { blocks, connections: [] });
+        toast.success('Notes successfully synthesized!', { id: 'ai-import' });
+        window.location.reload(); 
+      } else {
+        throw new Error('No blocks returned from AI');
+      }
+
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || 'Import failed', { id: 'ai-import' });
+    } finally {
+      setIsAiImporting(false);
+      e.target.value = '';
+    }
+  };
 
   // ── Scroll-reveal state ────────────────────────────────────────────────────
   const [isScrolled, setIsScrolled] = useState(false);
@@ -659,6 +750,22 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                     {/* Narrow: info + settings inline */}
                     {canvasContainerWidth < 650 && (
                       <div className="flex items-center gap-3">
+                        <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          onChange={handleAiImport} 
+                          multiple 
+                          accept="image/*" 
+                          className="hidden" 
+                        />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isAiImporting}
+                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
+                        >
+                          <Bot className="w-3.5 h-3.5" />
+                          Import AI
+                        </button>
                         <button
                           onClick={() => setIsSettingsModalOpen(true)}
                           className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
@@ -680,6 +787,22 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   {/* Wide: info + settings absolutely positioned right */}
                   {canvasContainerWidth >= 650 && (
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-4">
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleAiImport} 
+                        multiple 
+                        accept="image/*" 
+                        className="hidden" 
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isAiImporting}
+                        className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
+                      >
+                        <Bot className="w-3.5 h-3.5" />
+                        Import AI
+                      </button>
                       <button
                         onClick={() => setIsInfoModalOpen(true)}
                         className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"

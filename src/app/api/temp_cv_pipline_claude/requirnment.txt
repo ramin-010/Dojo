@@ -1,0 +1,16 @@
+# Note Image Pipeline - Python dependencies
+# Install with: pip install -r requirements.txt
+
+# Core image processing
+opencv-python>=4.8.0           # cv2 - base computer vision
+opencv-contrib-python>=4.8.0   # cv2.ximgproc.guidedFilter
+
+# Scientific image processing  
+scikit-image>=0.21.0           # threshold_sauvola (binarization)
+numpy>=1.24.0                  # Array operations
+
+# Image I/O
+Pillow>=10.0.0                 # PIL - loading, EXIF rotation, format support
+
+# Optional - only needed if you want to run the test suite
+# scipy>=1.11.0
