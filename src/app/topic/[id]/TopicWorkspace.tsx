@@ -24,6 +24,7 @@ import { TopicSettingsModal } from './TopicSettingsModal';
 import { toast } from 'sonner';
 import { uploadToCloud } from '@/lib/utils/upload';
 import { Bot } from 'lucide-react';
+import { AiImportCropperModal } from '@/components/topic/AiImportCropperModal';
 
 // ── Local pieces ───────────────────────────────────────────────────────────────
 import { TopicWorkspaceProps, SidebarTab, SplitViewData } from './types';
@@ -60,51 +61,74 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   // ── AI Import State ────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAiImporting, setIsAiImporting] = useState(false);
+  const [rawImagesForCrop, setRawImagesForCrop] = useState<File[] | null>(null);
 
-  const handleAiImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleAiImportSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (files.length > 5) {
+      toast.warning(`You selected ${files.length} images. Limiting to 5 for optimal AI processing.`, { id: 'ai-import' });
+      files = files.slice(0, 5);
+    }
     
+    setRawImagesForCrop(files);
+    e.target.value = ''; // Reset input so same files can be re-selected if canceled
+  };
+
+  const processCroppedFiles = async (croppedFiles: File[]) => {
+    setRawImagesForCrop(null); // Close modal immediately
     setIsAiImporting(true);
     toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
 
+    const publicIdsToCleanup: string[] = [];
+
     try {
+      // Helper function to chunk array
+      const chunkArray = <T,>(arr: T[], size: number): T[][] => {
+        return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+          arr.slice(i * size, i * size + size)
+        );
+      };
+
+      // We process 2 images at a time to prevent overloading the Python CV proxy
+      const chunks = chunkArray(croppedFiles, 2);
       const imageUrls: string[] = [];
 
-      // 1. Process via CV Pipeline & Upload to Cloudinary
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        toast.loading(`Enhancing image ${i + 1}/${files.length}...`, { id: 'ai-import' });
+      // 1. Process via CV Pipeline & Upload to Cloudinary (Batched)
+      for (let c = 0; c < chunks.length; c++) {
+        const chunk = chunks[c];
+        toast.loading(`Enhancing images batch ${c + 1}/${chunks.length}...`, { id: 'ai-import' });
         
-        // Call Python CV Proxy
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('output_mode', 'cream');
-        formData.append('denoise_strength', '10');
+        const uploadPromises = chunk.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('output_mode', 'cream');
+          formData.append('denoise_strength', '10');
+          if (topic.id) formData.append('topicId', topic.id);
+          if (topic.subjectId) formData.append('subjectId', topic.subjectId);
 
-        const cvRes = await fetch('/api/test-scan-cv', {
-          method: 'POST',
-          body: formData,
+          const cvRes = await fetch('/api/test-scan-cv', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!cvRes.ok) {
+            const errText = await cvRes.text();
+            throw new Error(`CV Processing failed: ${errText}`);
+          }
+          return cvRes.json();
         });
 
-        if (!cvRes.ok) throw new Error('CV Processing failed');
-        const cvData = await cvRes.json();
-        const base64Data = cvData.url;
+        const results = await Promise.all(uploadPromises);
+        results.forEach(res => {
+          if (res.url) imageUrls.push(res.url);
+          if (res.publicId) publicIdsToCleanup.push(res.publicId);
+        });
+      }
 
-        // Convert base64 back to file
-        const byteString = atob(base64Data.split(',')[1]);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let j = 0; j < byteString.length; j++) {
-          ia[j] = byteString.charCodeAt(j);
-        }
-        const cleanBlob = new Blob([ab], { type: 'image/jpeg' });
-        const cleanFile = new File([cleanBlob], `clean_${file.name}`, { type: 'image/jpeg' });
-
-        toast.loading(`Uploading enhanced image ${i + 1}/${files.length}...`, { id: 'ai-import' });
-        // Upload to Cloudinary
-        const uploadResult = await uploadToCloud(cleanFile, undefined, topic.id, topic.subject.id);
-        imageUrls.push(uploadResult.url);
+      if (imageUrls.length === 0) {
+        throw new Error('No images were successfully processed.');
       }
 
       // 2. Call Gemini
@@ -130,9 +154,19 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || 'Import failed', { id: 'ai-import' });
+      
+      // Cleanup Cloudinary uploads if pipeline failed after uploading
+      if (publicIdsToCleanup.length > 0) {
+        toast.loading('Cleaning up failed upload data...', { id: 'ai-import' });
+        fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicIds: publicIdsToCleanup })
+        }).catch(e => console.error('Failed to cleanup cloudinary:', e))
+        .finally(() => toast.error(error.message || 'Import failed', { id: 'ai-import' }));
+      }
     } finally {
       setIsAiImporting(false);
-      e.target.value = '';
     }
   };
 
@@ -743,7 +777,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                         <input 
                           type="file" 
                           ref={fileInputRef} 
-                          onChange={handleAiImport} 
+                          onChange={handleAiImportSelect} 
                           multiple 
                           accept="image/*" 
                           className="hidden" 
@@ -777,13 +811,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   {/* Wide: info + settings absolutely positioned right */}
                   {canvasContainerWidth >= 650 && (
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-4">
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleAiImport} 
-                        multiple 
-                        accept="image/*" 
-                        className="hidden" 
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleAiImportSelect}
+                        multiple
+                        accept="image/*"
+                        className="hidden"
                       />
                       <button
                         onClick={() => fileInputRef.current?.click()}
@@ -924,6 +958,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         onClose={() => setIsSettingsModalOpen(false)}
         topicId={topic.id}
       />
+      {rawImagesForCrop && (
+        <AiImportCropperModal
+          files={rawImagesForCrop}
+          onConfirm={processCroppedFiles}
+          onCancel={() => setRawImagesForCrop(null)}
+        />
+      )}
     </div>
   );
 }
