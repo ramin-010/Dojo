@@ -31,6 +31,10 @@ export interface SmartBlockProps {
   topicId?: string;
   subjectId?: string;
   onRegisterHeight?: (id: string, height: number) => void;
+  metadata?: {
+    sourceImages?: string[];
+    [key: string]: any;
+  };
 }
 
 export interface TaskStats {

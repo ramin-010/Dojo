@@ -21,6 +21,10 @@ export interface CanvasBlockData {
   fileName?: string;
   fileSize?: number;
   fileType?: string;
+  metadata?: {
+    sourceImages?: string[];
+    [key: string]: any;
+  };
 }
 
 export interface CanvasData {

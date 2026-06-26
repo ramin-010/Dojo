@@ -16,6 +16,12 @@ interface Subject {
   topics: Topic[];
 }
 
+interface TypographySettings {
+  fontSize: number;
+  lineHeight: number;
+  headingSpacing: 'compact' | 'standard' | 'relaxed';
+}
+
 interface AppState {
   subjects: Subject[];
   setSubjects: (subjects: Subject[]) => void;
@@ -30,6 +36,10 @@ interface AppState {
   
   isSplitViewActive: boolean;
   setIsSplitViewActive: (active: boolean) => void;
+
+  typography: TypographySettings;
+  setTypography: (settings: Partial<TypographySettings>) => void;
+  initializeTypographyState: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -74,4 +84,44 @@ export const useAppStore = create<AppState>((set) => ({
   
   isSplitViewActive: false,
   setIsSplitViewActive: (active) => set({ isSplitViewActive: active }),
+
+  typography: {
+    fontSize: 15,
+    lineHeight: 1.6,
+    headingSpacing: 'standard',
+  },
+  
+  setTypography: (newSettings) => set((state) => {
+    const updated = { ...state.typography, ...newSettings };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('revise-typography', JSON.stringify(updated));
+      // Immediately apply to document body for reactive CSS updates
+      document.documentElement.style.setProperty('--dynamic-font-size', `${updated.fontSize}px`);
+      document.documentElement.style.setProperty('--dynamic-line-height', `${updated.lineHeight}`);
+      
+      const hsMap = {
+        compact: '1.2rem',
+        standard: '1.6rem',
+        relaxed: '2.2rem'
+      };
+      document.documentElement.style.setProperty('--dynamic-heading-spacing', hsMap[updated.headingSpacing]);
+    }
+    return { typography: updated };
+  }),
+  
+  initializeTypographyState: () => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('revise-typography');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          set({ typography: parsed });
+          document.documentElement.style.setProperty('--dynamic-font-size', `${parsed.fontSize}px`);
+          document.documentElement.style.setProperty('--dynamic-line-height', `${parsed.lineHeight}`);
+          const hsMap = { compact: '1.2rem', standard: '1.6rem', relaxed: '2.2rem' };
+          document.documentElement.style.setProperty('--dynamic-heading-spacing', hsMap[parsed.headingSpacing as keyof typeof hsMap] || '1.6rem');
+        } catch(e) {}
+      }
+    }
+  },
 }));

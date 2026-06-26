@@ -178,22 +178,13 @@ export const BlockContent = React.memo<BlockContentProps>(({
           }
         }}
       >
-        <div 
-          className="tiptap ProseMirror preview-prosemirror select-none h-full w-full"
-          style={{ 
-            maxWidth: '100%', 
-            margin: 0, 
-            paddingLeft: '4px', 
-            paddingRight: '4px',
-            paddingTop: '2px',
-            paddingBottom: '2px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            color: 'inherit',
-            fontSize: 'inherit',
-            pointerEvents: 'auto', // Allow clicks for mentions
-          }}
-          dangerouslySetInnerHTML={{ __html: content || '' }}
+        <BlockEditor 
+          content={content} 
+          onChange={() => {}} 
+          readOnly={true}
+          onMentionClick={onMentionClick}
+          topicId={topicId}
+          subjectId={subjectId}
         />
       </div>
     );

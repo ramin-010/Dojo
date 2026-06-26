@@ -76,7 +76,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     e.target.value = ''; // Reset input so same files can be re-selected if canceled
   };
 
-  const processCroppedFiles = async (croppedFiles: File[]) => {
+  const processCroppedFiles = async (croppedFiles: File[], userContext?: string) => {
     setRawImagesForCrop(null); // Close modal immediately
     setIsAiImporting(true);
     toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
@@ -136,7 +136,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       const geminiRes = await fetch('/api/canvas/extract-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrls }),
+        body: JSON.stringify({ imageUrls, userContext }),
       });
 
       if (!geminiRes.ok) throw new Error('AI extraction failed');
@@ -514,6 +514,19 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     setSplitViewData(null);
     setIsSplitViewActive(false);
   }, [setIsSplitViewActive]);
+
+  // Global event listener for opening split view from inside canvas blocks
+  useEffect(() => {
+    const handleCanvasOpenSplitView = (e: Event) => {
+      const customEvent = e as CustomEvent<SplitViewData>;
+      if (customEvent.detail) {
+        handleOpenSplitView(customEvent.detail);
+      }
+    };
+    
+    window.addEventListener('CANVAS_OPEN_SPLIT_VIEW', handleCanvasOpenSplitView);
+    return () => window.removeEventListener('CANVAS_OPEN_SPLIT_VIEW', handleCanvasOpenSplitView);
+  }, [handleOpenSplitView]);
 
   const handleDragStartSidebarItem = useCallback((data: SplitViewData | null) => {
     setIsDraggingSidebarItem(data !== null);
@@ -956,7 +969,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       <TopicSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-        topicId={topic.id}
+        topic={topic}
       />
       {rawImagesForCrop && (
         <AiImportCropperModal

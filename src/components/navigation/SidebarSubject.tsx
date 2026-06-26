@@ -25,6 +25,10 @@ interface SidebarSubjectProps {
 
 export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isArchivedExpanded, setIsArchivedExpanded] = useState(false);
+
+  const activeTopics = subject.topics.filter(t => !(t as any).isArchived);
+  const archivedTopics = subject.topics.filter(t => (t as any).isArchived);
 
   if (isCollapsed) {
     // When the whole sidebar is collapsed, we might just show a folder icon 
@@ -73,10 +77,10 @@ export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
           >
             <div className="pl-4 pr-2 pb-1">
               <SortableContext 
-                items={subject.topics.map(t => t.id)}
+                items={activeTopics.map(t => t.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {subject.topics.map(topic => (
+                {activeTopics.map(topic => (
                   <SidebarTopicItem 
                     key={topic.id} 
                     topic={topic} 
@@ -84,9 +88,43 @@ export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
                   />
                 ))}
               </SortableContext>
-              {subject.topics.length === 0 && (
+              
+              {activeTopics.length === 0 && archivedTopics.length === 0 && (
                 <div className="px-2 py-1 text-xs text-muted-foreground/50 italic">
                   No topics yet
+                </div>
+              )}
+
+              {archivedTopics.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/5">
+                  <button 
+                    onClick={() => setIsArchivedExpanded(!isArchivedExpanded)}
+                    className="flex items-center gap-1.5 w-full text-left px-2 py-1 text-[11px] font-medium text-muted-foreground/60 hover:text-muted-foreground transition-colors rounded hover:bg-hover/30"
+                  >
+                    {isArchivedExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    Archived ({archivedTopics.length})
+                  </button>
+                  
+                  <AnimatePresence initial={false}>
+                    {isArchivedExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden pt-1"
+                      >
+                        {archivedTopics.map(topic => (
+                          <div key={topic.id} className="opacity-60 grayscale-[50%] hover:opacity-100 hover:grayscale-0 transition-all">
+                            <SidebarTopicItem 
+                              topic={topic} 
+                              isCollapsed={isCollapsed} 
+                            />
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { SmartBlockProps } from './smartBlockTypes';
 import { DEFAULT_FONT_SIZE } from '../core/types';
 import { calculateTaskStats } from './smartBlockUtils';
+import { Image as ImageIcon } from 'lucide-react';
 import {
   DragHandle,
   AnchorPoints,
@@ -44,6 +45,7 @@ function SmartBlockComponent({
   topicId,
   subjectId,
   onRegisterHeight,
+  metadata,
 }: SmartBlockProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -59,29 +61,30 @@ function SmartBlockComponent({
     if (!blockRef.current) return;
 
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
-        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
-        
-        // Always register height synchronously for layout (no state update, no reflow)
-        if (onRegisterHeight) {
-          onRegisterHeight(id, height);
-        }
-        
-        if (onDimensionsChange) {
-          const now = Date.now();
-          if (now - lastDimUpdate.current > 100) {
-             onDimensionsChange(id, width, height);
-             lastDimUpdate.current = now;
-          } else {
-             if (dimUpdateTimeout.current) clearTimeout(dimUpdateTimeout.current);
-             dimUpdateTimeout.current = setTimeout(() => {
+      requestAnimationFrame(() => {
+        for (const entry of entries) {
+          const width = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+          const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+          
+          if (onRegisterHeight) {
+            onRegisterHeight(id, height);
+          }
+          
+          if (onDimensionsChange) {
+            const now = Date.now();
+            if (now - lastDimUpdate.current > 100) {
                onDimensionsChange(id, width, height);
-               lastDimUpdate.current = Date.now();
-             }, 100);
+               lastDimUpdate.current = now;
+            } else {
+               if (dimUpdateTimeout.current) clearTimeout(dimUpdateTimeout.current);
+               dimUpdateTimeout.current = setTimeout(() => {
+                 onDimensionsChange(id, width, height);
+                 lastDimUpdate.current = Date.now();
+               }, 100);
+            }
           }
         }
-      }
+      });
     });
 
     observer.observe(blockRef.current);
@@ -154,6 +157,32 @@ function SmartBlockComponent({
         onAnchorMouseDown={(side, e) => onAnchorMouseDown?.(id, side, e)}
         onAnchorMouseUp={(side, e) => onAnchorMouseUp?.(id, side, e)}
       />
+
+      {metadata?.sourceImages && metadata.sourceImages.length > 0 && (
+        <div className="absolute top-2 right-2 z-50 transition-opacity opacity-0 group-hover:opacity-100">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Just open the first source image for now
+              window.dispatchEvent(new CustomEvent('CANVAS_OPEN_SPLIT_VIEW', { 
+                detail: { 
+                  type: 'resource', 
+                  id: 'source-image',
+                  data: { 
+                    category: metadata.sourceImages!.length > 1 ? 'image_list' : 'image', 
+                    url: metadata.sourceImages![0],
+                    urls: metadata.sourceImages 
+                  } 
+                } 
+              }));
+            }}
+            className="p-1.5 rounded-md bg-zinc-900/80 border border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors backdrop-blur-sm shadow-sm"
+            title="View Original Notes"
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       <div 
         className={cn(

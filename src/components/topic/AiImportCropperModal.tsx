@@ -3,16 +3,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Cropper, { ReactCropperElement } from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
-import { X, Crop, ChevronRight, Check, RotateCw } from 'lucide-react';
+import { X, Crop, ChevronRight, Check, RotateCw, MessageSquare } from 'lucide-react';
 
 interface AiImportCropperModalProps {
   files: File[];
-  onConfirm: (croppedFiles: File[]) => void;
+  onConfirm: (croppedFiles: File[], userContext: string) => void;
   onCancel: () => void;
 }
 
 export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCropperModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [userContext, setUserContext] = useState('');
+  const [showContextInput, setShowContextInput] = useState(false);
   const [croppedBlobs, setCroppedBlobs] = useState<(Blob | null)[]>(new Array(files.length).fill(null));
   const cropperRef = useRef<ReactCropperElement>(null);
 
@@ -61,7 +63,7 @@ export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCro
       const originalFile = files[idx];
       return new File([blob!], originalFile.name, { type: originalFile.type });
     });
-    onConfirm(finalFiles);
+    onConfirm(finalFiles, userContext);
   };
 
   return (
@@ -107,14 +109,44 @@ export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCro
           />
         </div>
 
+        {/* Context Input (Collapsible) */}
+        {showContextInput && (
+          <div className="border-t border-zinc-800/50 bg-zinc-900/50 p-4">
+            <label className="block text-xs font-medium text-zinc-300 mb-2 flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+              Learning Context (Optional)
+            </label>
+            <textarea
+              value={userContext}
+              onChange={(e) => setUserContext(e.target.value)}
+              placeholder="Paste ChatGPT chats, code examples, or specific instructions here... When provided, AI will use this to generate a comprehensive re-activation guide instead of strict note-taking."
+              className="w-full h-24 bg-zinc-950 border border-zinc-800 rounded-md p-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700 resize-none custom-scrollbar"
+            />
+          </div>
+        )}
+
         {/* Minimal Footer */}
-        <div className="p-3 px-4 border-t border-zinc-800/50 bg-zinc-900/50 flex items-center justify-between">
-          <button
-            onClick={onCancel}
-            className="px-4 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
-          >
-            Cancel
-          </button>
+        <div className="p-3 px-4 border-t border-zinc-800/50 bg-zinc-900/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onCancel}
+              className="px-4 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => setShowContextInput(!showContextInput)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                showContextInput || userContext
+                  ? 'text-blue-400 bg-blue-400/10 hover:bg-blue-400/20'
+                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Context
+              {userContext && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-0.5"></span>}
+            </button>
+          </div>
           <button
             onClick={handleNext}
             className="flex items-center gap-2 px-5 py-1.5 rounded-md text-xs font-semibold bg-zinc-100 text-zinc-900 hover:bg-white transition-colors"

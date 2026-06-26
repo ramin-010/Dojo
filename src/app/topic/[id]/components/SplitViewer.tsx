@@ -6,6 +6,8 @@ import { SplitViewData } from '../types';
 import { ReadOnlyTopicCanvas } from './ReadOnlyTopicCanvas';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ResourcePreviewModal } from './resources/ResourcePreviewModal';
+import { BlockEditor } from '@/components/canvas/blocks/BlockEditor';
 
 interface SplitViewerProps {
   data: SplitViewData;
@@ -40,6 +42,7 @@ function ResourcePreview({ data }: { data: any }) {
   const [markdownContent, setMarkdownContent] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [previewResource, setPreviewResource] = React.useState<any>(null);
 
   React.useEffect(() => {
     if (data.title?.toLowerCase().endsWith('.md')) {
@@ -59,15 +62,40 @@ function ResourcePreview({ data }: { data: any }) {
     }
   }, [data]);
 
-  if (data.category === 'image' || data.url?.match(/\.(jpeg|jpg|gif|png)$/) != null || data.url?.startsWith('data:image') || data.url?.startsWith('blob:')) {
+  if (data.category === 'image_list' && Array.isArray(data.urls)) {
+    return (
+      <div className="w-full h-full bg-sidebar overflow-y-auto p-8 custom-scrollbar relative">
+        <div className="flex flex-col gap-8 items-center max-w-4xl mx-auto">
+          {data.urls.map((url: string, index: number) => (
+            <img 
+              key={index}
+              src={url} 
+              alt={data.title ? `${data.title} ${index + 1}` : `Resource ${index + 1}`} 
+              className="w-full h-auto object-contain drop-shadow-xl rounded-md ring-1 ring-white/10 select-none animate-in zoom-in-95 duration-300 cursor-pointer hover:ring-white/30 transition-all"
+              onClick={() => setPreviewResource({ id: `img-${index}`, category: 'image', url, title: data.title ? `${data.title} ${index + 1}` : `Resource ${index + 1}` })}
+            />
+          ))}
+        </div>
+        {previewResource && (
+          <ResourcePreviewModal resource={previewResource} onClose={() => setPreviewResource(null)} />
+        )}
+      </div>
+    );
+  }
+
+  if (data.category === 'image' || data.url?.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null || data.url?.startsWith('data:image') || data.url?.startsWith('blob:')) {
     const src = data.url === '#' && data.thumbnailUrl ? data.thumbnailUrl : data.url;
     return (
-      <div className="w-full h-full flex items-center justify-center p-8 bg-sidebar">
+      <div className="w-full h-full flex items-center justify-center p-8 bg-sidebar relative">
         <img 
           src={src} 
           alt={data.title || 'Resource'} 
-          className="max-w-full max-h-full object-contain drop-shadow-xl rounded-md ring-1 ring-white/10 select-none animate-in zoom-in-95 duration-300"
+          className="max-w-full max-h-full object-contain drop-shadow-xl rounded-md ring-1 ring-white/10 select-none animate-in zoom-in-95 duration-300 cursor-pointer hover:ring-white/30 transition-all"
+          onClick={() => setPreviewResource({ id: data.id || 'img', category: 'image', url: src, title: data.title || 'Resource' })}
         />
+        {previewResource && (
+          <ResourcePreviewModal resource={previewResource} onClose={() => setPreviewResource(null)} />
+        )}
       </div>
     );
   }
@@ -149,11 +177,12 @@ export function SplitViewer({ data, onClose }: SplitViewerProps) {
         )}
 
         {data.type === 'note' && (
-          <div className="p-8 max-w-2xl mx-auto w-full h-full overflow-y-auto">
+          <div className="p-8 max-w-2xl mx-auto w-full h-full overflow-y-auto prose-editor-read-only">
             <h2 className="text-2xl font-bold mb-4">{data.data.title || 'Untitled Note'}</h2>
-            <div 
-              className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-headings:font-bold prose-a:text-blue-500"
-              dangerouslySetInnerHTML={{ __html: data.data.content }}
+            <BlockEditor 
+              content={data.data.content} 
+              onChange={() => {}} 
+              readOnly={true} 
             />
           </div>
         )}

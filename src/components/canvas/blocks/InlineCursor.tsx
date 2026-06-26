@@ -60,9 +60,12 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
     if (!wrapperRef.current || !onDimensionsChange) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        onDimensionsChange(entry.contentRect.width, entry.contentRect.height);
-      }
+      // Defer state updates to avoid React flushSync warnings during layout
+      requestAnimationFrame(() => {
+        for (const entry of entries) {
+          onDimensionsChange(entry.contentRect.width, entry.contentRect.height);
+        }
+      });
     });
 
     resizeObserver.observe(wrapperRef.current);

@@ -227,6 +227,7 @@ const BlockWrapperComponent = ({
         topicId={topicId}
         subjectId={subjectId}
         onRegisterHeight={onRegisterHeight}
+        metadata={block.metadata}
       />
     </Rnd>
   );

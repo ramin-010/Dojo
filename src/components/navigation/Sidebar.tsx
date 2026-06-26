@@ -35,6 +35,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     subjects, setSubjects, 
     isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed, 
     initializeSidebarState,
+    initializeTypographyState,
     isSplitViewActive
   } = useAppStore();
 
@@ -45,8 +46,9 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
   React.useEffect(() => {
     setTimeout(() => {
       initializeSidebarState();
+      initializeTypographyState();
     }, 1000);
-  }, [initializeSidebarState]);
+  }, [initializeSidebarState, initializeTypographyState]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isCollapsed);

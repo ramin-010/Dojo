@@ -74,7 +74,7 @@ export function BlockEditor({
     shouldRerenderOnTransaction: false,
     extensions: [
       StarterKit.configure({
-        heading: { levels: [2, 3] }, 
+        heading: { levels: [1, 2, 3] }, 
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }) as any,
@@ -159,7 +159,7 @@ export function BlockEditor({
     autofocus: autoFocus,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert focus:outline-none max-w-none leading-normal text-foreground',
+        class: 'outline-none max-w-none leading-normal text-foreground',
       },
       handleKeyDown: (view, event) => {
         if ((event.ctrlKey || event.metaKey) && (event.key === 'Delete' || event.key === 'Backspace')) {

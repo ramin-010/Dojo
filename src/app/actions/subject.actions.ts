@@ -15,6 +15,7 @@ export async function getSubjectsWithTopics() {
           title: true,
           sortOrder: true,
           updatedAt: true,
+          isArchived: true,
         },
         orderBy: { sortOrder: 'asc' },
       },

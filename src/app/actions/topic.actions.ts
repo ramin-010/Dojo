@@ -188,21 +188,98 @@ export async function updateTopic(
   revalidatePath('/');
   return topic;
 }
+import { extractCloudinaryPublicId } from '@/lib/utils/cloudinary';
 
 /** Delete a topic */
 export async function deleteTopic(topicId: string) {
   const topic = await prisma.topic.findUnique({
     where: { id: topicId },
-    select: { subjectId: true },
+    include: { resources: true },
   });
 
+  if (!topic) return;
+
+  const publicIdsToDelete = new Set<string>();
+
+  // 1. Extract from resources
+  if (topic.resources) {
+    for (const res of topic.resources) {
+      if (res.cloudPublicId) {
+        publicIdsToDelete.add(res.cloudPublicId);
+      } else if (res.url) {
+        const extracted = extractCloudinaryPublicId(res.url);
+        if (extracted) publicIdsToDelete.add(extracted);
+      }
+    }
+  }
+
+  // 2. Extract from canvasData
+  const canvasData: any = topic.canvasData || { blocks: [] };
+  const blocks = canvasData.blocks || [];
+  
+  for (const block of blocks) {
+    if (block.type === 'image' && block.url) {
+      const extracted = extractCloudinaryPublicId(block.url);
+      if (extracted) publicIdsToDelete.add(extracted);
+    }
+    
+    if (block.metadata?.sourceImages && Array.isArray(block.metadata.sourceImages)) {
+      for (const url of block.metadata.sourceImages) {
+        const extracted = extractCloudinaryPublicId(url);
+        if (extracted) publicIdsToDelete.add(extracted);
+      }
+    }
+  }
+
+  // 3. Delete from Cloudinary (with Reference Checking)
+  if (publicIdsToDelete.size > 0) {
+    const promises = Array.from(publicIdsToDelete).map(async (publicId) => {
+      // Pre-Deletion Reference Check
+      
+      // Check 1: Are there any other ResourceLinks using this publicId?
+      const resourceRefs = await prisma.resourceLink.count({
+        where: {
+          cloudPublicId: publicId,
+          topicId: { not: topicId }
+        }
+      });
+
+      // Check 2: Are there any other Topics embedding this URL in their canvasData?
+      // We use a raw text search on the JSON column to be absolutely sure.
+      const topicRefs: any[] = await prisma.$queryRaw`
+        SELECT id FROM "Topic"
+        WHERE id != ${topicId}
+        AND "canvasData"::text LIKE ${`%${publicId}%`}
+        LIMIT 1
+      `;
+
+      if (resourceRefs === 0 && topicRefs.length === 0) {
+        // Safe to destroy! We run both image and raw to catch any file type
+        try {
+          await cloudinary.uploader.destroy(publicId, { invalidate: true, resource_type: 'image' });
+          await cloudinary.uploader.destroy(publicId, { invalidate: true, resource_type: 'raw' });
+        } catch (e) {
+          console.error(`Failed to destroy Cloudinary asset: ${publicId}`, e);
+        }
+      } else {
+        console.log(`Skipping deletion for ${publicId} - referenced by other topics.`);
+      }
+    });
+
+    await Promise.allSettled(promises);
+  }
+
+  // 4. Delete ActivityLogs
+  await prisma.activityLog.deleteMany({
+    where: { topicId },
+  });
+
+  // 5. Delete Topic (Cascades the rest)
   await prisma.topic.delete({
     where: { id: topicId },
   });
 
-  if (topic) {
-    revalidatePath(`/subject/${topic.subjectId}`);
-  }
+  revalidatePath(`/subject/${topic.subjectId}`);
   revalidatePath('/');
 }
 
@@ -473,3 +550,67 @@ export async function getAllTopicsInSubjectForMention(subjectId: string, exclude
   });
 }
 
+/** Move topic to a different subject */
+export async function moveTopicToSubject(topicId: string, newSubjectId: string) {
+  await prisma.topic.update({
+    where: { id: topicId },
+    data: { subjectId: newSubjectId }
+  });
+  revalidatePath('/dashboard');
+}
+
+/** Archive a topic */
+export async function archiveTopic(topicId: string) {
+  await prisma.topic.update({
+    where: { id: topicId },
+    data: { isArchived: true }
+  });
+  revalidatePath('/dashboard');
+}
+
+/** Unarchive a topic */
+export async function unarchiveTopic(topicId: string) {
+  await prisma.topic.update({
+    where: { id: topicId },
+    data: { isArchived: false }
+  });
+  revalidatePath('/dashboard');
+}
+
+/** Duplicate a topic */
+export async function duplicateTopic(topicId: string) {
+  const original = await prisma.topic.findUnique({
+    where: { id: topicId },
+    include: { resources: true }
+  });
+  if (!original) throw new Error("Topic not found");
+  
+  const lastTopic = await prisma.topic.findFirst({
+    where: { subjectId: original.subjectId },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  });
+  const sortOrder = (lastTopic?.sortOrder ?? 0) + 1;
+  
+  const copy = await prisma.topic.create({
+    data: {
+      subjectId: original.subjectId,
+      title: `${original.title} (Copy)`,
+      sortOrder,
+      canvasData: original.canvasData ?? { blocks: [], connections: [] },
+      resources: {
+        create: original.resources.map(r => ({
+          workspaceId: r.workspaceId,
+          title: r.title,
+          url: r.url,
+          category: r.category,
+          cloudPublicId: r.cloudPublicId,
+          fileType: r.fileType,
+        }))
+      }
+    }
+  });
+  
+  revalidatePath('/dashboard');
+  return copy.id;
+}

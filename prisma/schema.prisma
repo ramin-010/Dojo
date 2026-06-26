@@ -139,6 +139,7 @@ model Topic {
   title       String
   tags        Tag[] 
   sortOrder   Float?   // Allows drag-and-drop or Previous/Next navigation
+  isArchived  Boolean  @default(false)
   
   // The Hybrid Spatial Data! All blocks/connections live here.
   canvasData  Json?    @default("{}") 
