@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { CanvasBlockData, CANVAS_WIDTH, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
+import { CanvasBlockData, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
 import { Connection } from '@/types/canvas';
 import { CanvasBlockLayer } from '../blocks/CanvasBlockLayer';
 import { InlineCursor } from '../blocks/InlineCursor';
@@ -10,6 +10,7 @@ import { NativeConnectionLayer } from '../rendering/NativeConnectionLayer';
 import { ConnectionLayer } from '../rendering/ConnectionLayer';
 import { CanvasHeader } from './CanvasHeader';
 import { useCanvasHandlers } from './useCanvasHandlers';
+import { useAppStore } from '@/store/useAppStore';
 
 export const TITLE_HEIGHT = 105;
 export const COVER_HEIGHT = 192;
@@ -76,6 +77,9 @@ export function SingleCanvas({
   onMentionClick,
   onResourceAdd,
 }: SingleCanvasProps) {
+  const { typography } = useAppStore();
+  const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const absoluteMouseRef = useRef({ clientX: 0, clientY: 0 });
@@ -212,7 +216,7 @@ export function SingleCanvas({
   return (
     <div
       className="relative group transition-all duration-200 h-full rounded-lg mx-auto"
-      style={{ width: CANVAS_WIDTH }}
+      style={{ width: effectiveCanvasWidth }}
     >
       <div
         ref={containerRef}
@@ -220,7 +224,7 @@ export function SingleCanvas({
         onDoubleClick={h.handleDoubleClick}
         className="relative rounded-lg bg-transparent"
         style={{
-          width: CANVAS_WIDTH,
+          width: effectiveCanvasWidth,
           minHeight: CANVAS_MIN_HEIGHT,
           height: h.computedHeight,
           backgroundColor: backgroundColor || undefined,

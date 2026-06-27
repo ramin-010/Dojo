@@ -20,6 +20,8 @@ interface TypographySettings {
   fontSize: number;
   lineHeight: number;
   headingSpacing: 'compact' | 'standard' | 'relaxed';
+  layoutWidth: number;
+  canvasWidth: number;
 }
 
 interface AppState {
@@ -40,9 +42,12 @@ interface AppState {
   typography: TypographySettings;
   setTypography: (settings: Partial<TypographySettings>) => void;
   initializeTypographyState: () => void;
+
+  revisionQueue: Topic[] | null;
+  setRevisionQueue: (queue: Topic[] | null) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   subjects: [],
   
   setSubjects: (subjects) => set({ subjects }),
@@ -86,9 +91,11 @@ export const useAppStore = create<AppState>((set) => ({
   setIsSplitViewActive: (active) => set({ isSplitViewActive: active }),
 
   typography: {
-    fontSize: 15,
-    lineHeight: 1.6,
+    fontSize: 14,
+    lineHeight: 1.5,
     headingSpacing: 'standard',
+    layoutWidth: 960,
+    canvasWidth: 890
   },
   
   setTypography: (newSettings) => set((state) => {
@@ -111,17 +118,27 @@ export const useAppStore = create<AppState>((set) => ({
   
   initializeTypographyState: () => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('revise-typography');
-      if (stored) {
+      const saved = localStorage.getItem('revise-typography');
+      if (saved) {
         try {
-          const parsed = JSON.parse(stored);
-          set({ typography: parsed });
+          const parsed = JSON.parse(saved);
+          set({ typography: { 
+            ...get().typography, 
+            ...parsed,
+            layoutWidth: parsed.layoutWidth ?? 960,
+            canvasWidth: parsed.canvasWidth ?? 890
+          } });
           document.documentElement.style.setProperty('--dynamic-font-size', `${parsed.fontSize}px`);
           document.documentElement.style.setProperty('--dynamic-line-height', `${parsed.lineHeight}`);
           const hsMap = { compact: '1.2rem', standard: '1.6rem', relaxed: '2.2rem' };
           document.documentElement.style.setProperty('--dynamic-heading-spacing', hsMap[parsed.headingSpacing as keyof typeof hsMap] || '1.6rem');
-        } catch(e) {}
+        } catch(e) {
+          console.error('Failed to parse typography settings', e);
+        }
       }
     }
   },
+
+  revisionQueue: null,
+  setRevisionQueue: (queue) => set({ revisionQueue: queue }),
 }));

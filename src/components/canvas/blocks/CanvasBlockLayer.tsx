@@ -4,7 +4,8 @@ import React, { memo, useCallback, useMemo, useRef, useEffect, useState } from '
 import { Rnd } from 'react-rnd';
 import { SmartBlock } from './SmartBlock';
 import { DragController } from '../rendering/DragController';
-import { CanvasBlockData, Connection, CANVAS_WIDTH, DEFAULT_FONT_SIZE } from '../core/types';
+import { CanvasBlockData, Connection, DEFAULT_FONT_SIZE } from '../core/types';
+import { useAppStore } from '@/store/useAppStore';
 
 const SIDE_PADDING = 4;
 
@@ -58,6 +59,7 @@ interface BlockWrapperProps {
   topicId?: string;
   subjectId?: string;
   onRegisterHeight?: (id: string, height: number) => void;
+  effectiveCanvasWidth: number;
 }
 
 const BlockWrapperComponent = ({
@@ -84,6 +86,7 @@ const BlockWrapperComponent = ({
   topicId,
   subjectId,
   onRegisterHeight,
+  effectiveCanvasWidth,
 }: BlockWrapperProps) => {
   const isResizingRef = useRef(false);
   const resizeStartRef = useRef<{ width: number; fontSize: number } | null>(null);
@@ -174,7 +177,7 @@ const BlockWrapperComponent = ({
         width: block.width,
         height: isText ? 'auto' : (block.height === 'auto' ? 'auto' : block.height),
       }}
-      maxWidth={CANVAS_WIDTH - block.x - SIDE_PADDING}
+      maxWidth={effectiveCanvasWidth - block.x - SIDE_PADDING}
       onDragStop={handleRndDragStop}
       onDrag={handleRndDrag}
       onDragStart={handleRndDragStart}
@@ -241,6 +244,7 @@ const BlockWrapper = memo(BlockWrapperComponent, (prev, next) => {
     prev.readOnly === next.readOnly &&
     prev.isConnectionDragging === next.isConnectionDragging &&
     prev.zoom === next.zoom &&
+    prev.effectiveCanvasWidth === next.effectiveCanvasWidth &&
     prev.onEditRequest === next.onEditRequest &&
     prev.editingBlockId === next.editingBlockId &&
     prev.block.fontSize === next.block.fontSize
@@ -272,6 +276,9 @@ function CanvasBlockLayerComponent({
   subjectId,
   onRegisterHeight,
 }: CanvasBlockLayerProps) {
+  const { typography } = useAppStore();
+  const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
+
   const connectedBlockIds = useMemo(() => {
     const set = new Set<string>();
     if (connections) {
@@ -311,6 +318,7 @@ function CanvasBlockLayerComponent({
           topicId={topicId}
           subjectId={subjectId}
           onRegisterHeight={onRegisterHeight}
+          effectiveCanvasWidth={effectiveCanvasWidth}
         />
       ))}
     </>

@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useRef, useMemo, useState, useLayoutEffect } from 'react';
-import { CanvasBlockData, CANVAS_WIDTH, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
+import { CanvasBlockData, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
 import { Connection, BlockDims } from '@/types/canvas';
+import { useAppStore } from '@/store/useAppStore';
 import { DragController } from '@/components/canvas/rendering/DragController';
 import { CanvasDragStart } from '@/components/canvas/rendering/canvasTypes';
 import { SIDE_PADDING, VERTICAL_PADDING } from './SingleCanvas';
@@ -97,6 +98,14 @@ export function useCanvasHandlers({
   containerRef,
   headerRef,
 }: UseCanvasHandlersParams): CanvasHandlers {
+  const { typography } = useAppStore();
+  const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
+  
+  const canvasWidthRef = useRef(effectiveCanvasWidth);
+  useLayoutEffect(() => {
+    canvasWidthRef.current = effectiveCanvasWidth;
+  }, [effectiveCanvasWidth]);
+
   const dragControllerInstance = useMemo(() => new DragController(), []);
 
   // Block height registry (avoids getBoundingClientRect in render)
@@ -208,7 +217,7 @@ export function useCanvasHandlers({
       const headerHeight = headerRef.current?.offsetHeight || 0;
       const minY = Math.max(headerHeight, VERTICAL_PADDING);
       const clampedY = Math.max(minY, snappedY);
-      const maxX = CANVAS_WIDTH - SIDE_PADDING - (block?.width || 100);
+      const maxX = canvasWidthRef.current - SIDE_PADDING - (block?.width || 100);
       const clampedX = Math.max(SIDE_PADDING, Math.min(x, Math.max(SIDE_PADDING, maxX)));
       onUpdateBlock(id, { x: clampedX, y: clampedY });
     },
@@ -279,7 +288,7 @@ export function useCanvasHandlers({
 
       const rect = containerRef.current!.getBoundingClientRect();
       const rawX = (e.clientX - rect.left) / zoom;
-      const newX = Math.max(SIDE_PADDING, Math.min(rawX, CANVAS_WIDTH - SIDE_PADDING - 50));
+      const newX = Math.max(SIDE_PADDING, Math.min(rawX, canvasWidthRef.current - SIDE_PADDING - 50));
       const rawY = (e.clientY - rect.top) / zoom;
       const headerHeight = headerRef.current?.offsetHeight || 0;
       const minY = Math.max(headerHeight, VERTICAL_PADDING);
@@ -302,7 +311,7 @@ export function useCanvasHandlers({
         setEditingBlockId(null);
       }
     },
-    [canvasId, onCanvasClick, onDeleteBlock, onSelectBlock, onSelectConnection, zoom, selectedBlockId, selectedConnectionId, cursorPos, showTitle, isActive, containerRef, headerRef]
+    [isActive, onCanvasClick, canvasId, zoom, cursorPos, onSelectBlock, onSelectConnection, containerRef, headerRef, selectedBlockId, selectedConnectionId]
   );
 
   const handleCursorCommit = useCallback(
@@ -395,7 +404,7 @@ export function useCanvasHandlers({
     const headerHeight = headerRef.current?.offsetHeight || 0;
     const minY = Math.max(headerHeight, VERTICAL_PADDING);
     const clampedY = Math.max(minY, snapToGuide(newY));
-    const clampedX = Math.max(SIDE_PADDING, Math.min(newX, CANVAS_WIDTH - SIDE_PADDING - 50));
+    const clampedX = Math.max(SIDE_PADDING, Math.min(newX, canvasWidthRef.current - SIDE_PADDING - 50));
 
     setCursorPos({ x: clampedX, y: clampedY });
 

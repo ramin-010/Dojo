@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Settings, Trash2, Edit2, AlertCircle, FolderInput, FileText, Copy, Archive, ArchiveRestore, Palette, Type, RotateCcw } from 'lucide-react';
+import { X, Settings, Trash2, Edit2,Columns,Maximize, AlertCircle, FolderInput, FileText, Copy, Archive, ArchiveRestore, Palette, Type, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { exportTopicAsMarkdown } from '@/lib/utils/export';
@@ -315,7 +315,7 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                   <div className="flex items-center justify-between mb-8 pl-2 max-w-xl">
                     <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30">Reading Preferences</h3>
                     <button 
-                      onClick={() => setTypography({ fontSize: 15, lineHeight: 1.6, headingSpacing: 'standard' })}
+                      onClick={() => setTypography({ fontSize: 14, lineHeight: 1.5, headingSpacing: 'standard', layoutWidth: 960, canvasWidth: 890 })}
                       className="text-[11px] text-white/30 hover:text-white/70 transition-colors flex items-center gap-1.5"
                     >
                       <RotateCcw className="w-3 h-3" />
@@ -403,6 +403,34 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                       <p className="text-[11px] text-white/30 px-1">
                         Adjusts the margin above headings to visually group paragraphs.
                       </p>
+                    </div>
+
+                    {/* Workspace Width */}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[14px] font-medium text-white/90 flex items-center gap-2">
+                          <Columns className="w-4 h-4 text-white/40" />
+                          Workspace Width
+                        </label>
+                        <span className="text-[12px] text-white/40 font-mono">{typography.layoutWidth ?? 960}px</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="960" 
+                        max="1600" 
+                        step="10"
+                        value={typography.layoutWidth ?? 960}
+                        onChange={(e) => {
+                          const newLayout = Number(e.target.value);
+                          const newCanvas = newLayout - 70;
+                          setTypography({ layoutWidth: newLayout, canvasWidth: newCanvas });
+                        }}
+                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                      />
+                      <div className="flex justify-between text-[11px] text-white/30 px-1">
+                        <span>Compact</span>
+                        <span>Wide</span>
+                      </div>
                     </div>
 
                   </div>

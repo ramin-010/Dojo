@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChevronLeft, ChevronRight, LayoutDashboard, Settings } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -18,6 +20,7 @@ import { SidebarSubject } from './SidebarSubject';
 import { reorderTopics } from '@/app/actions';
 
 import { useAppStore } from '@/store/useAppStore';
+import { RevisionSidebar } from './RevisionSidebar';
 
 interface Topic {
   id: string;
@@ -36,8 +39,10 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed, 
     initializeSidebarState,
     initializeTypographyState,
-    isSplitViewActive
+    isSplitViewActive,
+    revisionQueue
   } = useAppStore();
+  const pathname = usePathname();
 
   React.useEffect(() => {
     setSubjects(initialSubjects);
@@ -103,10 +108,13 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     setSubjects(newSubjects);
   };
 
+  const isRevisionActive = revisionQueue && revisionQueue.length > 0 && pathname?.startsWith('/topic/');
+
   return (
-    <aside 
-      className={`${isSplitViewActive ? 'w-0 border-r-0 opacity-0 pointer-events-none' : isCollapsed ? 'w-16 border-r' : 'w-64 border-r'} bg-sidebar flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-50`}
-    >
+    <>
+      <aside 
+        className={`${isRevisionActive ? 'w-0 border-r-0 opacity-0 pointer-events-none' : isSplitViewActive ? 'w-0 border-r-0 opacity-0 pointer-events-none' : isCollapsed ? 'w-16 border-r' : 'w-64 border-r'} bg-sidebar flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-50`}
+      >
       <div className={`flex items-center h-14 border-b border-border/50 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} ${isSplitViewActive ? 'hidden' : ''}`}>
         {!isCollapsed && <span className="font-bold text-base tracking-tight text-foreground">Revise</span>}
         <button 
@@ -158,5 +166,9 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
         </button>
       </div>
     </aside>
+    <AnimatePresence>
+      {isRevisionActive && <RevisionSidebar />}
+    </AnimatePresence>
+    </>
   );
 }

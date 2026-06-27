@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, startTransition } from 'react';
 import {
   BookOpen,
   Plus,
@@ -17,10 +17,15 @@ import {
   Lock,
   Menu,
   Grid,
-  MoreVertical
+  MoreVertical,
+  Play
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { timeAgo } from '@/lib/utils';
+import { useAppStore } from '@/store/useAppStore';
+import { KnowledgeGraphModal } from '@/components/navigation/KnowledgeGraphModal';
+import { SubjectVault } from '@/components/subject/SubjectVault';
 
 // Types matching what getSubjectById returns
 interface Revision {
@@ -94,8 +99,11 @@ interface SubjectContentProps {
 }
 
 export function SubjectContent({ subject, activities, streak, dailyHistory }: SubjectContentProps) {
+  const router = useRouter();
+  const { setRevisionQueue } = useAppStore();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
 
   // Derive topic display data from real revisions
   const allTopics = subject.topics.map(topic => {
@@ -159,6 +167,24 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
     if (diffDays === 1) return 'Tomorrow';
     return `In ${diffDays} days`;
   }
+
+  const handleStartRevision = () => {
+    // Only queue topics that are overdue or due today
+    const dueTopics = revisionsDue.filter(t => {
+      const diffMs = t.scheduledFor.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      return diffDays <= 0;
+    });
+
+    if (dueTopics.length === 0) return;
+
+    // Set queue to simplified topic objects
+    startTransition(() => {
+      setRevisionQueue(dueTopics.map(t => ({ id: t.id, title: t.title })));
+      // Navigate to the first topic in the queue
+      router.push(`/topic/${dueTopics[0].id}`);
+    });
+  };
 
   // Streak chart data (last 7 days)
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -262,10 +288,18 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
       {revisionsDue.length > 0 && (
       <section>
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-1 cursor-pointer hover:text-foreground">
-            <ChevronDown className="w-4 h-4" /> REVISION DUE (FOR THIS SUBJECT)
-          </h2>
-          <span className="text-xs text-accent font-medium">View All ({revisionsDue.length})</span>
+          <div className="flex items-center gap-4">
+            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-1 cursor-pointer hover:text-foreground">
+              <ChevronDown className="w-4 h-4" /> REVISION DUE (FOR THIS SUBJECT)
+            </h2>
+            <span className="text-xs text-foreground/50 font-medium">({revisionsDue.length} topics)</span>
+          </div>
+          <button 
+            onClick={handleStartRevision}
+            className="flex items-center gap-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" /> Start Revision Queue
+          </button>
         </div>
         <div className="flex flex-col gap-2">
           {revisionsDue.slice(0, 3).map(rev => (
@@ -300,6 +334,12 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
                <Settings className="w-3 h-3" /> Manage Tags
             </button>
           </div>
+          <button 
+            onClick={() => setIsGraphModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+          >
+            <span>🕸️</span> Visualize Connections
+          </button>
         </div>
 
         {/* Tag Filters Row */}
@@ -614,6 +654,20 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
         </div>
 
       </div>
+
+      {/* Vault Section (Resources & Quick Notes) */}
+      <SubjectVault 
+        subjectId={subject.id} 
+        subjectResources={subject.resources} 
+        subjectQuickNotes={subject.quickNotes} 
+      />
+
+      {isGraphModalOpen && (
+        <KnowledgeGraphModal 
+          topics={allTopics} 
+          onClose={() => setIsGraphModalOpen(false)} 
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { SingleCanvas } from './core/SingleCanvas';
 import { useCanvasState } from './core/useCanvasState';
 import { canvasOfflineStorage } from '@/lib/storage/canvasOfflineStorage';
 import { saveCanvasData } from '@/app/actions';
-import { CANVAS_WIDTH } from './core/types';
+import { useAppStore } from '@/store/useAppStore';
 
 interface TopicCanvasProps {
   topicId: string;
@@ -42,11 +42,14 @@ export function TopicCanvas({
   const [isLoaded, setIsLoaded] = React.useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-zoom: scale canvas when container is narrower than CANVAS_WIDTH
+  const { typography } = useAppStore();
+  const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
+
+  // Auto-zoom: scale canvas when container is narrower than effectiveCanvasWidth
   const autoZoom = useMemo(() => {
-    if (!containerWidth || containerWidth >= CANVAS_WIDTH) return 1;
-    return containerWidth / CANVAS_WIDTH;
-  }, [containerWidth]);
+    if (!containerWidth || containerWidth >= effectiveCanvasWidth) return 1;
+    return containerWidth / effectiveCanvasWidth;
+  }, [containerWidth, effectiveCanvasWidth]);
 
   const handleCanvasChange = React.useCallback((content: string) => {
     onChange?.(content);
@@ -202,12 +205,12 @@ export function TopicCanvas({
       }
     }}>
       <div className="mx-auto" style={{
-        width: CANVAS_WIDTH * autoZoom,
+        width: effectiveCanvasWidth * autoZoom,
       }}>
         <div style={{
           transform: `scale(${autoZoom})`,
           transformOrigin: 'top left',
-          width: CANVAS_WIDTH,
+          width: effectiveCanvasWidth,
         }}>
           <SingleCanvas
             canvasId={topicId}

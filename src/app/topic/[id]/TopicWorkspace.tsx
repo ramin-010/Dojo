@@ -219,7 +219,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   });
 
   // ── isSaving & splitView indicator (from store, passed to canvas) ─────────────────────
-  const { isSaving, setIsSaving, setIsSplitViewActive } = useAppStore();
+  const { isSaving, setIsSaving, setIsSplitViewActive, typography } = useAppStore();
+  const layoutWidth = typography?.layoutWidth ?? 960;
 
   // ── Canvas container width (RAF-throttled ResizeObserver) ─────────────────
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
@@ -587,7 +588,10 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
           />
         )}
 
-        <div className="max-w-[960px] min-w-[960px] mx-auto w-full min-h-full px-8 transition-all duration-300 ease-in-out">
+        <div 
+          className="mx-auto w-full min-h-full px-8 transition-all duration-300 ease-in-out"
+          style={{ maxWidth: `${layoutWidth}px`, minWidth: `${layoutWidth}px` }}
+        >
           {/* ── Top Utility Row ─────────────────────────────────────────── */}
           <div className="pt-5 flex-shrink-0 bg-background z-30">
             <div className="flex items-center justify-between">
