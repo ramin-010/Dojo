@@ -17,11 +17,9 @@ export {
   deleteTopic,
   reorderTopics,
   getAdjacentTopics,
-  deleteResourcePermanently,
-  deleteMultipleResourcesPermanently,
-  getTopicResources,
-  createTextResourceLink,
-  renameResource,
+  deleteCapturePermanently,
+  deleteMultipleCapturesPermanently,
+  getTopicLinks,
   deleteTopicMention,
   addTopicMention,
   searchTopicsInSubject,
@@ -47,11 +45,22 @@ export {
 } from './tag.actions';
 
 export {
-  createQuickNote,
-  getQuickNotes,
-  togglePinQuickNote,
-  deleteQuickNote,
+  createCapture,
+  getCaptures,
+  togglePinCapture,
+  toggleTaskStatus,
+  deleteCapture,
   getWorkspaceNoteCategories,
-  generateQuickNoteAI,
-} from './quicknote.actions';
+  generateCaptureAI,
+  updateCapture,
+  createCaptureWithFiles,
+  renameCapture,
+  createTextCaptureLink,
+} from './capture.actions';
 
+export {
+  getTimeBlocks,
+  createTimeBlock,
+  deleteTimeBlock,
+  getTasksAndRevisionsForMonth,
+} from './planner.actions';

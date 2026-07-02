@@ -104,6 +104,38 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
       );
     }
 
+    if (resource.content) {
+      return (
+        <div className="w-full max-w-4xl h-[85vh] bg-background rounded-2xl ring-1 ring-white/10 shadow-2xl overflow-y-auto p-6 sm:p-12 custom-scrollbar flex flex-col gap-8">
+          <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-accent/50 prose-pre:border prose-pre:border-border prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {resource.content}
+            </ReactMarkdown>
+          </div>
+          {resource.attachments && resource.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-4 pt-6 border-t border-white/10">
+              {resource.attachments.map((att, idx) => {
+                const isImg = att.url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || att.fileType?.startsWith('image/');
+                return (
+                  <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-lg ring-1 ring-white/10 hover:ring-blue-500/50 transition-all bg-black/20 w-32 h-32 flex items-center justify-center">
+                    {isImg ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={att.url} alt="Attachment" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-zinc-400 group-hover:text-zinc-200 transition-colors">
+                        <FileText className="w-8 h-8" />
+                        <span className="text-[10px] truncate max-w-[100px] font-medium">{att.fileName || 'File'}</span>
+                      </div>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // Use native browser PDF viewer for PDFs, fallback to Google Docs Viewer for DOCX/XLSX
     const isPdf = resource.title.toLowerCase().endsWith('.pdf') || resource.url.toLowerCase().includes('.pdf');
     const viewerUrl = isPdf 
@@ -143,7 +175,7 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
         </div>
         
         <div className="flex items-center gap-3 pointer-events-auto">
-          {resource.url !== '#' && (
+          {resource.url && resource.url !== '#' && resource.url !== resource.title && (
             <a 
               href={resource.url} 
               target="_blank" 

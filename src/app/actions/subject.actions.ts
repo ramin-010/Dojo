@@ -49,13 +49,21 @@ export async function getSubjectById(subjectId: string) {
         },
         orderBy: { sortOrder: 'asc' },
       },
-      resources: {
+      captures: {
         where: { topicId: null },
         orderBy: { createdAt: 'desc' },
-      },
-      quickNotes: {
-        where: { topicId: null },
-        orderBy: { createdAt: 'desc' },
+        include: {
+          category: true,
+          reminder: true,
+          revisions: {
+            select: {
+              id: true,
+              cycleNumber: true,
+              status: true,
+              scheduledFor: true,
+            }
+          }
+        }
       },
     },
   });

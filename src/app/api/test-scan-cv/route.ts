@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const cloudUrl = uploadResult.secure_url;
     const cloudPublicId = uploadResult.public_id;
 
-    // 3. Save to Database (ResourceLink)
+    // 3. Save to Database (Capture)
     let createdResource = null;
     if (topicId) {
       if (!subjectId) {
@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
       }
       
       if (subjectId) {
-        createdResource = await prisma.resourceLink.create({
+        createdResource = await prisma.capture.create({
           data: {
             workspaceId: DEV_WORKSPACE_ID,
             subjectId,
             topicId,
+            type: 'LINK',
             url: cloudUrl,
             title: `clean_${file.name}`,
-            category: 'image',
             cloudPublicId: cloudPublicId,
             fileType: 'image/jpeg'
           }

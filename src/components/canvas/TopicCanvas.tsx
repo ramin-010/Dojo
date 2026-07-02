@@ -11,7 +11,7 @@ interface TopicCanvasProps {
   topicId: string;
   subjectId?: string;
   initialContent?: string;
-  onChange?: (content: string) => void;
+  onChange?: () => void;
   title?: string;
   showTitle?: boolean;
   onMentionClick?: (topicId: string) => void;
@@ -51,12 +51,16 @@ export function TopicCanvas({
     return containerWidth / effectiveCanvasWidth;
   }, [containerWidth, effectiveCanvasWidth]);
 
-  const handleCanvasChange = React.useCallback((content: string) => {
-    onChange?.(content);
+  const canvasStateRef = useRef({ blocks: [] as any[], connections: [] as any[] });
+
+  const handleCanvasChange = React.useCallback(() => {
+    onChange?.();
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(async () => {
       setIsSaving(true);
       onSavingChange?.(true);
+
+      const content = JSON.stringify(canvasStateRef.current);
 
       // 1. Save to IndexedDB (fast, offline cache)
       await canvasOfflineStorage.saveDoc(topicId, content, title || 'Untitled Topic').catch(() => {});
@@ -91,6 +95,10 @@ export function TopicCanvas({
     addFileBlock,
     hydrate,
   } = useCanvasState(topicId, initialContent, handleCanvasChange, onBlockRemoved, onResourceAdded);
+
+  React.useLayoutEffect(() => {
+    canvasStateRef.current = { blocks, connections };
+  }, [blocks, connections]);
 
   // Expose active URLs for sidebar bifurcation
   const activeUrls = useMemo(() => {

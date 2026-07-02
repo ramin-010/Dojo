@@ -5,8 +5,7 @@ import React from 'react';
 import { X, Link as LinkIcon } from 'lucide-react';
 import { TopicLinksTimeline } from '../TopicLinksTimeline';
 import { ResourcesTab } from './ResourcesTab';
-import { TopicQuickNotes } from '../TopicQuickNotes';
-import { SidebarTab, ContextLinks, TopicQuickNote, TopicResource, NoteCategory } from '../types';
+import { SidebarTab, ContextLinks, Capture, NoteCategory } from '../types';
 
 interface ContextSidebarProps {
   topicId: string;
@@ -19,9 +18,9 @@ interface ContextSidebarProps {
   activeTab: SidebarTab;
   onTabChange: (tab: SidebarTab) => void;
   contextLinks: ContextLinks;
-  quickNotes: TopicQuickNote[];
+  quickNotes: Capture[];
   noteCategories: NoteCategory[];
-  resources: TopicResource[];
+  resources: Capture[];
   activeUrls?: string[];
   onMentionClick: (topicId: string) => void;
   onDeleteResource?: (id: string, url: string) => void;
@@ -74,10 +73,13 @@ export function ContextSidebar({
 
       {/* ── Sidebar Panel ─────────────────────────────────────────────────── */}
       <div
-        className={`fixed right-0 top-0 bottom-0 bg-sidebar flex flex-col h-full shadow-2xl z-50 overflow-hidden ${
+        className={`fixed right-0 top-0 bottom-0 flex flex-col h-full shadow-2xl z-50 overflow-hidden ${
           isDragging ? '' : 'transition-all duration-300 ease-in-out'
         } ${isOpen ? 'border-l border-divider' : 'border-none'}`}
-        style={{ width: isOpen ? `${sidebarWidth}px` : '0px' }}
+        style={{ 
+          width: isOpen ? `${sidebarWidth}px` : '0px',
+          backgroundColor: '#191919'
+        }}
       >
         <div
           style={{
@@ -90,7 +92,7 @@ export function ContextSidebar({
           {/* Header & Tabs */}
           <div className="flex items-center justify-between px-6 border-b border-divider pt-4">
             <div className="flex space-x-6">
-              {(['links', 'notes', 'resources'] as SidebarTab[]).map((tab) => (
+              {(['symlinks', 'resources'] as SidebarTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => onTabChange(tab)}
@@ -119,8 +121,8 @@ export function ContextSidebar({
 
           {/* Tab Content */}
           <div className="flex-1 overflow-y-auto custom-scrollbar ">
-            {/* ── Links Tab ─────────────────────────────────────────────── */}
-            {activeTab === 'links' && (
+            {/* ── Symlinks Tab ─────────────────────────────────────────────── */}
+            {activeTab === 'symlinks' && (
               <TopicLinksTimeline
                 topicId={topicId}
                 subjectId={subjectId}
@@ -132,22 +134,10 @@ export function ContextSidebar({
               />
             )}
 
-            {/* ── Notes Tab ─────────────────────────────────────────────── */}
-            {activeTab === 'notes' && (
-              <TopicQuickNotes 
-                quickNotes={quickNotes}
-                noteCategories={noteCategories}
-                topicId={topicId}
-                subjectId={subjectId}
-                onDragStartSidebarItem={onDragStartSidebarItem}
-                onOpenSplitView={onOpenSplitView}
-              />
-            )}
-
             {/* ── Resources Tab ─────────────────────────────────────────── */}
             {activeTab === 'resources' && (
               <ResourcesTab 
-                resources={resources || []} 
+                resources={[...(resources || []), ...(quickNotes || [])]} 
                 activeUrls={activeUrls} 
                 onDelete={onDeleteResource}
                 onDeleteMultiple={onDeleteMultipleResources}

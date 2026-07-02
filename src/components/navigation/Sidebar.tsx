@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, LayoutDashboard, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutDashboard, Settings, Calendar, Brain } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -21,6 +21,8 @@ import { reorderTopics } from '@/app/actions';
 
 import { useAppStore } from '@/store/useAppStore';
 import { RevisionSidebar } from './RevisionSidebar';
+import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
+import { Plus } from 'lucide-react';
 
 interface Topic {
   id: string;
@@ -43,6 +45,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     revisionQueue
   } = useAppStore();
   const pathname = usePathname();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   React.useEffect(() => {
     setSubjects(initialSubjects);
@@ -126,18 +129,51 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto pt-4 space-y-1 overflow-x-hidden pb-4">
-        <div className="px-3 ">
+        <div className="px-3 space-y-0.5">
           <Link 
             href="/dashboard" 
-            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-hover text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors ${isCollapsed ? 'justify-center' : ''}`}
-            title={isCollapsed ? "Dashboard" : undefined}
+            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-hover text-[13px] font-medium transition-colors ${pathname === '/dashboard' ? 'bg-accent/10 text-accent' : 'text-muted-foreground hover:text-foreground'} ${isCollapsed ? 'justify-center' : ''}`}
+            title={isCollapsed ? "Overview" : undefined}
           >
             <LayoutDashboard className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span className="whitespace-nowrap">Dashboard</span>}
+            {!isCollapsed && <span className="whitespace-nowrap">Overview</span>}
           </Link>
+
+          {!isCollapsed && (
+            <div className="pl-7 flex flex-col gap-0.5 mt-0.5 relative before:absolute before:left-[19px] before:top-0 before:bottom-2 before:w-px before:bg-border/50">
+              <Link 
+                href="/dashboard/planner" 
+                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${pathname === '/dashboard/planner' ? 'text-foreground bg-hover' : 'text-muted-foreground hover:text-foreground hover:bg-hover/50'}`}
+              >
+                <div className={`absolute left-[-8px] top-1/2 -translate-y-1/2 w-[9px] h-px ${pathname === '/dashboard/planner' ? 'bg-foreground' : 'bg-border/50'}`} />
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span>Planner</span>
+              </Link>
+              
+              <Link 
+                href="/dashboard/knowledge" 
+                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${pathname === '/dashboard/knowledge' ? 'text-foreground bg-hover' : 'text-muted-foreground hover:text-foreground hover:bg-hover/50'}`}
+              >
+                <div className={`absolute left-[-8px] top-1/2 -translate-y-1/2 w-[9px] h-px ${pathname === '/dashboard/knowledge' ? 'bg-foreground' : 'bg-border/50'}`} />
+                <Brain className="w-3.5 h-3.5 shrink-0" />
+                <span>Knowledge</span>
+              </Link>
+            </div>
+          )}
         </div>
 
       
+
+        <div className="flex items-center justify-between px-4 py-2 mt-2">
+          {!isCollapsed && <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Subjects</span>}
+          <button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className={`p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-hover transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+            title="New Subject"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         <div className="flex flex-col w-full px-1">
           <DndContext 
@@ -169,6 +205,11 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     <AnimatePresence>
       {isRevisionActive && <RevisionSidebar />}
     </AnimatePresence>
+    
+    <CreateSubjectModal 
+      isOpen={isCreateModalOpen} 
+      onClose={() => setIsCreateModalOpen(false)} 
+    />
     </>
   );
 }

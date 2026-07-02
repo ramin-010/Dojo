@@ -1,5 +1,5 @@
 import React,{useState} from 'react';
-import { MoreVertical, Globe, FileText, FileSpreadsheet, File as FileIcon, Image as ImageIcon } from 'lucide-react';
+import { MoreVertical, Globe, FileText, FileSpreadsheet, File as FileIcon, Image as ImageIcon, Paperclip, Layers } from 'lucide-react';
 
 export interface ResourceRowProps {
   id: string;
@@ -13,6 +13,9 @@ export interface ResourceRowProps {
   // Specific to Files
   fileSize?: string;
   fileFormat?: string;
+  // Specific to Rich Resources
+  content?: string | null;
+  attachments?: { url: string; fileType?: string | null; fileName?: string | null }[];
   // For images
   thumbnailUrl?: string;
   onClick?: () => void;
@@ -20,6 +23,7 @@ export interface ResourceRowProps {
   onRename?: (id: string, newTitle: string) => Promise<void> | void;
   onDragStartSidebarItem?: (data: any) => void;
   onOpenSplitView?: (data: any) => void;
+  onAttachmentClick?: (attachment: { url: string; fileType?: string | null; fileName?: string | null }) => void;
 }
 
 export function ResourceRow({
@@ -38,10 +42,14 @@ export function ResourceRow({
   onRename,
   onDragStartSidebarItem,
   onOpenSplitView,
+  content,
+  attachments,
+  onAttachmentClick,
 }: ResourceRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isSavingRename, setIsSavingRename] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Separate basename and extension
   const getParts = (fullTitle: string) => {
@@ -116,6 +124,9 @@ export function ResourceRow({
       } else if (fileFormat === 'MD') {
         icon = <FileText className="w-4 h-4 text-white" />;
         bg = "bg-[#114b7e]"; // Blueish for MD
+      } else if (fileFormat === 'BUNDLE' || fileFormat === 'NOTE') {
+        icon = <Layers className="w-4 h-4 text-white" />;
+        bg = "bg-[#5a189a]"; // Purple for rich bundles
       }
 
       return (
@@ -154,12 +165,20 @@ export function ResourceRow({
         e.dataTransfer.effectAllowed = 'copy';
       }}
       onDragEnd={() => onDragStartSidebarItem?.(null)}
-      className="flex items-center gap-2.5 p-2 rounded-xl border border-white/5 bg-black/10 hover:border-white/10 hover:bg-black/20 transition-all group cursor-pointer"
-      onClick={onClick}
+      className="group bg-sidebar border border-divider rounded-lg px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer hover:bg-hover"
+      onClick={() => {
+        if (content) {
+          setIsExpanded(!isExpanded);
+        } else if (onClick) {
+          onClick();
+        }
+      }}
     >
-      {getIcon()}
+      <div className={`shrink-0 mt-0.5 ${isExpanded ? 'mt-1' : ''}`}>
+        {getIcon()}
+      </div>
       
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 mt-0.5">
         <div className="flex items-center gap-2">
           {isRenaming ? (
             <div className="flex items-center w-full relative">
@@ -203,6 +222,45 @@ export function ResourceRow({
             </span>
           )}
         </div>
+
+        {content && (
+          <div className={`text-[11px] text-zinc-300 mt-1 whitespace-pre-wrap leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
+            {content}
+          </div>
+        )}
+        
+        {attachments && attachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+            {attachments.map((att, idx) => {
+              const isImg = att.url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || att.fileType?.startsWith('image/');
+              return (
+                <button 
+                  key={idx} 
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isImg && onAttachmentClick) {
+                      onAttachmentClick(att);
+                    } else {
+                      window.open(att.url, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  className="block relative overflow-hidden rounded shadow-sm border border-white/10 hover:opacity-80 transition-opacity focus:outline-none"
+                >
+                  {isImg ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover" />
+                  ) : (
+                    <div className="flex items-center justify-center w-8 h-8 rounded bg-black/30 border border-white/10 hover:bg-black/50 transition-colors">
+                      <Paperclip className="w-3.5 h-3.5 text-zinc-400" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {category === 'link' && domain && (
           <div className="text-[11px] text-zinc-400 truncate mt-0.5">
             {domain}

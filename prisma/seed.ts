@@ -59,20 +59,22 @@ async function main() {
   console.log(`✅ Topic: ${dummyTopic.title}`);
 
   // 5. Create a Dummy Global Quick Note
-  await prisma.quickNote.create({
+  await prisma.capture.create({
     data: {
       workspaceId: workspace.id,
+      type: 'NOTE',
       title: 'Global Idea',
       content: 'We should definitely look into vector embeddings for search.',
     },
   });
 
   // 6. Create a Dummy Topic Quick Note
-  await prisma.quickNote.create({
+  await prisma.capture.create({
     data: {
       workspaceId: workspace.id,
       subjectId: dummySubject.id,
       topicId: dummyTopic.id,
+      type: 'NOTE',
       title: 'Topic Note',
       content: 'Postgres handles JSONB extremely well for these schema variations.',
     },

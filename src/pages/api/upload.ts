@@ -73,7 +73,7 @@ export default async function handler(
         return res.status(500).json({ error: 'Upload provider failed to return URL' });
     }
 
-    // Save to Database (ResourceLink)
+    // Save to Database (Capture type LINK)
     let createdResource = null;
     if (topicId) {
       if (!subjectId) {
@@ -83,17 +83,27 @@ export default async function handler(
       }
       
       if (subjectId) {
-        const isImage = mimetype?.startsWith('image/');
-        createdResource = await prisma.resourceLink.create({
+        createdResource = await prisma.capture.create({
           data: {
             workspaceId: DEV_WORKSPACE_ID,
             subjectId,
             topicId,
+            type: 'LINK',
             url: cloudUrl,
             title: originalname || 'Uploaded File',
-            category: isImage ? 'image' : 'file',
             cloudPublicId: cloudPublicId,
-            fileType: mimetype
+            fileType: mimetype,
+            attachments: {
+              create: {
+                url: cloudUrl,
+                cloudPublicId: cloudPublicId || '',
+                fileType: mimetype,
+                fileName: originalname,
+              }
+            }
+          },
+          include: {
+            attachments: true
           }
         });
       }

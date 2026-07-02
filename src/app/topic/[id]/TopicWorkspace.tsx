@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { TopicCanvas } from '@/components/canvas/TopicCanvas';
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
-import { createTopic, deleteResourcePermanently, getTopicResources, createTextResourceLink, renameResource, deleteMultipleResourcesPermanently, deleteTopicMention, saveCanvasData } from '@/app/actions';
+import { createTopic, deleteCapturePermanently, getTopicLinks, createTextCaptureLink, renameCapture, deleteMultipleCapturesPermanently, deleteTopicMention, saveCanvasData } from '@/app/actions';
 import { TopicHistoryModal } from './TopicHistoryModal';
 import { TopicSettingsModal } from './TopicSettingsModal';
 import { toast } from 'sonner';
@@ -45,10 +45,29 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   const [isDraggingSidebarItem, setIsDraggingSidebarItem] = useState(false);
   // ── Sidebar open / tab state ───────────────────────────────────────────────
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<SidebarTab>('links');
+  const [activeTab, setActiveTab] = useState<SidebarTab>('symlinks');
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
   const [activeUrls, setActiveUrls] = useState<string[]>([]);
-  const [localResources, setLocalResources] = useState<any[]>(topic.resources || []);
+  const [localResources, setLocalResources] = useState<any[]>(topic.captures?.filter(c => c.type === 'LINK') || []);
+
+  useEffect(() => {
+    setLocalResources(topic.captures?.filter(c => c.type === 'LINK') || []);
+  }, [topic.captures]);
+
+  useEffect(() => {
+    const handleGlobalCapture = (e: Event) => {
+      const customEvent = e as CustomEvent<{ capture: any }>;
+      const { capture } = customEvent.detail;
+      
+      // If it's a LINK for this topic or subject, optimistically add it
+      if (capture && capture.type === 'LINK' && (capture.topicId === topic.id || (!capture.topicId && capture.subjectId === topic.subjectId))) {
+        setLocalResources(prev => [capture, ...prev]);
+      }
+    };
+    
+    window.addEventListener('GLOBAL_CAPTURE_CREATED', handleGlobalCapture);
+    return () => window.removeEventListener('GLOBAL_CAPTURE_CREATED', handleGlobalCapture);
+  }, [topic.id, topic.subjectId]);
 
   // ── Modal state ────────────────────────────────────────────────────────────
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
@@ -313,21 +332,17 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
 
   const quickNotes = useMemo(
     () =>
-      topic.quickNotes.map((note) => ({
+      (topic.captures?.filter(c => c.type === 'NOTE') || []).map((note) => ({
         id: note.id,
-        type: (note.topicId === null
-          ? 'subject'
-          : 'topic-same-subject') as
+        type: 'topic-same-subject' as
           | 'subject'
           | 'topic-same-subject'
           | 'topic-diff-subject',
         content: note.content,
         date: timeAgo(note.createdAt),
-        linkedItemTitle: note.topicId === null
-          ? topic.subject.name
-          : topic.title,
+        linkedItemTitle: topic.title,
       })),
-    [topic.quickNotes, topic.subject.name, topic.title],
+    [topic.captures, topic.title],
   );
 
   // ── Mention click → open sidebar ───────────────────────────────────────────
@@ -377,7 +392,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
             try {
               toast.dismiss(toastId);
               const delToastId = toast.loading('Deleting permanently...');
-              await deleteResourcePermanently(block.url);
+              await deleteCapturePermanently(block.url);
               setLocalResources(prev => prev.filter(r => r.url !== block.url));
               toast.success('Resource permanently deleted', { id: delToastId });
             } catch (err) {
@@ -404,7 +419,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     // Phase 2: { text, type } passed from Tiptap SavedResourceExtension
     if (data.text && data.type) {
        try {
-         const result = await createTextResourceLink(topic.id, data.text, data.type);
+         const result = await createTextCaptureLink(topic.id, data.text, data.type);
          if (result.type === 'resource') {
             setLocalResources(prev => [result.data, ...prev]);
             toast.success('Resource saved');
@@ -430,7 +445,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
           toast.dismiss(toastId); // Dismiss the confirmation toast immediately
           const delToastId = toast.loading('Deleting...');
           try {
-            await deleteResourcePermanently(id); // ID is safe and specific
+            await deleteCapturePermanently(id); // ID is safe and specific
             setLocalResources(prev => prev.filter(r => r.id !== id));
             toast.success('Resource deleted permanently', { id: delToastId });
           } catch (err) {
@@ -455,7 +470,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
           toast.dismiss(toastId);
           const delToastId = toast.loading(`Deleting ${ids.length} resources...`);
           try {
-            await deleteMultipleResourcesPermanently(ids);
+            await deleteMultipleCapturesPermanently(ids);
             setLocalResources(prev => prev.filter(r => !ids.includes(r.id)));
             toast.success('Resources deleted permanently', { id: delToastId });
           } catch (err) {
@@ -472,7 +487,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     const prevResources = [...localResources];
     setLocalResources(prev => prev.map(r => r.id === id ? { ...r, title: newTitle } : r));
     try {
-      await renameResource(id, newTitle);
+      await renameCapture(id, newTitle);
     } catch (e) {
       console.error('Rename error', e);
       toast.error('Failed to rename resource');
@@ -486,7 +501,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       let isMounted = true;
       const fetchResources = async () => {
         try {
-          const fresh = await getTopicResources(topic.id);
+          const fresh = await getTopicLinks(topic.id);
           if (isMounted) setLocalResources(fresh);
         } catch (e) {
           console.error("Failed to fetch fresh resources", e);
@@ -951,7 +966,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         activeTab={activeTab}
         onTabChange={setActiveTab}
         contextLinks={contextLinks}
-        quickNotes={topic.quickNotes || []}
+        quickNotes={topic.captures?.filter(c => c.type === 'NOTE') || []}
         noteCategories={noteCategories || []}
         resources={localResources}
         activeUrls={activeUrls}

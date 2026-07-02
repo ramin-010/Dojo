@@ -24,8 +24,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
+import { createTopic } from '@/app/actions/topic.actions';
 import { KnowledgeGraphModal } from '@/components/navigation/KnowledgeGraphModal';
 import { SubjectVault } from '@/components/subject/SubjectVault';
+import { toast } from 'sonner';
 
 // Types matching what getSubjectById returns
 interface Revision {
@@ -44,18 +46,15 @@ interface TopicData {
   revisions: Revision[];
 }
 
-interface ResourceData {
+interface CaptureData {
   id: string;
-  url: string;
-  title: string;
-  category: string;
+  type: 'NOTE' | 'LINK' | 'TASK';
+  content: string | null;
+  title: string | null;
+  url: string | null;
   createdAt: Date;
-}
-
-interface QuickNoteData {
-  id: string;
-  content: string;
-  createdAt: Date;
+  category: { name: string } | null;
+  revisions?: Revision[];
 }
 
 interface ActivityData {
@@ -87,8 +86,7 @@ interface SubjectData {
   lastActiveAt: Date;
   createdAt: Date;
   topics: TopicData[];
-  resources: ResourceData[];
-  quickNotes: QuickNoteData[];
+  captures: CaptureData[];
 }
 
 interface SubjectContentProps {
@@ -104,6 +102,18 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
+
+  const handleCreateTopic = async () => {
+    setIsCreatingTopic(true);
+    try {
+      const newTopic = await createTopic(subject.id, "Untitled Topic");
+      router.push(`/topic/${newTopic.id}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create topic');
+      setIsCreatingTopic(false);
+    }
+  };
 
   // Derive topic display data from real revisions
   const allTopics = subject.topics.map(topic => {
@@ -126,9 +136,10 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
   const inProgressTopics = allTopics.filter(t => t.total > 0 && !t.isLocked).length;
   const notStartedTopics = allTopics.filter(t => t.total === 0).length;
 
-  // Find topics with upcoming revisions
+  // Find topics and quickNotes with upcoming revisions
   const now = new Date();
-  const revisionsDue = subject.topics
+  
+  const topicRevisionsDue = subject.topics
     .filter(t => t.revisions.some(r => r.status === 'pending'))
     .map(t => {
       const nextPending = t.revisions
@@ -140,8 +151,27 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
         tags: t.tags,
         cycleNumber: nextPending?.cycleNumber ?? 0,
         scheduledFor: nextPending ? new Date(nextPending.scheduledFor) : now,
+        isQuickNote: false
       };
-    })
+    });
+
+  const quickNoteRevisionsDue = (subject.captures || [])
+    .filter(c => c.type === 'NOTE' && c.revisions && c.revisions.some(r => r.status === 'pending'))
+    .map(qn => {
+      const nextPending = qn.revisions!
+        .filter(r => r.status === 'pending')
+        .sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime())[0];
+      return {
+        id: qn.id,
+        title: qn.title || (qn.content || '').substring(0, 30) + '...',
+        tags: [] as string[],
+        cycleNumber: nextPending?.cycleNumber ?? 0,
+        scheduledFor: nextPending ? new Date(nextPending.scheduledFor) : now,
+        isQuickNote: true
+      };
+    });
+
+  const revisionsDue = [...topicRevisionsDue, ...quickNoteRevisionsDue]
     .sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime());
 
   // Find the most recently edited topic for "Continue where you left off"
@@ -180,9 +210,14 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
 
     // Set queue to simplified topic objects
     startTransition(() => {
-      setRevisionQueue(dueTopics.map(t => ({ id: t.id, title: t.title })));
-      // Navigate to the first topic in the queue
-      router.push(`/topic/${dueTopics[0].id}`);
+      setRevisionQueue(dueTopics.map(t => ({ id: t.id, title: t.title, isQuickNote: t.isQuickNote })));
+      // Navigate to the first topic in the queue if it's a topic
+      if (!dueTopics[0].isQuickNote) {
+        router.push(`/topic/${dueTopics[0].id}`);
+      } else {
+        // If it's a QuickNote, do nothing for now (UI pending)
+        // Just let it be in the queue state
+      }
     });
   };
 
@@ -228,9 +263,13 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
                 <kbd className="bg-background/50 text-[10px] px-1.5 py-0.5 rounded border border-divider text-foreground/40 font-sans">⌘K</kbd>
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-accent hover:bg-[#026EC1] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            <button 
+              onClick={handleCreateTopic}
+              disabled={isCreatingTopic}
+              className="flex items-center gap-2 bg-accent hover:bg-[#026EC1] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+            >
               <Plus className="w-4 h-4" />
-              New Topic
+              {isCreatingTopic ? 'Creating...' : 'New Topic'}
             </button>
             <button className="p-2 border border-divider rounded-md hover:bg-hover text-foreground/70 transition-colors">
               <Settings className="w-5 h-5" />
@@ -509,16 +548,16 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
         {/* RESOURCES */}
         <section>
           <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-3 flex items-center gap-1 cursor-pointer hover:text-foreground">
-            <ChevronDown className="w-4 h-4" /> 🔗 RESOURCES ({subject.resources.length})
+            <ChevronDown className="w-4 h-4" /> 🔗 RESOURCES ({subject.captures.filter(c => c.type === 'LINK').length})
           </h2>
           <div className="bg-sidebar border border-divider rounded-lg p-4 flex flex-col gap-3">
-            {subject.resources.length > 0 ? (
-              subject.resources.map(res => (
-                <a key={res.id} href={res.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 group">
+            {subject.captures.filter(c => c.type === 'LINK').length > 0 ? (
+              subject.captures.filter(c => c.type === 'LINK').map(res => (
+                <a key={res.id} href={res.url!} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 group">
                   <LinkIcon className="w-4 h-4 text-foreground/40 mt-0.5 group-hover:text-accent transition-colors" />
                   <div>
                     <div className="text-sm font-medium group-hover:underline">{res.title}</div>
-                    <div className="text-xs text-foreground/40">{new URL(res.url).hostname}</div>
+                    <div className="text-xs text-foreground/40">{new URL(res.url!).hostname}</div>
                   </div>
                 </a>
               ))
@@ -531,11 +570,11 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
         {/* QUICK NOTES */}
         <section>
           <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-3 flex items-center gap-1 cursor-pointer hover:text-foreground">
-            <ChevronDown className="w-4 h-4" /> 📌 QUICK NOTES ({subject.quickNotes.length})
+            <ChevronDown className="w-4 h-4" /> 📌 QUICK NOTES ({subject.captures.filter(c => c.type === 'NOTE').length})
           </h2>
           <div className="flex flex-col gap-3">
-            {subject.quickNotes.length > 0 ? (
-              subject.quickNotes.map(note => (
+            {subject.captures.filter(c => c.type === 'NOTE').length > 0 ? (
+              subject.captures.filter(c => c.type === 'NOTE').map(note => (
                 <div key={note.id} className="bg-sidebar border border-divider rounded-lg p-3 flex gap-3 text-sm">
                   <Pin className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -658,8 +697,7 @@ export function SubjectContent({ subject, activities, streak, dailyHistory }: Su
       {/* Vault Section (Resources & Quick Notes) */}
       <SubjectVault 
         subjectId={subject.id} 
-        subjectResources={subject.resources} 
-        subjectQuickNotes={subject.quickNotes} 
+        captures={subject.captures} 
       />
 
       {isGraphModalOpen && (

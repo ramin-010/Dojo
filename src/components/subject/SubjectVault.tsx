@@ -4,40 +4,38 @@ import React, { useState } from 'react';
 import { FileText, Link as LinkIcon, Plus, BookMarked, Search, MoreVertical } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
 
-interface ResourceData {
+interface CaptureData {
   id: string;
-  url: string;
-  title: string;
-  category: string;
+  type: string;
+  url: string | null;
+  title: string | null;
+  content: string | null;
   createdAt: Date;
-}
-
-interface QuickNoteData {
-  id: string;
-  content: string;
-  createdAt: Date;
+  category: { name: string } | null;
 }
 
 interface SubjectVaultProps {
   subjectId: string;
-  subjectResources: ResourceData[];
-  subjectQuickNotes: QuickNoteData[];
+  captures: CaptureData[];
 }
 
-export function SubjectVault({ subjectId, subjectResources, subjectQuickNotes }: SubjectVaultProps) {
+export function SubjectVault({ subjectId, captures }: SubjectVaultProps) {
   const [activeTab, setActiveTab] = useState<'resources' | 'notes'>('resources');
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'subject'>('subject');
+  
+  const subjectResources = captures.filter(c => c.type === 'LINK');
+  const subjectQuickNotes = captures.filter(c => c.type === 'NOTE');
 
   // Mock aggregated data since it's not provided by the API yet
-  const aggregatedResources: ResourceData[] = [
+  const aggregatedResources: CaptureData[] = [
     ...subjectResources,
-    { id: 'mock1', url: 'https://react.dev', title: 'React Documentation (from React Topic)', category: 'URL', createdAt: new Date() },
-    { id: 'mock2', url: 'https://nextjs.org/docs', title: 'Next.js App Router (from Next Topic)', category: 'URL', createdAt: new Date() }
+    { id: 'mock1', type: 'LINK', url: 'https://react.dev', title: 'React Documentation (from React Topic)', content: null, category: { name: 'URL' }, createdAt: new Date() },
+    { id: 'mock2', type: 'LINK', url: 'https://nextjs.org/docs', title: 'Next.js App Router (from Next Topic)', content: null, category: { name: 'URL' }, createdAt: new Date() }
   ];
 
-  const aggregatedNotes: QuickNoteData[] = [
+  const aggregatedNotes: CaptureData[] = [
     ...subjectQuickNotes,
-    { id: 'm1', content: 'Remember to check the useEffect dependency array! (from Hooks Topic)', createdAt: new Date() }
+    { id: 'm1', type: 'NOTE', content: 'Remember to check the useEffect dependency array! (from Hooks Topic)', url: null, title: null, category: null, createdAt: new Date() }
   ];
 
   const displayedResources = activeSubTab === 'subject' ? subjectResources : aggregatedResources;

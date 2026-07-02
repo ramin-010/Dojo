@@ -59,11 +59,17 @@ export async function completeRevision(revisionId: string) {
   const revision = await prisma.revision.findUnique({
     where: { id: revisionId },
     include: {
-      topic: { select: { subjectId: true, title: true } }
+      topic: { select: { subjectId: true, title: true } },
+      capture: { select: { subjectId: true, title: true, content: true } }
     }
   });
 
   if (!revision) throw new Error("Revision not found");
+
+  const subjectId = revision.topic?.subjectId || revision.capture?.subjectId;
+  const title = revision.topic?.title || revision.capture?.title || revision.capture?.content?.substring(0, 50) || "Capture";
+
+  if (!subjectId) throw new Error("Revision must belong to a subject to maintain streaks");
 
   const now = new Date();
 
@@ -78,10 +84,10 @@ export async function completeRevision(revisionId: string) {
     await tx.activityLog.create({
       data: {
         userId: DEV_USER_ID,
-        subjectId: revision.topic.subjectId,
+        subjectId: subjectId,
         topicId: revision.topicId,
         action: 'COMPLETED_REVISION',
-        details: `Cycle ${revision.cycleNumber} for ${revision.topic.title}`
+        details: `Cycle ${revision.cycleNumber} for ${title}`
       }
     });
 
@@ -91,21 +97,24 @@ export async function completeRevision(revisionId: string) {
 
     const pendingDue = await tx.revision.count({
       where: {
-        topic: { subjectId: revision.topic.subjectId },
+        OR: [
+          { topic: { subjectId: subjectId } },
+          { capture: { subjectId: subjectId } }
+        ],
         scheduledFor: { lte: today },
         status: 'pending'
       }
     });
 
     let history = await tx.dailyHistory.findFirst({
-      where: { userId: DEV_USER_ID, subjectId: revision.topic.subjectId, date: today }
+      where: { userId: DEV_USER_ID, subjectId: subjectId, date: today }
     });
 
     if (!history) {
       history = await tx.dailyHistory.create({
         data: {
           userId: DEV_USER_ID,
-          subjectId: revision.topic.subjectId,
+          subjectId: subjectId,
           date: today,
           revisionsDue: pendingDue + 1, // We know at least one was due (or done early, but let's count it)
           revisionsDone: 1,
@@ -125,10 +134,10 @@ export async function completeRevision(revisionId: string) {
     // Upsert SubjectStreak
     if (pendingDue === 0) {
       const streak = await tx.subjectStreak.upsert({
-        where: { userId_subjectId: { userId: DEV_USER_ID, subjectId: revision.topic.subjectId } },
+        where: { userId_subjectId: { userId: DEV_USER_ID, subjectId: subjectId } },
         create: {
           userId: DEV_USER_ID,
-          subjectId: revision.topic.subjectId,
+          subjectId: subjectId,
           currentStreak: 1,
           longestStreak: 1,
           lastCalculated: today
@@ -141,14 +150,64 @@ export async function completeRevision(revisionId: string) {
       
       if (streak.currentStreak > streak.longestStreak) {
         await tx.subjectStreak.update({
-          where: { userId_subjectId: { userId: DEV_USER_ID, subjectId: revision.topic.subjectId } },
+          where: { userId_subjectId: { userId: DEV_USER_ID, subjectId: subjectId } },
           data: { longestStreak: streak.currentStreak }
         });
       }
     }
   });
 
-  revalidatePath(`/subject/${revision.topic.subjectId}`);
-  revalidatePath(`/topic/${revision.topicId}`);
+  revalidatePath(`/subject/${subjectId}`);
+  if (revision.topicId) {
+    revalidatePath(`/topic/${revision.topicId}`);
+  }
+  revalidatePath('/');
+}
+
+/** Start the spaced repetition cycle for a Capture */
+export async function startCaptureRevisions(captureId: string) {
+  const intervals = [1, 3, 7, 21];
+  const now = new Date();
+  
+  // Midnight of next day
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
+  const revisions = intervals.map((intervalDays, index) => {
+    const scheduledFor = new Date(tomorrow);
+    scheduledFor.setDate(scheduledFor.getDate() + (intervalDays - 1));
+    
+    return {
+      captureId,
+      cycleNumber: index + 1,
+      intervalDays,
+      scheduledFor,
+      status: 'pending'
+    };
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.revision.createMany({
+      data: revisions
+    });
+    
+    const cap = await tx.capture.findUnique({ where: { id: captureId }, select: { subjectId: true, title: true, content: true }});
+    if (cap && cap.subjectId) {
+      await tx.activityLog.create({
+        data: {
+          userId: DEV_USER_ID,
+          subjectId: cap.subjectId,
+          action: 'STARTED_REVISIONS',
+          details: cap.title || cap.content?.substring(0, 50) || 'Capture',
+        }
+      });
+    }
+  });
+
+  const cap = await prisma.capture.findUnique({ where: { id: captureId }, select: { subjectId: true }});
+  if (cap && cap.subjectId) {
+    revalidatePath(`/subject/${cap.subjectId}`);
+  }
   revalidatePath('/');
 }

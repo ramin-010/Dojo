@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     await Promise.all(publicIds.map(id => cloudinary.uploader.destroy(id)));
 
     // 2. Delete from Database
-    await prisma.resourceLink.deleteMany({
+    await prisma.capture.deleteMany({
       where: {
         cloudPublicId: { in: publicIds }
       }

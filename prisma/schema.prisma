@@ -10,6 +10,12 @@ datasource db {
 // LEVEL 1: WORKSPACE & USER
 // ====================================================================
 
+enum RoutineMode {
+  MASTER
+  DAILY
+}
+
+
 model User {
   id         String       @id @default(uuid()) // Hardcoded initially
   email      String?      @unique
@@ -17,6 +23,7 @@ model User {
   workspaces Workspace[]
   streaks    SubjectStreak[]
   history    DailyHistory[]
+  settings   UserSettings?
 }
 
 model Workspace {
@@ -26,8 +33,9 @@ model Workspace {
   name      String
   subjects       Subject[]
   noteCategories NoteCategory[]
-  quickNotes     QuickNote[]
-  resources      ResourceLink[]
+  captures       Capture[]
+  timeBlocks     TimeBlock[]
+  routineMode    RoutineMode @default(MASTER)
 }
 
 // ====================================================================
@@ -49,35 +57,14 @@ model Subject {
   updatedAt    DateTime       @updatedAt
 
   topics       Topic[]
-  resources    ResourceLink[]
-  quickNotes   QuickNote[]
-  
+  captures     Capture[]
   tags         Tag[]
   streaks      SubjectStreak[]
   history      DailyHistory[]
 }
 
-model ResourceLink {
-  id              String   @id @default(uuid())
-  
-  // REQUIRED: Data boundary
-  workspaceId     String
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
-  // OPTIONAL: Subject / Topic
-  subjectId       String?   
-  subject         Subject?  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  
-  topicId         String?
-  topic           Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  
-  url             String
-  title           String
-  category        String   
-  cloudPublicId   String?  // If present, this is a self-hosted cloud asset
-  fileType        String?  // Original mime-type for uploaded files
-  createdAt       DateTime @default(now())
-}
+// ====================================================================
+// LEVEL 2.5: CATEGORIES
 
 model NoteCategory {
   id          String      @id @default(uuid())
@@ -88,32 +75,91 @@ model NoteCategory {
   color       String?     // Tailwind class or hex
   icon        String?     // Lucide icon name
   
-  notes       QuickNote[]
+  captures    Capture[]
 
   @@unique([workspaceId, name])
 }
 
-model QuickNote {
-  id              String   @id @default(uuid())
-  
-  workspaceId     String
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  
-  subjectId       String?   
-  subject         Subject?  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  
-  topicId         String?
-  topic           Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  
-  title           String?
-  isPinned        Boolean  @default(false)
-  
-  categoryId      String?
-  category        NoteCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  
-  content         String   
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+// ====================================================================
+// NEW: CAPTURE & BEHAVIOR LAYER
+// ====================================================================
+
+enum CaptureType {
+  NOTE
+  TASK
+  LINK
+}
+
+model Capture {
+  id            String      @id @default(uuid())
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  type          CaptureType @default(NOTE)
+
+  // ── Universal fields ──
+  title         String?
+  isPinned      Boolean     @default(false)
+
+  // ── Hierarchy (optional) ──
+  subjectId     String?
+  subject       Subject?    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId       String?
+  topic         Topic?      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  // ── Category (unified) ──
+  categoryId    String?
+  category      NoteCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // ── Type-specific fields ──
+  content       String?     // NOTE: the body text
+  url           String?     // LINK: the URL or text reference
+  cloudPublicId String?     // LINK: If present, this is a self-hosted cloud asset
+  fileType      String?     // LINK: Original mime-type for uploaded files
+  isDone        Boolean     @default(false)  // TASK: completion state
+  dueDate       DateTime?   // TASK: when it's due (also used for Note/Link inline dates if not using Reminder)
+
+  // ── Behaviors ──
+  reminder      Reminder?   // 0 or 1
+  revisions     Revision[]  // 0 to many
+  attachments   Attachment[] // 0 to many
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([workspaceId, type])
+  @@index([subjectId])
+  @@index([topicId])
+  @@index([dueDate])
+}
+
+// A one-time reminder attached to any Capture
+model Reminder {
+  id          String    @id @default(uuid())
+
+  captureId   String    @unique        // 1:1 with Capture
+  capture     Capture   @relation(fields: [captureId], references: [id], onDelete: Cascade)
+
+  remindAt    DateTime                 // When to fire the reminder
+  isDismissed Boolean   @default(false)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([remindAt])
+}
+
+// Attachments for a Capture
+model Attachment {
+  id            String    @id @default(uuid())
+  captureId     String
+  capture       Capture   @relation(fields: [captureId], references: [id], onDelete: Cascade)
+  url           String
+  cloudPublicId String
+  fileType      String?
+  fileName      String?
+  createdAt     DateTime  @default(now())
+
+  @@index([captureId])
 }
 
 // ====================================================================
@@ -148,8 +194,7 @@ model Topic {
   mentionsOut TopicMention[] @relation("SourceTopic")
   mentionsIn  TopicMention[] @relation("TargetTopic")
   
-  resources   ResourceLink[]
-  quickNotes  QuickNote[]
+  captures    Capture[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -175,8 +220,12 @@ model TopicMention {
 // Once started, the cycle is locked. Schedule changes cannot happen mid-flight.
 model Revision {
   id           String    @id @default(uuid())
-  topicId      String
-  topic        Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  topicId      String?
+  topic        Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  captureId    String?
+  capture      Capture?  @relation(fields: [captureId], references: [id], onDelete: Cascade)
   
   cycleNumber  Int       // To sort the progress bar (1, 2, 3, 4)
   intervalDays Int       // Used to dynamically recalculate next cascading date if user is late
@@ -185,6 +234,10 @@ model Revision {
   completedAt  DateTime? 
   status       String    @default("pending") // "pending", "done", "missed"
   createdAt    DateTime  @default(now())
+
+  @@index([scheduledFor, status])
+  @@index([captureId])
+  @@index([topicId])
 }
 
 // Powers the "Recent Activity" list on the Subject profile
@@ -229,4 +282,92 @@ model DailyHistory {
   revisionsDue    Int      
   revisionsDone   Int      
   streakMaintained Boolean // True if Due == Done
+}
+
+// ====================================================================
+// LEVEL 5: TIMEBLOCKS
+// ====================================================================
+
+model TimeBlock {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  title           String
+  startTime       String    // e.g. "09:00"
+  endTime         String    // e.g. "11:00"
+  color           String    // e.g. "#10b981"
+  dayOfWeek       Int?      // 0-6, null if it's a specific date
+  date            DateTime? // If it's a one-off block on a specific date
+
+  sessionLogs     ScheduleSessionLog[]
+
+  createdAt       DateTime  @default(now())
+}
+
+// ====================================================================
+// LEVEL 6: SCHEDULE TRACKING & TRIAGE
+// ====================================================================
+
+enum BlockOutcome {
+  COMPLETED        // User marked the block as done
+  COMPLETED_EARLY  // User ended the block before its scheduled end
+  SKIPPED          // User actively skipped (with remark)
+  PRE_SKIPPED      // User proactively skipped a future block today
+  INTERRUPTED      // User was mid-block and had to abandon
+  OVERWRITTEN      // This block's slot was taken by another block
+  EXTENDED         // A previous block extended into this one (Flow State)
+  UNRESOLVED       // System-generated: block expired with no interaction
+}
+
+model ScheduleSessionLog {
+  id              String       @id @default(uuid())
+  userId          String
+  workspaceId     String
+
+  // What block was this?
+  timeBlockId     String
+  timeBlock       TimeBlock    @relation(fields: [timeBlockId], references: [id], onDelete: Cascade)
+  blockTitle      String       // Denormalized snapshot
+  blockColor      String       // Denormalized snapshot
+
+  // When was it scheduled?
+  date            DateTime     // Midnight of the scheduled day
+  scheduledStart  String       // "09:00"
+  scheduledEnd    String       // "11:00"
+
+  // What actually happened?
+  outcome         BlockOutcome
+  remark          String?      // User-provided reason
+  remarkCategory  String?      // "WORK_EMERGENCY", "PERSONAL", "HEALTH", "FLOW_STATE", "OTHER"
+
+  // Timing metadata
+  actualStartAt   DateTime?
+  actualEndAt     DateTime?
+  minutesLogged   Int          @default(0)
+
+  // Overwrite context
+  replacedByTitle String?
+  replacedById    String?
+
+  // Triage metadata
+  resolvedAt      DateTime?
+  isTriaged       Boolean      @default(false)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([userId, date])
+  @@index([workspaceId, date])
+  @@index([outcome])
+}
+
+model UserSettings {
+  userId          String    @id
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bufferDay       Int       @default(6)  // 0=Mon...6=Sun. Default Sunday.
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }

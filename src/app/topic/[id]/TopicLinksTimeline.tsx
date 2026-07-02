@@ -193,7 +193,7 @@ export function TopicLinksTimeline({
         </div>
         
         {isOpen && (
-          <div className="absolute left-5 right-5 mt-1 bg-[#1c1c1c] border border-white/10 rounded-md shadow-xl overflow-hidden z-20 max-h-[300px] overflow-y-auto">
+          <div className="absolute left-5 right-5 mt-1 bg-sidebar border border-divider rounded-md shadow-xl overflow-hidden z-20 max-h-[300px] overflow-y-auto">
             {results.length === 0 && query.length > 0 ? (
               <div className="px-3 py-2 text-xs text-muted-foreground">No topics found</div>
             ) : results.length === 0 && query.length === 0 && (!topicCaches[subjectId] || topicCaches[subjectId].length === 0) ? (

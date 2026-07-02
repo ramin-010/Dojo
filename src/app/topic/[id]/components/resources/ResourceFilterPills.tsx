@@ -1,12 +1,13 @@
 import React from 'react';
 
-export type ResourceCategory = 'All' | 'Images' | 'Links' | 'Files';
+export type ResourceCategory = 'All' | 'Notes' | 'Images' | 'Links' | 'Files';
 
 interface ResourceFilterPillsProps {
   selectedCategory: ResourceCategory;
   onCategoryChange: (category: ResourceCategory) => void;
   counts: {
     All: number;
+    Notes: number;
     Images: number;
     Links: number;
     Files: number;
@@ -14,7 +15,7 @@ interface ResourceFilterPillsProps {
 }
 
 export function ResourceFilterPills({ selectedCategory, onCategoryChange, counts }: ResourceFilterPillsProps) {
-  const categories: ResourceCategory[] = ['All', 'Images', 'Links', 'Files'];
+  const categories: ResourceCategory[] = ['All', 'Notes', 'Images', 'Links', 'Files'];
 
   return (
     <div className="flex items-center gap-2  overflow-x-auto pb-2 scrollbar-hide">

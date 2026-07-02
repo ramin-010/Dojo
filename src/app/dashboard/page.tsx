@@ -1,85 +1,291 @@
-import { CheckCircle2, Circle, Clock } from "lucide-react";
-import Link from "next/link";
+import DashboardClient from './DashboardClient';
+import { prisma } from '@/lib/db';
+import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
+import { generateUnresolvedLogs } from '@/app/actions/schedule-tracking.actions';
 
-export default function Dashboard() {
+export const dynamic = 'force-dynamic';
+
+export default async function DashboardPage() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+
+  // 0. Auto-detect missed schedule blocks and create UNRESOLVED logs
+  await generateUnresolvedLogs();
+
+  // 1. Fetch Workspace for Routine Mode
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: DEV_WORKSPACE_ID },
+    select: { routineMode: true }
+  });
+
+  // 2. Fetch Revisions Due (Pending & Overdue)
+  const pendingRevisions = await prisma.revision.findMany({
+    where: {
+      OR: [
+        { status: 'pending', scheduledFor: { lte: now } },
+        { status: 'done', completedAt: { gte: today } }
+      ]
+    },
+    include: {
+      topic: {
+        include: { subject: true, tags: true }
+      },
+      capture: {
+        include: { subject: true, category: true, attachments: true }
+      }
+    },
+    orderBy: { scheduledFor: 'asc' }
+  });
+
+  // Map them into a unified format for the UI
+  const mappedRevisions = pendingRevisions.map(rev => {
+    if (rev.topic) {
+      return {
+        id: rev.id,
+        topicId: rev.topicId,
+        topicTitle: rev.topic.title,
+        subjectId: rev.topic.subjectId,
+        subjectName: rev.topic.subject.name,
+        subjectColor: rev.topic.subject.color || '#007acc',
+        cycleNumber: rev.cycleNumber,
+        intervalDays: rev.intervalDays,
+        scheduledFor: rev.scheduledFor,
+        status: rev.scheduledFor < today ? 'overdue' : 'pending',
+        tags: rev.topic.tags.map(t => t.name),
+        isQuickNote: false,
+        isDone: rev.status === 'done'
+      };
+    } else if (rev.capture) {
+      return {
+        id: rev.id,
+        topicId: rev.capture.id, // Using note ID for routing/UI
+        topicTitle: rev.capture.title || rev.capture.content?.substring(0, 50) || 'Capture',
+        subjectId: rev.capture.subjectId || 'general',
+        subjectName: rev.capture.subject?.name || 'General',
+        subjectColor: rev.capture.subject?.color || '#007acc',
+        cycleNumber: rev.cycleNumber,
+        intervalDays: rev.intervalDays,
+        scheduledFor: rev.scheduledFor,
+        status: rev.scheduledFor < today ? 'overdue' : 'pending',
+        tags: rev.capture.category ? [rev.capture.category.name] : [],
+        isQuickNote: true,
+        isDone: rev.status === 'done',
+        description: rev.capture.content,
+        attachments: rev.capture.attachments?.map(a => ({ url: a.url, fileType: a.fileType, fileName: a.fileName })) || []
+      };
+    }
+    return null;
+  }).filter(Boolean) as {
+    id: string;
+    topicId: string;
+    topicTitle: string;
+    subjectId: string;
+    subjectName: string;
+    subjectColor: string;
+    cycleNumber: number;
+    intervalDays: number;
+    scheduledFor: Date;
+    status: 'pending' | 'overdue';
+    tags: string[];
+    isQuickNote: boolean;
+    isDone: boolean;
+  }[];
+
+  // 2. Fetch Tasks (Tasks and Reminders)
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
+  const rawTasks = await prisma.capture.findMany({
+    where: {
+      workspaceId: DEV_WORKSPACE_ID,
+      type: 'TASK',
+      isDone: false,
+    },
+    include: { attachments: true, category: true },
+    orderBy: { dueDate: 'asc' }
+  });
+
+  const rawReminders = await prisma.reminder.findMany({
+    where: {
+      isDismissed: false,
+      capture: { 
+        workspaceId: DEV_WORKSPACE_ID,
+        revisions: { none: { status: 'pending' } }
+      }
+    },
+    include: { capture: { include: { attachments: true, category: true } } },
+    orderBy: { remindAt: 'asc' }
+  });
+
+  const tasks = [
+    ...rawTasks.map(t => {
+      const isOverdue = t.dueDate && t.dueDate < today;
+      return {
+        id: t.id,
+        title: t.title || 'Task',
+        isDone: t.isDone,
+        time: t.dueDate ? t.dueDate.toISOString() : undefined,
+        dueDate: t.dueDate,
+        type: 'task' as 'task',
+        isOverdue: !!isOverdue,
+        source: undefined, // TASKS don't have linkedResource anymore
+        description: t.content,
+        tags: t.category ? [t.category.name] : [],
+        attachments: t.attachments.map(a => ({ url: a.url, fileType: a.fileType, fileName: a.fileName }))
+      };
+    }),
+    ...rawReminders.map(r => {
+      const isOverdue = r.remindAt < today;
+      return {
+        id: r.id,
+        title: r.capture.title || r.capture.content?.substring(0, 30) || 'Reminder',
+        isDone: r.isDismissed,
+        time: r.remindAt.toISOString(),
+        dueDate: r.remindAt,
+        type: 'reminder' as 'reminder',
+        isOverdue: !!isOverdue,
+        source: r.capture.url ? `/dashboard/knowledge` : undefined,
+        description: r.capture.content,
+        tags: r.capture.category ? [r.capture.category.name] : [],
+        attachments: r.capture.attachments.map(a => ({ url: a.url, fileType: a.fileType, fileName: a.fileName }))
+      };
+    })
+  ].sort((a, b) => {
+    if (!a.dueDate && !b.dueDate) return 0;
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return a.dueDate.getTime() - b.dueDate.getTime();
+  });
+
+  // 3. Fetch Inbox (Captures without Subject and not TASK)
+  const rawInbox = await prisma.capture.findMany({
+    where: { 
+      workspaceId: DEV_WORKSPACE_ID, 
+      subjectId: null,
+      type: { in: ['NOTE', 'LINK'] },
+      NOT: [
+        { reminder: { isDismissed: false } },
+        { revisions: { some: { status: 'pending' } } }
+      ]
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    include: { category: true, attachments: true }
+  });
+
+  const inboxItems = rawInbox.map(item => ({
+    id: item.id,
+    type: item.type === 'LINK' ? ('link' as const) : ('note' as const),
+    title: item.title || item.content?.substring(0, 50) || 'Untitled',
+    url: item.url || undefined,
+    createdAt: item.createdAt,
+    isPinned: item.isPinned,
+    tags: item.category ? [item.category.name] : [],
+    attachments: item.attachments.map(a => ({ url: a.url, fileType: a.fileType, fileName: a.fileName }))
+  })).sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  // 4. Fetch Stats
+  const streak = await prisma.subjectStreak.aggregate({
+    where: { userId: DEV_USER_ID },
+    _max: { currentStreak: true }
+  });
+
+  const totalTopics = await prisma.topic.count();
+  
+  const topicsWithRevisions = await prisma.topic.count({
+    where: {
+      revisions: {
+        some: {}
+      }
+    }
+  });
+
+  const masteredTopics = await prisma.topic.count({
+    where: {
+      revisions: {
+        some: {
+          cycleNumber: { gte: 4 },
+          status: 'done'
+        }
+      }
+    }
+  });
+
+  const inProgressTopics = Math.max(0, topicsWithRevisions - masteredTopics);
+  const notStartedTopics = Math.max(0, totalTopics - topicsWithRevisions);
+
+  const totalRevisionsDone = await prisma.activityLog.count({
+    where: { userId: DEV_USER_ID, action: 'COMPLETED_REVISION' }
+  });
+
+  const stats = {
+    streak: streak._max.currentStreak || 0,
+    totalTopics,
+    totalRevisionsDone,
+    weeklyActivity: [0, 0, 0, 0, 0, 0, 0], // Mock for now
+    mastered: masteredTopics,
+    inProgress: inProgressTopics,
+    notStarted: notStartedTopics
+  };
+
+  // 5. Fetch Schedule Blocks — respect "same routine" mode from DB
+  const allBlocks = await prisma.timeBlock.findMany({
+    where: { workspaceId: DEV_WORKSPACE_ID },
+    orderBy: { startTime: 'asc' }
+  });
+
+  // JS getDay(): 0=Sun, our dayOfWeek: 0=Mon...6=Sun
+  const jsDay = new Date().getDay();
+  const mappedDay = jsDay === 0 ? 6 : jsDay - 1;
+
+  const scheduleBlocks = workspace?.routineMode === 'MASTER'
+    ? allBlocks.filter(b => b.dayOfWeek === null)
+    : allBlocks.filter(b => b.dayOfWeek === mappedDay);
+
+  // 6. Fetch today's session logs for schedule tracking
+  const todayLogs = await prisma.scheduleSessionLog.findMany({
+    where: {
+      userId: DEV_USER_ID,
+      date: today,
+    },
+  });
+
+  // Map logs by timeBlockId for quick lookup
+  const logsByBlockId = new Map(todayLogs.map(l => [l.timeBlockId, l]));
+
+  const scheduleBlocksWithLogs = scheduleBlocks.map(block => ({
+    ...block,
+    log: logsByBlockId.get(block.id) ? {
+      id: logsByBlockId.get(block.id)!.id,
+      outcome: logsByBlockId.get(block.id)!.outcome,
+      remark: logsByBlockId.get(block.id)!.remark,
+    } : null,
+  }));
+
+  // 7. Fetch unresolved blocks (for Triage Modal)
+  const unresolvedBlocks = await prisma.scheduleSessionLog.findMany({
+    where: {
+      userId: DEV_USER_ID,
+      outcome: 'UNRESOLVED',
+      isTriaged: false,
+    },
+    orderBy: [{ date: 'asc' }, { scheduledStart: 'asc' }],
+  });
+
   return (
-    <div className="p-8 max-w-5xl mx-auto w-full h-full flex flex-col">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold mb-2 text-foreground">Today's Revisions</h1>
-        <p className="text-foreground/60 text-sm">You have 3 topics scheduled for review today.</p>
-      </header>
-
-      <div className="grid gap-4 flex-1 content-start">
-        {/* Mock Topic Card 1 */}
-        <Link href="/topic/1" className="group relative bg-sidebar border rounded-lg p-5 hover:bg-hover transition-colors cursor-pointer flex gap-4 items-start block">
-          <button className="mt-1 text-foreground/40 hover:text-accent transition-colors">
-            <Circle className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold text-[14px]">React Server Components Deep Dive</h3>
-              <span className="text-xs font-medium text-foreground/40 uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Day 1
-              </span>
-            </div>
-            <p className="text-sm text-foreground/60 mb-3">
-              Reviewing the lifecycle differences between Server and Client components, specifically regarding hydration.
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 bg-background rounded text-foreground/70 border border-divider">
-                Next.js Architecture
-              </span>
-            </div>
-          </div>
-        </Link>
-
-        {/* Mock Topic Card 2 */}
-        <div className="group relative bg-sidebar border rounded-lg p-5 hover:bg-hover transition-colors cursor-pointer flex gap-4 items-start">
-          <button className="mt-1 text-foreground/40 hover:text-accent transition-colors">
-            <Circle className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold text-[14px]">PostgreSQL Indexing Strategies</h3>
-              <span className="text-xs font-medium text-foreground/40 uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Day 3
-              </span>
-            </div>
-            <p className="text-sm text-foreground/60 mb-3">
-              B-Tree vs Hash indexes, and when to use partial indexes for performance.
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 bg-background rounded text-foreground/70 border border-divider">
-                Database Optimization
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Mock Topic Card 3 (Missed / Overdue) */}
-        <div className="group relative bg-sidebar border border-[#f48771]/30 rounded-lg p-5 hover:bg-hover transition-colors cursor-pointer flex gap-4 items-start">
-          <button className="mt-1 text-[#f48771] hover:text-[#f48771]/80 transition-colors">
-            <Circle className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold text-[14px] text-[#f48771]">Docker Networking Basics</h3>
-              <span className="text-xs font-medium text-[#f48771] uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Overdue (Day 7)
-              </span>
-            </div>
-            <p className="text-sm text-foreground/60 mb-3">
-              Bridge networks, host networks, and docker-compose networking isolated environments.
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 bg-background rounded text-foreground/70 border border-divider">
-                DevOps
-              </span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
+    <DashboardClient 
+      revisions={mappedRevisions}
+      tasks={tasks}
+      inbox={inboxItems}
+      stats={stats}
+      scheduleBlocks={scheduleBlocksWithLogs}
+      initialRoutineMode={workspace?.routineMode || 'MASTER'}
+      unresolvedBlocks={unresolvedBlocks}
+    />
   );
 }

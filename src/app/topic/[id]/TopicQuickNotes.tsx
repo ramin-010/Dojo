@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Pin, Clock, Lightbulb, CheckSquare, MessageSquare, Calendar, FileText, Trash2, Plus, Loader2, Columns } from 'lucide-react';
+import { Search, Pin, Clock, Lightbulb, CheckSquare, MessageSquare, Calendar, FileText, Trash2, Plus, Loader2, Columns, Paperclip, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TopicQuickNote, NoteCategory } from './types';
-import { createQuickNote, togglePinQuickNote, deleteQuickNote } from '@/app/actions';
+import { Capture, NoteCategory } from './types';
+import { createCapture, togglePinCapture, deleteCapture } from '@/app/actions';
+import { ResourcePreviewModal } from './components/resources/ResourcePreviewModal';
 
 import { toast } from 'sonner';
 
 interface TopicQuickNotesProps {
-  quickNotes: TopicQuickNote[];
+  quickNotes: Capture[];
   noteCategories: NoteCategory[];
   topicId: string;
   subjectId: string;
@@ -23,12 +24,34 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
   
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+
+  const [localNotes, setLocalNotes] = useState<Capture[]>(quickNotes);
+
+  useEffect(() => {
+    setLocalNotes(quickNotes);
+  }, [quickNotes]);
+
+  useEffect(() => {
+    const handleGlobalCapture = (e: Event) => {
+      const customEvent = e as CustomEvent<{ capture: any }>;
+      const { capture } = customEvent.detail;
+      
+      if (capture && (capture.type === 'NOTE' || capture.type === 'TASK') && (capture.topicId === topicId || (!capture.topicId && capture.subjectId === subjectId))) {
+        setLocalNotes(prev => [capture, ...prev]);
+      }
+    };
+    
+    window.addEventListener('GLOBAL_CAPTURE_CREATED', handleGlobalCapture);
+    return () => window.removeEventListener('GLOBAL_CAPTURE_CREATED', handleGlobalCapture);
+  }, [topicId, subjectId]);
 
   // Filter notes
-  const filteredNotes = quickNotes.filter(n => {
+  const filteredNotes = localNotes.filter(n => {
     const matchesQuery = query === '' || 
       n.title?.toLowerCase().includes(query.toLowerCase()) || 
-      n.content.toLowerCase().includes(query.toLowerCase());
+      (n.content || '').toLowerCase().includes(query.toLowerCase());
     
     const matchesCategory = !activeCategoryId || n.categoryId === activeCategoryId;
     
@@ -66,7 +89,18 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
   };
 
   const handleSaveNote = async (data: { title: string; content: string; categoryName: string }) => {
-    const result = await createQuickNote({
+    const tempId = `temp-${Date.now()}`;
+    const optimisticNote: any = {
+      id: tempId,
+      title: data.title.trim() || null,
+      content: data.content,
+      category: { name: data.categoryName.trim() || 'Others' },
+      isPinned: false,
+      createdAt: new Date(),
+    };
+    setLocalNotes(prev => [optimisticNote, ...prev]);
+
+    const result = await createCapture({
       subjectId,
       topicId,
       content: data.content,
@@ -75,17 +109,24 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
     });
 
     if (result.error) {
+      setLocalNotes(prev => prev.filter(n => n.id !== tempId));
       toast.error(result.error);
       throw new Error(result.error);
     } else {
+      setLocalNotes(prev => prev.map(n => n.id === tempId ? result.item! : n));
       toast.success('Quick note added!');
     }
   };
 
   const handleTogglePin = async (id: string, currentlyPinned: boolean) => {
+    // Optimistic update
+    setLocalNotes(prev => prev.map(n => n.id === id ? { ...n, isPinned: !currentlyPinned } : n));
+    
     const toastId = toast.loading(currentlyPinned ? 'Unpinning note...' : 'Pinning note...');
-    const result = await togglePinQuickNote(id, !currentlyPinned);
+    const result = await togglePinCapture(id, !currentlyPinned);
     if (result.error) {
+      // Revert on error
+      setLocalNotes(prev => prev.map(n => n.id === id ? { ...n, isPinned: currentlyPinned } : n));
       toast.error(result.error, { id: toastId });
     } else {
       toast.success(currentlyPinned ? 'Note unpinned' : 'Note pinned', { id: toastId });
@@ -95,17 +136,27 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
   const confirmDelete = async () => {
     if (!noteToDelete) return;
     const id = noteToDelete;
+    
+    // Store original note in case of error
+    const noteToRestore = localNotes.find(n => n.id === id);
+    // Optimistic update
+    setLocalNotes(prev => prev.filter(n => n.id !== id));
     setNoteToDelete(null);
+    
     const toastId = toast.loading('Deleting note...');
-    const result = await deleteQuickNote(id);
+    const result = await deleteCapture(id);
     if (result.error) {
+      // Revert on error
+      if (noteToRestore) {
+        setLocalNotes(prev => [...prev, noteToRestore]);
+      }
       toast.error(result.error, { id: toastId });
     } else {
       toast.success('Note deleted', { id: toastId });
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, note: TopicQuickNote) => {
+  const handleDragStart = (e: React.DragEvent, note: Capture) => {
     if (onDragStartSidebarItem) {
       onDragStartSidebarItem({ type: 'note', id: note.id, data: note });
     }
@@ -114,10 +165,10 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const renderNoteCard = (note: TopicQuickNote) => {
+  const renderNoteCard = (note: Capture) => {
     const categoryName = note.category?.name || 'Others';
-    const displayTitle = note.title || note.content.split('\n')[0].slice(0, 50) + (note.content.length > 50 ? '...' : '');
-    const displayContent = note.title ? note.content : note.content.split('\n').slice(1).join('\n') || note.content;
+    const displayTitle = note.title || (note.content || '').split('\n')[0].slice(0, 50) + ((note.content || '').length > 50 ? '...' : '');
+    const displayContent = note.title ? note.content : (note.content || '').split('\n').slice(1).join('\n') || note.content;
     const isExpanded = expandedNoteId === note.id;
 
     return (
@@ -143,6 +194,46 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
               {new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </span>
           </div>
+
+          {note.attachments && note.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+              {note.attachments.map((att, idx) => {
+                const isImg = att.url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || att.fileType?.startsWith('image/');
+                return (
+                  <button 
+                    key={idx} 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isImg) {
+                        setPreviewImage({ url: att.url, title: att.fileName || 'Attachment' });
+                      } else if (att.fileName?.match(/\.(md|pdf|txt|csv|doc|docx|xls|xlsx|ppt|pptx)$/i) || att.url.match(/\.(md|pdf|txt|csv|doc|docx|xls|xlsx|ppt|pptx)$/i)) {
+                        setPreviewDocument({
+                          id: att.url,
+                          title: att.fileName || 'Document',
+                          url: att.url,
+                          category: 'file',
+                          addedAt: new Date().toISOString()
+                        });
+                      } else {
+                        window.open(att.url, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    className="block relative overflow-hidden rounded shadow-sm border border-white/10 hover:opacity-80 transition-opacity focus:outline-none"
+                  >
+                    {isImg ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover" />
+                    ) : (
+                      <div className="flex items-center justify-center w-8 h-8 rounded bg-black/30 border border-white/10 hover:bg-black/50 transition-colors">
+                        <Paperclip className="w-3.5 h-3.5 text-zinc-400" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-center gap-1 shrink-0">
           <button 
@@ -323,6 +414,54 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
           </div>
         )}
       </AnimatePresence>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center"
+          >
+            <div className="absolute inset-0 cursor-pointer" onClick={() => setPreviewImage(null)} />
+            
+            <div className="absolute top-0 left-0 right-0 h-24 px-8 flex items-start pt-5 justify-between z-50 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+              <div className="flex items-center gap-3 drop-shadow-md">
+                <h3 className="font-medium text-white/90 text-lg tracking-wide">{previewImage.title}</h3>
+              </div>
+              
+              <div className="flex items-center gap-3 pointer-events-auto">
+                <button 
+                  onClick={() => setPreviewImage(null)}
+                  className="flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 hover:bg-red-500/80 backdrop-blur-md rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative z-10 w-full h-full pt-20 pb-8 px-8 flex items-center justify-center pointer-events-none">
+              <div className="pointer-events-auto w-full h-full flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={previewImage.url} 
+                  alt={previewImage.title} 
+                  className="max-w-full max-h-full object-contain drop-shadow-[0_0_100px_rgba(0,0,0,0.5)] rounded-md ring-1 ring-white/10 select-none animate-in zoom-in-95 duration-300"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Document Viewer Modal */}
+      {previewDocument && (
+        <ResourcePreviewModal
+          resource={previewDocument}
+          onClose={() => setPreviewDocument(null)}
+        />
+      )}
     </div>
   );
 }

@@ -40,9 +40,9 @@ export function parseContent(raw: string | undefined): TopicCanvasData {
 
 export function useCanvasState(
   canvasId: string,
-  initialContent: string | undefined,
-  onChange?: (content: string) => void,
-  onBlockRemoved?: (block: CanvasBlockData) => void,
+  initialContent?: string,
+  onChange?: () => void,
+  onBlockRemoved?: (block: any) => void,
   onResourceAdded?: (resource: any) => void
 ) {
   const [blocks, setBlocks] = useState<CanvasBlockData[]>([]);
@@ -85,31 +85,14 @@ export function useCanvasState(
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   const skipNextOnChangeRef = useRef(true);
-  const pendingSaveRef = useRef<NodeJS.Timeout | null>(null);
-  const stateRef = useRef({ blocks, connections });
-  stateRef.current = { blocks, connections };
 
-  useEffect(() => {
-    return () => {
-      if (pendingSaveRef.current) {
-        clearTimeout(pendingSaveRef.current);
-        const json = JSON.stringify(stateRef.current);
-        onChangeRef.current?.(json);
-      }
-    };
-  }, []);
-
+  // Notify parent on state change without stringifying
   useEffect(() => {
     if (skipNextOnChangeRef.current) {
       skipNextOnChangeRef.current = false;
       return;
     }
-    if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
-    pendingSaveRef.current = setTimeout(() => {
-      pendingSaveRef.current = null;
-      const json = JSON.stringify({ blocks, connections } as TopicCanvasData);
-      onChangeRef.current?.(json);
-    }, 300);
+    onChangeRef.current?.();
   }, [blocks, connections]);
 
   // Listen for AI block insertions

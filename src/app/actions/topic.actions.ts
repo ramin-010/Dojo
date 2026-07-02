@@ -81,12 +81,11 @@ export async function getTopicById(topicId: string) {
           },
         },
       },
-      resources: {
-        orderBy: { createdAt: 'desc' },
-      },
-      quickNotes: {
+      captures: {
         include: {
           category: true,
+          reminder: true,
+          attachments: true,
         },
         orderBy: [
           { isPinned: 'desc' },
@@ -99,10 +98,15 @@ export async function getTopicById(topicId: string) {
   return topic;
 }
 
-/** Fetch only resources for a topic */
-export async function getTopicResources(topicId: string) {
-  return await prisma.resourceLink.findMany({
-    where: { topicId },
+/** Fetch only link captures for a topic */
+export async function getTopicLinks(topicId: string) {
+  return await prisma.capture.findMany({
+    where: { topicId, type: 'LINK' },
+    include: {
+      category: true,
+      reminder: true,
+      attachments: true,
+    },
     orderBy: { createdAt: 'desc' },
   });
 }
@@ -194,20 +198,20 @@ import { extractCloudinaryPublicId } from '@/lib/utils/cloudinary';
 export async function deleteTopic(topicId: string) {
   const topic = await prisma.topic.findUnique({
     where: { id: topicId },
-    include: { resources: true },
+    include: { captures: true },
   });
 
   if (!topic) return;
 
   const publicIdsToDelete = new Set<string>();
 
-  // 1. Extract from resources
-  if (topic.resources) {
-    for (const res of topic.resources) {
-      if (res.cloudPublicId) {
-        publicIdsToDelete.add(res.cloudPublicId);
-      } else if (res.url) {
-        const extracted = extractCloudinaryPublicId(res.url);
+  // 1. Extract from link captures
+  if (topic.captures) {
+    for (const cap of topic.captures) {
+      if (cap.cloudPublicId) {
+        publicIdsToDelete.add(cap.cloudPublicId);
+      } else if (cap.url) {
+        const extracted = extractCloudinaryPublicId(cap.url);
         if (extracted) publicIdsToDelete.add(extracted);
       }
     }
@@ -236,8 +240,8 @@ export async function deleteTopic(topicId: string) {
     const promises = Array.from(publicIdsToDelete).map(async (publicId) => {
       // Pre-Deletion Reference Check
       
-      // Check 1: Are there any other ResourceLinks using this publicId?
-      const resourceRefs = await prisma.resourceLink.count({
+      // Check 1: Are there any other Captures using this publicId?
+      const resourceRefs = await prisma.capture.count({
         where: {
           cloudPublicId: publicId,
           topicId: { not: topicId }
@@ -324,143 +328,115 @@ export async function getAdjacentTopics(subjectId: string, currentTopicId: strin
   return { prevTopic, nextTopic };
 }
 
-/** Permanently delete a resource link from DB and Cloudinary */
-export async function deleteResourcePermanently(resourceIdOrUrl: string) {
-  // 1. Find the resource (by ID or exact URL)
-  const isUrl = resourceIdOrUrl.startsWith('http');
-  const resource = isUrl 
-    ? await prisma.resourceLink.findFirst({
-        where: { url: resourceIdOrUrl },
-        select: { id: true, cloudPublicId: true, subjectId: true, topicId: true }
+/** Permanently delete a capture from DB and Cloudinary */
+export async function deleteCapturePermanently(idOrUrl: string) {
+  // 1. Find the capture (by ID or exact URL)
+  const isUrl = idOrUrl.startsWith('http');
+  const capture = isUrl 
+    ? await prisma.capture.findFirst({
+        where: { url: idOrUrl, type: 'LINK' },
+        select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
       })
-    : await prisma.resourceLink.findUnique({
-        where: { id: resourceIdOrUrl },
-        select: { id: true, cloudPublicId: true, subjectId: true, topicId: true }
+    : await prisma.capture.findUnique({
+        where: { id: idOrUrl },
+        select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
       });
 
-  if (!resource) return { success: false, error: 'Resource not found' };
+  if (!capture) return { success: false, error: 'Capture not found' };
 
-  // 2. Delete from Cloudinary if it's a cloud asset
-  if (resource.cloudPublicId) {
+  // 2. Delete from Cloudinary if it's a cloud asset or has attachments
+  const publicIdsToDelete = new Set<string>();
+  if (capture.cloudPublicId) publicIdsToDelete.add(capture.cloudPublicId);
+  capture.attachments?.forEach(a => {
+    if (a.cloudPublicId) publicIdsToDelete.add(a.cloudPublicId);
+  });
+
+  for (const publicId of publicIdsToDelete) {
     try {
       await new Promise<void>((resolve, reject) => {
-        cloudinary.uploader.destroy(resource.cloudPublicId!, { invalidate: true }, (err: any, result: any) => {
+        cloudinary.uploader.destroy(publicId, { invalidate: true }, (err: any, result: any) => {
           if (err) {
             console.error("[Actions] Cloud deletion error:", err);
             reject(err);
           } else {
-            console.log("[Actions] Cloud deletion result:", result);
+            console.log(`[Actions] Cloud deletion result for ${publicId}:`, result);
             resolve();
           }
         });
       });
     } catch (e) {
-      console.error('[Actions] Failed to delete from cloudinary:', e);
+      console.error(`[Actions] Failed to delete ${publicId} from cloudinary:`, e);
     }
   }
 
   // 3. Delete from Database
   try {
-    await prisma.resourceLink.delete({
-      where: { id: resource.id }
+    await prisma.capture.delete({
+      where: { id: capture.id }
     });
     
-    if (resource.topicId) revalidatePath(`/topic/${resource.topicId}`);
-    revalidatePath(`/subject/${resource.subjectId}`);
+    if (capture.topicId) revalidatePath(`/topic/${capture.topicId}`);
+    if (capture.subjectId) revalidatePath(`/subject/${capture.subjectId}`);
     return { success: true };
   } catch (error) {
-    console.error('Error permanently deleting resource:', error);
-    return { success: false, error: 'Failed to delete resource' };
+    console.error('Error permanently deleting capture:', error);
+    return { success: false, error: 'Failed to delete capture' };
   }
 }
 
-/** Permanently delete multiple resources */
-export async function deleteMultipleResourcesPermanently(resourceIds: string[]) {
-  const resources = await prisma.resourceLink.findMany({
-    where: { id: { in: resourceIds } },
-    select: { id: true, cloudPublicId: true, subjectId: true, topicId: true }
+/** Permanently delete multiple captures */
+export async function deleteMultipleCapturesPermanently(ids: string[]) {
+  const captures = await prisma.capture.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
   });
 
-  if (!resources.length) return { success: false, error: 'No resources found' };
+  if (!captures.length) return { success: false, error: 'No captures found' };
 
-  for (const resource of resources) {
-    if (resource.cloudPublicId) {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          cloudinary.uploader.destroy(resource.cloudPublicId!, { invalidate: true }, (err: any) => {
-            if (err) reject(err);
-            else resolve();
-          });
+  const publicIdsToDelete = new Set<string>();
+  for (const capture of captures) {
+    if (capture.cloudPublicId) publicIdsToDelete.add(capture.cloudPublicId);
+    capture.attachments?.forEach(a => {
+      if (a.cloudPublicId) publicIdsToDelete.add(a.cloudPublicId);
+    });
+  }
+
+  for (const publicId of publicIdsToDelete) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        cloudinary.uploader.destroy(publicId, { invalidate: true }, (err: any) => {
+          if (err) reject(err);
+          else resolve();
         });
-      } catch (e) {
-        console.error(`[Actions] Failed to delete ${resource.id} from cloudinary:`, e);
-      }
+      });
+    } catch (e) {
+      console.error(`[Actions] Failed to delete ${publicId} from cloudinary:`, e);
     }
   }
 
   try {
-    await prisma.resourceLink.deleteMany({
-      where: { id: { in: resourceIds } }
+    await prisma.capture.deleteMany({
+      where: { id: { in: ids } }
     });
     
-    if (resources[0].topicId) revalidatePath(`/topic/${resources[0].topicId}`);
-    revalidatePath(`/subject/${resources[0].subjectId}`);
+    if (captures[0].topicId) revalidatePath(`/topic/${captures[0].topicId}`);
+    if (captures[0].subjectId) revalidatePath(`/subject/${captures[0].subjectId}`);
     return { success: true };
   } catch (error) {
-    console.error('Error permanently deleting resources:', error);
-    return { success: false, error: 'Failed to delete resources' };
+    console.error('Error permanently deleting captures:', error);
+    return { success: false, error: 'Failed to delete captures' };
   }
 }
 
-/** Rename a resource */
-export async function renameResource(id: string, newTitle: string) {
-  const resource = await prisma.resourceLink.update({
+/** Rename a capture */
+export async function renameCapture(id: string, newTitle: string) {
+  const capture = await prisma.capture.update({
     where: { id },
     data: { title: newTitle }
   });
-  if (resource.topicId) revalidatePath(`/topic/${resource.topicId}`);
-  revalidatePath(`/subject/${resource.subjectId}`);
-  return resource;
-}
-
-/** Create a resource link or text note from the editor */
-export async function createTextResourceLink(
-  topicId: string,
-  content: string,
-  type: 'url' | 'text'
-) {
-  const topic = await prisma.topic.findUnique({
-    where: { id: topicId },
-    select: { subjectId: true },
-  });
-  
-  if (!topic) throw new Error('Topic not found');
-
-  let title = content;
-  let url = content;
-  const category = 'link'; // Always 'link' for anything created via => shortcut
-
-  if (type === 'url') {
-    try {
-      title = new URL(content).hostname;
-    } catch(e) {}
-  } else {
-    url = ''; // Text resources don't have a URL
-  }
-
-  const resource = await prisma.resourceLink.create({
-    data: {
-      workspaceId: DEV_WORKSPACE_ID,
-      subjectId: topic.subjectId,
-      topicId: topicId,
-      url: url,
-      title: title,
-      category: category,
-    }
-  });
-
-  revalidatePath(`/topic/${topicId}`);
-  return { type: 'resource', data: resource };
+  if (capture.topicId) revalidatePath(`/topic/${capture.topicId}`);
+  if (capture.subjectId) revalidatePath(`/subject/${capture.subjectId}`);
+  return capture;
 }
 
 /** Instantly create a TopicMention record */
@@ -581,7 +557,7 @@ export async function unarchiveTopic(topicId: string) {
 export async function duplicateTopic(topicId: string) {
   const original = await prisma.topic.findUnique({
     where: { id: topicId },
-    include: { resources: true }
+    include: { captures: true }
   });
   if (!original) throw new Error("Topic not found");
   
@@ -598,14 +574,16 @@ export async function duplicateTopic(topicId: string) {
       title: `${original.title} (Copy)`,
       sortOrder,
       canvasData: original.canvasData ?? { blocks: [], connections: [] },
-      resources: {
-        create: original.resources.map(r => ({
+      captures: {
+        create: original.captures.map(r => ({
           workspaceId: r.workspaceId,
           title: r.title,
           url: r.url,
-          category: r.category,
+          type: r.type,
+          content: r.content,
           cloudPublicId: r.cloudPublicId,
           fileType: r.fileType,
+          categoryId: r.categoryId,
         }))
       }
     }
