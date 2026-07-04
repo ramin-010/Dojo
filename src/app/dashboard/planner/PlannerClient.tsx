@@ -5,6 +5,8 @@ import { MoreHorizontal } from 'lucide-react';
 import WeeklyTimetable from './WeeklyTimetable';
 import TasksCalendar from './TasksCalendar';
 import RescheduleModal, { RescheduleTarget } from '@/components/dashboard/RescheduleModal';
+import { VacationModal } from '@/components/dashboard/VacationModal';
+import { Plane } from 'lucide-react';
 
 interface PlannerClientProps {
   initialBlocks: any[];
@@ -17,6 +19,7 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
   const [activeTab, setActiveTab] = useState<'timetable' | 'calendar'>('timetable');
   const [rescheduleTarget, setRescheduleTarget] = useState<RescheduleTarget | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isVacationModalOpen, setIsVacationModalOpen] = useState(false);
 
   return (
     <div className="p-8 max-w-[1100px] mx-auto w-full h-full flex flex-col">
@@ -30,6 +33,13 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsVacationModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-accent/10 text-accent hover:bg-accent/20 rounded-md transition-colors text-sm font-semibold"
+            >
+              <Plane className="w-4 h-4" />
+              Vacation Mode
+            </button>
             <button className="p-2 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors">
               <MoreHorizontal className="w-5 h-5" />
             </button>
@@ -95,6 +105,11 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
           onRescheduleComplete={() => setRefreshTrigger(prev => prev + 1)}
         />
       )}
+
+      <VacationModal 
+        isOpen={isVacationModalOpen} 
+        onClose={() => setIsVacationModalOpen(false)} 
+      />
     </div>
   );
 }

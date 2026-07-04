@@ -6,6 +6,15 @@ import { createTimeBlock, deleteTimeBlock, updateRoutineMode } from '@/app/actio
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+const format12h = (time24: string): string => {
+  if (!time24) return '';
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12.toString().padStart(2, '0')}:${mStr} ${ampm}`;
+};
+
 export default function WeeklyTimetable({ initialBlocks = [], initialRoutineMode }: { initialBlocks?: any[], initialRoutineMode: 'MASTER' | 'DAILY' }) {
   const [isPending, startTransition] = useTransition();
   const [sameForAll, setSameForAll] = useState(initialRoutineMode === 'MASTER');
@@ -121,7 +130,7 @@ function BlockCard({ block }: { block: any }) {
           <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: block.color || '#3b82f6', opacity: 0.8 }} />
           <div>
             <p className="text-[13px] font-semibold text-foreground/90 leading-tight">{block.title}</p>
-            <p className="text-[11px] font-mono text-foreground/40 mt-1">{block.startTime} - {block.endTime}</p>
+            <p className="text-[11px] font-mono text-foreground/40 mt-1">{format12h(block.startTime)} - {format12h(block.endTime)}</p>
           </div>
         </div>
         <button onClick={handleDelete} className="text-foreground/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-2">

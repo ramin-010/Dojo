@@ -23,7 +23,6 @@ model User {
   workspaces Workspace[]
   streaks    SubjectStreak[]
   history    DailyHistory[]
-  settings   UserSettings?
 }
 
 model Workspace {
@@ -35,6 +34,7 @@ model Workspace {
   noteCategories NoteCategory[]
   captures       Capture[]
   timeBlocks     TimeBlock[]
+  dailySlots     DailyScheduleSlot[]
   routineMode    RoutineMode @default(MASTER)
 }
 
@@ -300,74 +300,80 @@ model TimeBlock {
   dayOfWeek       Int?      // 0-6, null if it's a specific date
   date            DateTime? // If it's a one-off block on a specific date
 
-  sessionLogs     ScheduleSessionLog[]
+  sessionLogs     BlockSessionLog[]
+  dailySlots      DailyScheduleSlot[]
 
   createdAt       DateTime  @default(now())
 }
 
 // ====================================================================
-// LEVEL 6: SCHEDULE TRACKING & TRIAGE
+// LEVEL 6: SCHEDULE SESSION TRACKING (AI CONTEXT LOGGING)
 // ====================================================================
 
-enum BlockOutcome {
-  COMPLETED        // User marked the block as done
-  COMPLETED_EARLY  // User ended the block before its scheduled end
-  SKIPPED          // User actively skipped (with remark)
-  PRE_SKIPPED      // User proactively skipped a future block today
-  INTERRUPTED      // User was mid-block and had to abandon
-  OVERWRITTEN      // This block's slot was taken by another block
-  EXTENDED         // A previous block extended into this one (Flow State)
-  UNRESOLVED       // System-generated: block expired with no interaction
+enum BlockStatus {
+  COMPLETED
+  SKIPPED
+  PARTIAL
 }
 
-model ScheduleSessionLog {
-  id              String       @id @default(uuid())
-  userId          String
+model BlockSessionLog {
+  id          String        @id @default(uuid())
+  timeBlockId String
+  timeBlock   TimeBlock     @relation(fields: [timeBlockId], references: [id], onDelete: Cascade)
+  
+  date        DateTime      // Midnight of the day this log belongs to
+  status      BlockStatus
+  
+  // Rich AI Context
+  remark      String?       // User-provided: "Urgent bug", "Vacation", "Shifted to evening"
+  minutesDone Int?          // For partial blocks (e.g., 45 out of 120 minutes)
+
+  createdAt   DateTime      @default(now())
+
+  @@unique([timeBlockId, date])
+  @@index([date])
+}
+
+// ====================================================================
+// LEVEL 7: DAILY SCHEDULE SLOTS (LIVE MUTABLE LAYER)
+// ====================================================================
+
+enum SlotStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  SKIPPED
+  PARTIAL
+}
+
+model DailyScheduleSlot {
+  id              String        @id @default(uuid())
   workspaceId     String
+  workspace       Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  // What block was this?
-  timeBlockId     String
-  timeBlock       TimeBlock    @relation(fields: [timeBlockId], references: [id], onDelete: Cascade)
-  blockTitle      String       // Denormalized snapshot
-  blockColor      String       // Denormalized snapshot
+  sourceBlockId   String?
+  sourceBlock     TimeBlock?    @relation(fields: [sourceBlockId], references: [id], onDelete: SetNull)
 
-  // When was it scheduled?
-  date            DateTime     // Midnight of the scheduled day
-  scheduledStart  String       // "09:00"
-  scheduledEnd    String       // "11:00"
+  date            DateTime      // Midnight of the day
 
-  // What actually happened?
-  outcome         BlockOutcome
-  remark          String?      // User-provided reason
-  remarkCategory  String?      // "WORK_EMERGENCY", "PERSONAL", "HEALTH", "FLOW_STATE", "OTHER"
+  title           String
+  color           String
+  startTime       String        // Mutable — starts as template copy
+  endTime         String        // Mutable — starts as template copy
 
-  // Timing metadata
-  actualStartAt   DateTime?
-  actualEndAt     DateTime?
-  minutesLogged   Int          @default(0)
+  status          SlotStatus    @default(UPCOMING)
 
-  // Overwrite context
-  replacedByTitle String?
-  replacedById    String?
+  actualStartTime String?       // Set when status -> ACTIVE
+  actualEndTime   String?       // Set when user clicks Done/Skip
 
-  // Triage metadata
-  resolvedAt      DateTime?
-  isTriaged       Boolean      @default(false)
+  remark          String?
+  minutesDone     Int?
 
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  sortOrder       Int           @default(0)
 
-  @@index([userId, date])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([sourceBlockId, date])
   @@index([workspaceId, date])
-  @@index([outcome])
-}
-
-model UserSettings {
-  userId          String    @id
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  bufferDay       Int       @default(6)  // 0=Mon...6=Sun. Default Sunday.
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
 }

@@ -7,8 +7,20 @@ import { useRouter } from 'next/navigation';
 import { toggleRevision, getTasksAndRevisionsForMonth } from '@/app/actions/planner.actions';
 import { createCapture, toggleTaskStatus, deleteCapture } from '@/app/actions';
 import { TaskActionMenu } from '@/components/dashboard/TaskActionMenu';
+import { ReplaceBlockModal } from '@/components/dashboard/ReplaceBlockModal';
+import { MoreHorizontal, SkipForward, ArrowRightLeft } from 'lucide-react';
+import { logSession } from '@/app/actions/planner.actions';
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+const format12h = (time24: string): string => {
+  if (!time24) return '';
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12.toString().padStart(2, '0')}:${mStr} ${ampm}`;
+};
 
 interface TasksCalendarProps {
   initialTasks: any[];
@@ -41,6 +53,11 @@ export default function TasksCalendar({
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
+  
+  // Block action state
+  const [activeBlockMenuId, setActiveBlockMenuId] = useState<string | null>(null);
+  const [replaceTargetBlock, setReplaceTargetBlock] = useState<any | null>(null);
+  
   const router = useRouter();
 
   const toggleTaskExpansion = (taskId: string) => {
@@ -257,12 +274,54 @@ export default function TasksCalendar({
             {selectedDayBlocks.length > 0 ? (
               <div className="space-y-3">
                 {selectedDayBlocks.map(block => (
-                  <div key={block.id} className="group flex items-start gap-4 p-4 rounded-xl bg-sidebar border border-divider hover:bg-hover transition-colors cursor-pointer">
+                  <div key={block.id} className="group relative flex items-start gap-4 p-4 rounded-xl bg-sidebar border border-divider hover:bg-hover transition-colors">
                     <div className="w-2 h-2 rounded-full mt-1.5 opacity-80 flex-shrink-0" style={{ backgroundColor: block.color || '#3b82f6' }} />
                     <div className="flex-1">
                       <p className="text-[14px] font-semibold text-foreground/90 leading-tight">{block.title}</p>
-                      <p className="text-[11px] font-mono text-foreground/40 mt-1">{block.startTime} - {block.endTime}</p>
+                      <p className="text-[11px] font-mono text-foreground/40 mt-1">{format12h(block.startTime)} - {format12h(block.endTime)}</p>
                     </div>
+
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setActiveBlockMenuId(activeBlockMenuId === block.id ? null : block.id); }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-foreground/40 hover:text-foreground transition-all rounded-md hover:bg-white/5"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+
+                    {activeBlockMenuId === block.id && (
+                      <>
+                        <div className="fixed inset-0 z-[9998]" onClick={() => setActiveBlockMenuId(null)} />
+                        <div className="absolute top-10 right-4 z-[9999] bg-black border border-white/20 rounded-xl p-1 shadow-[0_16px_40px_rgba(0,0,0,1)] min-w-[160px] flex flex-col gap-0.5 animate-in fade-in zoom-in-95">
+                          <button 
+                            onClick={async (e) => { 
+                              e.stopPropagation(); 
+                              setActiveBlockMenuId(null);
+                              const remark = window.prompt(`Reason for pre-skipping ${block.title}?`);
+                              if (remark) {
+                                await logSession(block.id, selectedDate, 'SKIPPED', remark);
+                                router.refresh();
+                              }
+                            }}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg transition-colors w-full text-left group/item"
+                          >
+                            <SkipForward className="w-[15px] h-[15px] text-accent/80 group-hover/item:text-accent" />
+                            <span className="text-[13px] font-medium text-foreground/80 group-hover/item:text-foreground">Pre-Skip</span>
+                          </button>
+                          
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setActiveBlockMenuId(null);
+                              setReplaceTargetBlock(block);
+                            }}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg transition-colors w-full text-left group/item"
+                          >
+                            <ArrowRightLeft className="w-[15px] h-[15px] text-emerald-500/80 group-hover/item:text-emerald-500" />
+                            <span className="text-[13px] font-medium text-foreground/80 group-hover/item:text-foreground">Replace / Shift</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -383,6 +442,13 @@ export default function TasksCalendar({
         </div>
         
       </div>
+      
+      <ReplaceBlockModal 
+        isOpen={!!replaceTargetBlock}
+        onClose={() => setReplaceTargetBlock(null)}
+        targetBlock={replaceTargetBlock}
+        targetDate={selectedDate}
+      />
     </div>
   );
 }

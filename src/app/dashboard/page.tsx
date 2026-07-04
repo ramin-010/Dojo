@@ -1,7 +1,8 @@
 import DashboardClient from './DashboardClient';
 import { prisma } from '@/lib/db';
 import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
-import { generateUnresolvedLogs } from '@/app/actions/schedule-tracking.actions';
+import { getUnverifiedBlocks } from '../actions/planner.actions';
+import { ensureTodaySlots } from '../actions/schedule-slot.actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,9 +10,6 @@ export default async function DashboardPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const now = new Date();
-
-  // 0. Auto-detect missed schedule blocks and create UNRESOLVED logs
-  await generateUnresolvedLogs();
 
   // 1. Fetch Workspace for Routine Mode
   const workspace = await prisma.workspace.findUnique({
@@ -72,7 +70,7 @@ export default async function DashboardPage() {
         isQuickNote: true,
         isDone: rev.status === 'done',
         description: rev.capture.content,
-        attachments: rev.capture.attachments?.map(a => ({ url: a.url, fileType: a.fileType, fileName: a.fileName })) || []
+        attachments: rev.capture.attachments?.map((a: any) => ({ url: a.url, fileType: a.fileType, fileName: a.fileName })) || []
       };
     }
     return null;
@@ -90,6 +88,8 @@ export default async function DashboardPage() {
     tags: string[];
     isQuickNote: boolean;
     isDone: boolean;
+    description?: string | null;
+    attachments?: any[];
   }[];
 
   // 2. Fetch Tasks (Tasks and Reminders)
@@ -233,49 +233,11 @@ export default async function DashboardPage() {
     notStarted: notStartedTopics
   };
 
-  // 5. Fetch Schedule Blocks — respect "same routine" mode from DB
-  const allBlocks = await prisma.timeBlock.findMany({
-    where: { workspaceId: DEV_WORKSPACE_ID },
-    orderBy: { startTime: 'asc' }
-  });
+  // 5. Fetch/Generate Today's Schedule Slots
+  const todaySlots = await ensureTodaySlots(DEV_WORKSPACE_ID, workspace?.routineMode || 'MASTER');
 
-  // JS getDay(): 0=Sun, our dayOfWeek: 0=Mon...6=Sun
-  const jsDay = new Date().getDay();
-  const mappedDay = jsDay === 0 ? 6 : jsDay - 1;
-
-  const scheduleBlocks = workspace?.routineMode === 'MASTER'
-    ? allBlocks.filter(b => b.dayOfWeek === null)
-    : allBlocks.filter(b => b.dayOfWeek === mappedDay);
-
-  // 6. Fetch today's session logs for schedule tracking
-  const todayLogs = await prisma.scheduleSessionLog.findMany({
-    where: {
-      userId: DEV_USER_ID,
-      date: today,
-    },
-  });
-
-  // Map logs by timeBlockId for quick lookup
-  const logsByBlockId = new Map(todayLogs.map(l => [l.timeBlockId, l]));
-
-  const scheduleBlocksWithLogs = scheduleBlocks.map(block => ({
-    ...block,
-    log: logsByBlockId.get(block.id) ? {
-      id: logsByBlockId.get(block.id)!.id,
-      outcome: logsByBlockId.get(block.id)!.outcome,
-      remark: logsByBlockId.get(block.id)!.remark,
-    } : null,
-  }));
-
-  // 7. Fetch unresolved blocks (for Triage Modal)
-  const unresolvedBlocks = await prisma.scheduleSessionLog.findMany({
-    where: {
-      userId: DEV_USER_ID,
-      outcome: 'UNRESOLVED',
-      isTriaged: false,
-    },
-    orderBy: [{ date: 'asc' }, { scheduledStart: 'asc' }],
-  });
+  // 6. Fetch Unverified Blocks
+  const unverifiedBlocks = await getUnverifiedBlocks();
 
   return (
     <DashboardClient 
@@ -283,9 +245,9 @@ export default async function DashboardPage() {
       tasks={tasks}
       inbox={inboxItems}
       stats={stats}
-      scheduleBlocks={scheduleBlocksWithLogs}
+      todaySlots={todaySlots}
+      unverifiedBlocks={unverifiedBlocks}
       initialRoutineMode={workspace?.routineMode || 'MASTER'}
-      unresolvedBlocks={unresolvedBlocks}
     />
   );
 }
