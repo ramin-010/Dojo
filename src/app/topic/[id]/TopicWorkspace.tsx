@@ -20,11 +20,13 @@ import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 import { createTopic, deleteCapturePermanently, getTopicLinks, createTextCaptureLink, renameCapture, deleteMultipleCapturesPermanently, deleteTopicMention, saveCanvasData } from '@/app/actions';
 import { TopicHistoryModal } from './TopicHistoryModal';
+import { FloatingCommandBar } from '@/components/ui/FloatingCommandBar';
 import { TopicSettingsModal } from './TopicSettingsModal';
 import { toast } from 'sonner';
 import { uploadToCloud } from '@/lib/utils/upload';
 import { Bot } from 'lucide-react';
 import { AiImportCropperModal } from '@/components/topic/AiImportCropperModal';
+import { CanvasBlockData } from '@/components/canvas/core/types';
 
 // ── Local pieces ───────────────────────────────────────────────────────────────
 import { TopicWorkspaceProps, SidebarTab, SplitViewData } from './types';
@@ -81,6 +83,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAiImporting, setIsAiImporting] = useState(false);
   const [rawImagesForCrop, setRawImagesForCrop] = useState<File[] | null>(null);
+  const [showAiCommandBar, setShowAiCommandBar] = useState(false);
 
   const handleAiImportSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     let files = Array.from(e.target.files || []);
@@ -95,15 +98,30 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     e.target.value = ''; // Reset input so same files can be re-selected if canceled
   };
 
-  const processCroppedFiles = async (croppedFiles: File[], userContext?: string) => {
-    setRawImagesForCrop(null); // Close modal immediately
+  const processAiCommand = async (croppedFiles: File[], userContext?: string, taggedBlocks?: CanvasBlockData[]) => {
+    setRawImagesForCrop(null); // Close modal immediately if open
+    setShowAiCommandBar(false); // Close command bar
+
+    let combinedContext = userContext || '';
+    if (taggedBlocks && taggedBlocks.length > 0) {
+      const taggedContent = taggedBlocks.map(b => `--- Block ID: ${b.blockId} ---\n${b.content}\n--- End Block ---`).join('\n\n');
+      combinedContext = `Here are some existing blocks for context:\n${taggedContent}\n\n${combinedContext}`;
+    }
+
+    if (croppedFiles.length === 0 && combinedContext.trim() === '') {
+      toast.error('Please provide an image or some text context.', { id: 'ai-import' });
+      return;
+    }
+
     setIsAiImporting(true);
-    toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
 
     const publicIdsToCleanup: string[] = [];
+    const imageUrls: string[] = [];
 
     try {
-      // Helper function to chunk array
+      if (croppedFiles.length > 0) {
+        toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
+        // Helper function to chunk array
       const chunkArray = <T,>(arr: T[], size: number): T[][] => {
         return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
           arr.slice(i * size, i * size + size)
@@ -112,7 +130,6 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
 
       // We process 2 images at a time to prevent overloading the Python CV proxy
       const chunks = chunkArray(croppedFiles, 2);
-      const imageUrls: string[] = [];
 
       // 1. Process via CV Pipeline & Upload to Cloudinary (Batched)
       for (let c = 0; c < chunks.length; c++) {
@@ -146,25 +163,30 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         });
       }
 
-      if (imageUrls.length === 0) {
-        throw new Error('No images were successfully processed.');
+        if (imageUrls.length === 0) {
+          throw new Error('No images were successfully processed.');
+        }
       }
 
       // 2. Call Gemini
-      toast.loading('AI is synthesizing your notes. This may take a minute...', { id: 'ai-import' });
+      toast.loading(croppedFiles.length > 0 ? 'AI is synthesizing your notes...' : 'AI is processing your context...', { id: 'ai-import' });
       const geminiRes = await fetch('/api/canvas/extract-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrls, userContext }),
+        body: JSON.stringify({ imageUrls, userContext: combinedContext }),
       });
 
-      if (!geminiRes.ok) throw new Error('AI extraction failed');
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        throw new Error(errText || 'AI extraction failed');
+      }
       const { blocks } = await geminiRes.json();
 
       // 3. Append to Canvas seamlessly via Event Bus
       if (blocks && blocks.length > 0) {
-        const newBlock = blocks[0];
-        window.dispatchEvent(new CustomEvent('CANVAS_INSERT_AI_BLOCK', { detail: { block: newBlock } }));
+        blocks.forEach((newBlock: any) => {
+          window.dispatchEvent(new CustomEvent('CANVAS_INSERT_AI_BLOCK', { detail: { block: newBlock } }));
+        });
         toast.success('Notes successfully synthesized and appended!', { id: 'ai-import' });
       } else {
         throw new Error('No blocks returned from AI');
@@ -567,7 +589,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
 
   // ──────────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen w-full bg-background flex overflow-hidden">
+    <div className="h-screen w-full bg-background flex overflow-hidden relative">
       {/* ── Main Content Area ──────────────────────────────────────────────── */}
       <div
         className={`h-full overflow-y-auto overflow-x-hidden relative ${
@@ -815,7 +837,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                           className="hidden" 
                         />
                         <button
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => setShowAiCommandBar(true)}
                           disabled={isAiImporting}
                           className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
                         >
@@ -852,7 +874,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                         className="hidden"
                       />
                       <button
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => setShowAiCommandBar(true)}
                         disabled={isAiImporting}
                         className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
                       >
@@ -993,8 +1015,16 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       {rawImagesForCrop && (
         <AiImportCropperModal
           files={rawImagesForCrop}
-          onConfirm={processCroppedFiles}
+          onConfirm={processAiCommand}
           onCancel={() => setRawImagesForCrop(null)}
+        />
+      )}
+
+      {/* ── AI Command Bar ─────────────────────────────────────────────── */}
+      {showAiCommandBar && (
+        <FloatingCommandBar 
+          onSubmit={(files, text, taggedBlocks) => processAiCommand(files, text, taggedBlocks)}
+          onCancel={() => setShowAiCommandBar(false)} 
         />
       )}
     </div>

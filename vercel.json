@@ -1,0 +1,27 @@
+{
+    "services": {
+        "frontend": {
+            "root": ".",
+            "framework": "nextjs"
+        },
+        "note-pipeline": {
+            "root": "services/note-pipeline"
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/api/note-pipeline(/.*)?",
+            "destination": {
+                "type": "service",
+                "service": "note-pipeline"
+            }
+        },
+        {
+            "source": "/(.*)",
+            "destination": {
+                "type": "service",
+                "service": "frontend"
+            }
+        }
+    ]
+}

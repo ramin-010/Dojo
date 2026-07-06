@@ -129,6 +129,32 @@ export function useCanvasState(
     return () => window.removeEventListener('CANVAS_INSERT_AI_BLOCK', handleInsertAiBlock);
   }, []);
 
+  // Event Bus for AI Command Bar Tagging
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('CANVAS_SELECTION_CHANGED', { detail: { selectedBlockId } }));
+    
+    const handleRequestSelection = () => {
+      window.dispatchEvent(new CustomEvent('CANVAS_SELECTION_CHANGED', { detail: { selectedBlockId } }));
+    };
+    window.addEventListener('REQUEST_CANVAS_SELECTION', handleRequestSelection);
+    return () => window.removeEventListener('REQUEST_CANVAS_SELECTION', handleRequestSelection);
+  }, [selectedBlockId]);
+
+  const blocksRef = useRef(blocks);
+  useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
+
+  useEffect(() => {
+    const handleBlockRequest = (e: any) => {
+      const ids = new Set(e.detail.blockIds);
+      const requestedBlocks = blocksRef.current.filter(b => ids.has(b.blockId));
+      window.dispatchEvent(new CustomEvent('RESPONSE_BLOCK_DATA', { detail: { blocks: requestedBlocks } }));
+    };
+    window.addEventListener('REQUEST_BLOCK_DATA', handleBlockRequest);
+    return () => window.removeEventListener('REQUEST_BLOCK_DATA', handleBlockRequest);
+  }, []);
+
   const addBlock = useCallback((targetCanvasId: string, type: CanvasBlockData['type'], x?: number, y?: number) => {
     const defaults: Record<string, Partial<CanvasBlockData>> = {
       text: { width: 450, height: 'auto', content: '' },

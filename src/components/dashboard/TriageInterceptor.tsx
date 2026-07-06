@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, CheckCircle2, SkipForward, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, SkipForward, AlertCircle, Clock } from 'lucide-react';
 import { completeSlot, skipSlot } from '@/app/actions/schedule-slot.actions';
 import { SlotStatus } from '@prisma/client';
 
@@ -16,6 +16,14 @@ export interface UnverifiedBlock {
   date: Date;
 }
 
+const format12h = (time24: string): string => {
+  if (!time24) return '';
+  const [hStr, mStr] = time24.split(':');
+  const h = parseInt(hStr, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12.toString().padStart(2, '0')}:${mStr} ${ampm}`;
+};
 interface TriageInterceptorProps {
   unverifiedBlocks: UnverifiedBlock[];
   onComplete: () => void;
@@ -78,64 +86,67 @@ export function TriageInterceptor({ unverifiedBlocks, onComplete }: TriageInterc
   });
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-      <div className="bg-sidebar border border-divider shadow-xl rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-sidebar border border-divider shadow-2xl rounded-2xl w-full max-w-md flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="p-4 border-b border-divider flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-foreground truncate">Action Required</h2>
-            <p className="text-xs text-foreground/60">
-              You have {unverifiedBlocks.length - currentIndex} unresolved {unverifiedBlocks.length - currentIndex === 1 ? 'block' : 'blocks'} from the past
-            </p>
+        <div className="p-5 flex items-start justify-between">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0">
+               <AlertCircle className="w-5 h-5" />
+             </div>
+             <div>
+                <h2 className="text-base font-bold text-foreground">Action Required</h2>
+                <p className="text-xs text-foreground/50">
+                  {unverifiedBlocks.length - currentIndex} unresolved {unverifiedBlocks.length - currentIndex === 1 ? 'block' : 'blocks'} from the past
+                </p>
+             </div>
           </div>
           <button 
             onClick={handleDismiss}
-            className="p-2 text-foreground/40 hover:text-foreground hover:bg-hover rounded-lg transition-colors"
+            className="p-1.5 text-foreground/30 hover:text-foreground hover:bg-hover rounded-full transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 flex flex-col gap-6">
-          <div className="flex flex-col items-center text-center gap-2">
-            <span className="text-xs font-medium px-2 py-1 bg-background rounded-md text-foreground/60 border border-divider">
+        <div className="px-6 py-2 flex flex-col gap-6">
+          <div className="flex flex-col items-center justify-center text-center py-6 bg-background/50 rounded-xl border border-divider/50">
+            <span className="text-xs font-semibold px-2 py-1 bg-background rounded text-foreground/50 border border-divider mb-3">
               {formattedDate}
             </span>
             <div 
-              className="text-lg font-bold px-3 py-1 rounded-md"
-              style={{ color: currentItem.slot.color, backgroundColor: `${currentItem.slot.color}15` }}
+              className="text-xl font-bold mb-1"
+              style={{ color: currentItem.slot.color }}
             >
               {currentItem.slot.title}
             </div>
-            <span className="text-xs font-mono text-foreground/50">
-              {currentItem.slot.startTime} - {currentItem.slot.endTime}
-            </span>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/50 mt-0.5">
+              <Clock className="w-3.5 h-3.5 opacity-70" />
+              <span>{format12h(currentItem.slot.startTime)} - {format12h(currentItem.slot.endTime)}</span>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <input
               type="text"
               placeholder="Add a remark (required if skipping)..."
               value={remark}
               onChange={(e) => setRemark(e.target.value)}
-              className="w-full bg-background border border-divider rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-transparent border-b border-divider/50 hover:border-divider px-2 py-2 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-foreground/30"
               disabled={isSubmitting}
             />
-            {error && <p className="text-[10px] text-red-400">{error}</p>}
+            {error && <p className="text-[10px] text-red-400 px-2">{error}</p>}
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-background border-t border-divider grid grid-cols-2 gap-3">
+        <div className="p-5 flex gap-3">
           <button
             onClick={() => handleVerify('SKIPPED')}
             disabled={isSubmitting}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-divider text-foreground/70 hover:bg-hover hover:text-foreground transition-colors disabled:opacity-50 font-medium text-sm"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-foreground/60 hover:bg-hover hover:text-foreground transition-colors disabled:opacity-50 font-semibold text-sm"
           >
             <SkipForward className="w-4 h-4" />
             Skip Block
@@ -143,7 +154,7 @@ export function TriageInterceptor({ unverifiedBlocks, onComplete }: TriageInterc
           <button
             onClick={() => handleVerify('COMPLETED')}
             disabled={isSubmitting}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 font-medium text-sm"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 font-semibold text-sm"
           >
             <CheckCircle2 className="w-4 h-4" />
             Mark as Done

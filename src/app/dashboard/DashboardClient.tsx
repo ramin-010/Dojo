@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Flame, BookOpen, CheckCircle2, FolderPlus } from 'lucide-react';
 import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
@@ -11,6 +11,7 @@ import { DayManagerModal } from '@/components/dashboard/DayManagerModal';
 import ScheduleTimeline from './dashComponents/ScheduleTimeline';
 import RevisionsList from './dashComponents/RevisionsList';
 import TasksSidebar from './dashComponents/TasksSidebar';
+import { WeeklyReviewModal } from '@/components/dashboard/WeeklyReviewModal';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // TYPES & PROPS (shared — imported as `type` by the dashcomponents files)
@@ -41,6 +42,7 @@ export interface TaskProp {
   time?: string | null;
   dueDate?: Date | null;
   type: 'reminder' | 'task';
+  goalType?: 'NONE' | 'WEEKLY' | 'MONTHLY';
   isOverdue?: boolean;
   source?: string;
   description?: string | null;
@@ -101,6 +103,7 @@ interface DashboardClientProps {
   todaySlots: ScheduleSlotProp[];
   initialRoutineMode: 'MASTER' | 'DAILY';
   unverifiedBlocks?: any[];
+  habits?: any[];
 }
 
 const MOCK_USER = { name: 'Ramin' };
@@ -127,7 +130,8 @@ export default function DashboardClient({
   stats,
   todaySlots = [],
   initialRoutineMode,
-  unverifiedBlocks = []
+  unverifiedBlocks = [],
+  habits = [],
 }: DashboardClientProps) {
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
@@ -137,6 +141,11 @@ export default function DashboardClient({
   const [rescheduleTaskTarget, setRescheduleTaskTarget] = useState<any | null>(null);
   const [previewDocument, setPreviewDocument] = useState<PreviewDocument | null>(null);
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
+
+  // Keep local tasks state in sync with server props (for when Server Actions revalidate the page)
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   // Deduplicate items based on priority: Revisions > Tasks > Inbox
   const activeRevisionCaptureIds = useMemo(() => new Set(revisions.map((r: any) => r.capture?.id).filter(Boolean)), [revisions]);
@@ -150,13 +159,22 @@ export default function DashboardClient({
   const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
   const undoneTasks = filteredTasks.filter(t => !t.isDone);
-  const overdueTasks = filteredTasks.filter(t => t.isOverdue).sort((a, b) => Number(a.isDone) - Number(b.isDone));
-  const todayTasks = filteredTasks.filter(t => {
+  const overdueTasks = filteredTasks.filter(t => t.isOverdue && t.goalType !== 'WEEKLY' && t.goalType !== 'MONTHLY').sort((a, b) => Number(a.isDone) - Number(b.isDone));
+  
+  // Weekly and Monthly Goals
+  const weeklyGoals = filteredTasks.filter(t => t.goalType === 'WEEKLY');
+  const monthlyGoals = filteredTasks.filter(t => t.goalType === 'MONTHLY');
+  
+  // Standard Tasks (NONE)
+  const standardTasks = filteredTasks.filter(t => t.goalType === 'NONE' || !t.goalType);
+
+  const todayTasks = standardTasks.filter(t => {
     if (!t.dueDate) return true; // No due date -> show in today/inbox conceptually
     const d = new Date(t.dueDate);
     return d >= startOfToday && d <= endOfToday;
   }).sort((a, b) => Number(a.isDone) - Number(b.isDone));
-  const upcomingTasks = filteredTasks.filter(t => {
+  
+  const upcomingTasks = standardTasks.filter(t => {
     if (!t.dueDate) return false;
     const d = new Date(t.dueDate);
     return d > endOfToday;
@@ -296,9 +314,12 @@ export default function DashboardClient({
           overdueTasks={overdueTasks}
           todayTasks={todayTasks}
           upcomingTasks={upcomingTasks}
+          weeklyGoals={weeklyGoals}
+          monthlyGoals={monthlyGoals}
           undoneTasks={undoneTasks}
           filteredInbox={filteredInbox}
           stats={stats}
+          habits={habits}
           taskActionMenuId={taskActionMenuId}
           setTaskActionMenuId={setTaskActionMenuId}
           expandedTaskIds={expandedTaskIds}
@@ -349,6 +370,9 @@ export default function DashboardClient({
           onClose={() => setPreviewDocument(null)}
         />
       )}
+
+      {/* Monday Weekly Review */}
+      <WeeklyReviewModal />
     </div>
   );
 }

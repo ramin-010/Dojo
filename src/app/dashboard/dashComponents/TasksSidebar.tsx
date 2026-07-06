@@ -14,9 +14,16 @@ import {
   Paperclip,
   Inbox,
   BookOpen,
+  Plus,
+  Loader2,
+  Trash2,
+  MoreHorizontal,
 } from 'lucide-react';
 import { TaskActionMenu } from '@/components/dashboard/TaskActionMenu';
 import type { TaskProp, InboxProp, StatsProp, PreviewDocument } from '../DashboardClient';
+import { createHabit, logHabit } from '@/app/actions/habit.actions';
+import { deleteCapture } from '@/app/actions/capture.actions';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // SHARED HELPERS
@@ -79,9 +86,12 @@ interface TasksSidebarProps {
   overdueTasks: TaskProp[];
   todayTasks: TaskProp[];
   upcomingTasks: TaskProp[];
+  weeklyGoals: TaskProp[];
+  monthlyGoals: TaskProp[];
   undoneTasks: TaskProp[];
   filteredInbox: InboxProp[];
   stats: StatsProp;
+  habits: any[];
   taskActionMenuId: string | null;
   setTaskActionMenuId: (id: string | null) => void;
   expandedTaskIds: Set<string>;
@@ -102,9 +112,12 @@ export default function TasksSidebar({
   overdueTasks,
   todayTasks,
   upcomingTasks,
+  weeklyGoals,
+  monthlyGoals,
   undoneTasks,
   filteredInbox,
   stats,
+  habits,
   taskActionMenuId,
   setTaskActionMenuId,
   expandedTaskIds,
@@ -115,6 +128,48 @@ export default function TasksSidebar({
 }: TasksSidebarProps) {
   const [isAllTasksModalOpen, setIsAllTasksModalOpen] = useState(false);
   const [activeTaskTab, setActiveTaskTab] = useState<'overdue' | 'today' | 'upcoming'>('today');
+
+  const [isCreatingHabit, setIsCreatingHabit] = useState(false);
+  const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitIcon, setNewHabitIcon] = useState('🔥');
+  const [isSavingHabit, setIsSavingHabit] = useState(false);
+  const [loggingHabitId, setLoggingHabitId] = useState<string | null>(null);
+
+  const [inboxMenuOpenId, setInboxMenuOpenId] = useState<string | null>(null);
+
+  const handleCreateHabit = async () => {
+    if (!newHabitName.trim()) return;
+    setIsSavingHabit(true);
+    try {
+      await createHabit(newHabitName.trim(), newHabitIcon);
+      toast.success('Habit created');
+      setNewHabitName('');
+      setNewHabitIcon('🔥');
+      setIsCreatingHabit(false);
+    } catch (e) {
+      toast.error('Failed to create habit');
+    } finally {
+      setIsSavingHabit(false);
+    }
+  };
+
+  const handleLogHabit = async (id: string) => {
+    setLoggingHabitId(id);
+    try {
+      const res = await logHabit(id);
+      if (res.success && res.alreadyLogged) {
+        toast.info('Already logged today!');
+      } else if (res.success) {
+        toast.success('Habit logged! Streak updated.');
+      } else {
+        toast.error('Failed to log habit');
+      }
+    } catch (e) {
+      toast.error('Failed to log habit');
+    } finally {
+      setLoggingHabitId(null);
+    }
+  };
 
   return (
     <div className="flex flex-col space-y-8">
@@ -158,7 +213,14 @@ export default function TasksSidebar({
                   circleColorClass="text-foreground/30"
                   hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
                   sizeClass="w-4 h-4"
-                />
+                        onDelete={async () => {
+                          if (confirm('Delete this capture?')) {
+                            const res = await deleteCapture(task.id);
+                            if (res.success) toast.success('Capture deleted');
+                            else toast.error(res.error || 'Failed to delete');
+                          }
+                        }}
+                      />
                 <div className="flex-1 min-w-0">
                   <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
                     {task.title}
@@ -210,6 +272,120 @@ export default function TasksSidebar({
         </section>
       )}
 
+      {/* WEEKLY GOALS */}
+      {weeklyGoals.length > 0 && (
+        <section>
+          <div className="flex justify-between items-center h-8 mb-4">
+            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+              Weekly Goals
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-blue-500/10 text-blue-400 border border-blue-500/20 normal-case tracking-normal font-bold">
+                {weeklyGoals.length}
+              </span>
+            </h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {weeklyGoals.map(task => (
+              <div
+                key={task.id}
+                onClick={() => toggleTaskExpansion(task.id)}
+                className={`group bg-sidebar border border-divider rounded-lg px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer ${
+                  task.isDone ? 'opacity-50' : 'hover:bg-hover'
+                }`}
+              >
+                <TaskActionMenu
+                  task={task}
+                  isOpen={taskActionMenuId === task.id}
+                  onToggle={() => toggleTask(task.id)}
+                  onReschedule={() => { setRescheduleTaskTarget(task); setTaskActionMenuId(null); }}
+                  onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(task.id); }}
+                  onClose={() => setTaskActionMenuId(null)}
+                  circleColorClass="text-foreground/30"
+                  hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
+                  sizeClass="w-4 h-4"
+                        onDelete={async () => {
+                          if (confirm('Delete this capture?')) {
+                            const res = await deleteCapture(task.id);
+                            if (res.success) toast.success('Capture deleted');
+                            else toast.error(res.error || 'Failed to delete');
+                          }
+                        }}
+                      />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
+                    {task.title}
+                  </p>
+                  {task.description && (
+                    <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-foreground/20' : 'text-foreground/50'}`}>
+                      {task.description}
+                    </p>
+                  )}
+                  {task.attachments && task.attachments.length > 0 && (
+                    <AttachmentThumbnails attachments={task.attachments} fallbackTitle={task.title} dimmed={task.isDone} onPreview={setPreviewDocument} />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* MONTHLY GOALS */}
+      {monthlyGoals.length > 0 && (
+        <section>
+          <div className="flex justify-between items-center h-8 mb-4">
+            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+              Monthly Goals
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 normal-case tracking-normal font-bold">
+                {monthlyGoals.length}
+              </span>
+            </h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {monthlyGoals.map(task => (
+              <div
+                key={task.id}
+                onClick={() => toggleTaskExpansion(task.id)}
+                className={`group bg-sidebar border border-divider rounded-lg px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer ${
+                  task.isDone ? 'opacity-50' : 'hover:bg-hover'
+                }`}
+              >
+                <TaskActionMenu
+                  task={task}
+                  isOpen={taskActionMenuId === task.id}
+                  onToggle={() => toggleTask(task.id)}
+                  onReschedule={() => { setRescheduleTaskTarget(task); setTaskActionMenuId(null); }}
+                  onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(task.id); }}
+                  onClose={() => setTaskActionMenuId(null)}
+                  circleColorClass="text-foreground/30"
+                  hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
+                  sizeClass="w-4 h-4"
+                        onDelete={async () => {
+                          if (confirm('Delete this capture?')) {
+                            const res = await deleteCapture(task.id);
+                            if (res.success) toast.success('Capture deleted');
+                            else toast.error(res.error || 'Failed to delete');
+                          }
+                        }}
+                      />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
+                    {task.title}
+                  </p>
+                  {task.description && (
+                    <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-foreground/20' : 'text-foreground/50'}`}>
+                      {task.description}
+                    </p>
+                  )}
+                  {task.attachments && task.attachments.length > 0 && (
+                    <AttachmentThumbnails attachments={task.attachments} fallbackTitle={task.title} dimmed={task.isDone} onPreview={setPreviewDocument} />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* INBOX */}
       {filteredInbox.length > 0 && (
         <section>
@@ -246,11 +422,136 @@ export default function TasksSidebar({
                       ))}
                     </div>
                   </div>
+                  <div className="relative shrink-0 flex items-center justify-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setInboxMenuOpenId(inboxMenuOpenId === item.id ? null : item.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-foreground/30 hover:text-foreground hover:bg-hover rounded-md transition-all"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {inboxMenuOpenId === item.id && (
+                      <>
+                        <div className="fixed inset-0 z-[9998]" onClick={(e) => { e.stopPropagation(); setInboxMenuOpenId(null); }} />
+                        <div className="absolute top-6 right-0 z-[9999] bg-black border border-white/20 rounded-xl p-1 shadow-[0_16px_40px_rgba(0,0,0,1)] min-w-[120px] flex flex-col gap-0.5 animate-in fade-in zoom-in-95">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setInboxMenuOpenId(null);
+                              if (confirm('Delete this capture?')) {
+                                const res = await deleteCapture(item.id);
+                                if (res.success) toast.success('Capture deleted');
+                                else toast.error(res.error || 'Failed to delete');
+                              }
+                            }}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-red-500/20 rounded-lg transition-colors w-full text-left group/item"
+                          >
+                            <Trash2 className="w-[15px] h-[15px] text-red-500/80 group-hover/item:text-red-500" />
+                            <span className="text-[13px] font-medium text-red-500/90 group-hover/item:text-red-500">Delete</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </section>
+      )}
+
+      {/* HABITS (Temporarily Disabled) */}
+      {false && (
+      <section>
+        <div className="flex justify-between items-center h-8 mb-4">
+          <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+            Daily Habits
+          </h2>
+          <button
+            onClick={() => setIsCreatingHabit(true)}
+            className="flex items-center gap-1 p-1 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isCreatingHabit && (
+          <div className="mb-4 bg-sidebar border border-divider/60 rounded-xl p-3 flex flex-col gap-3 shadow-inner">
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={newHabitIcon}
+                onChange={e => setNewHabitIcon(e.target.value)}
+                placeholder="🔥"
+                className="w-10 bg-background border border-divider/60 rounded-lg px-2 py-1.5 text-center text-sm focus:outline-none focus:border-accent/50"
+                maxLength={2}
+              />
+              <input 
+                type="text" 
+                value={newHabitName}
+                onChange={e => setNewHabitName(e.target.value)}
+                placeholder="Habit Name..."
+                className="flex-1 bg-background border border-divider/60 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent/50"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => setIsCreatingHabit(false)}
+                className="px-3 py-1.5 text-xs font-medium text-foreground/50 hover:text-foreground"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCreateHabit}
+                disabled={isSavingHabit || !newHabitName.trim()}
+                className="px-4 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-[#026EC1] disabled:opacity-50"
+              >
+                {isSavingHabit ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Create'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          {habits.map(habit => {
+            const isLoggedToday = (() => {
+              if (!habit.lastCompletedAt) return false;
+              const last = new Date(habit.lastCompletedAt);
+              const today = new Date();
+              return last.getDate() === today.getDate() && last.getMonth() === today.getMonth() && last.getFullYear() === today.getFullYear();
+            })();
+
+            return (
+              <div key={habit.id} className="bg-sidebar border border-divider rounded-xl p-4 flex flex-col justify-between group relative overflow-hidden">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 text-2xl font-bold text-foreground/90">
+                      <span className="text-2xl">{habit.icon || '🔥'}</span> {habit.currentStreak}
+                    </div>
+                    <span className="text-[10px] text-foreground/50 mt-1 font-medium">{habit.name}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleLogHabit(habit.id)}
+                  disabled={isLoggedToday || loggingHabitId === habit.id}
+                  className={`w-full py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
+                    isLoggedToday 
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-background border border-divider hover:bg-hover text-foreground/70'
+                  }`}
+                >
+                  {loggingHabitId === habit.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (
+                    isLoggedToday ? <CheckCircle2 className="w-3.5 h-3.5" /> : 'Check In'
+                  )}
+                  {isLoggedToday ? 'Logged' : ''}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
       )}
 
       {/* PROGRESS */}
@@ -381,6 +682,13 @@ export default function TasksSidebar({
                         circleColorClass="text-red-500/40"
                         hoverColorClass="group-hover/btn:text-red-400 group-hover:text-red-400"
                         sizeClass="w-[15px] h-[15px]"
+                        onDelete={async () => {
+                          if (confirm('Delete this capture?')) {
+                            const res = await deleteCapture(task.id);
+                            if (res.success) toast.success('Capture deleted');
+                            else toast.error(res.error || 'Failed to delete');
+                          }
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>{task.title}</p>
@@ -426,6 +734,13 @@ export default function TasksSidebar({
                         circleColorClass="text-foreground/20"
                         hoverColorClass="group-hover/btn:text-accent group-hover:text-accent"
                         sizeClass="w-[15px] h-[15px]"
+                        onDelete={async () => {
+                          if (confirm('Delete this capture?')) {
+                            const res = await deleteCapture(task.id);
+                            if (res.success) toast.success('Capture deleted');
+                            else toast.error(res.error || 'Failed to delete');
+                          }
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>{task.title}</p>
@@ -479,6 +794,13 @@ export default function TasksSidebar({
                         circleColorClass="text-foreground/20"
                         hoverColorClass="group-hover/btn:text-foreground/50 group-hover:text-foreground/50"
                         sizeClass="w-[15px] h-[15px]"
+                        onDelete={async () => {
+                          if (confirm('Delete this capture?')) {
+                            const res = await deleteCapture(task.id);
+                            if (res.success) toast.success('Capture deleted');
+                            else toast.error(res.error || 'Failed to delete');
+                          }
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>{task.title}</p>

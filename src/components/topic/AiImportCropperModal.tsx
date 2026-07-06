@@ -9,9 +9,10 @@ interface AiImportCropperModalProps {
   files: File[];
   onConfirm: (croppedFiles: File[], userContext: string) => void;
   onCancel: () => void;
+  hideContextInput?: boolean;
 }
 
-export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCropperModalProps) {
+export function AiImportCropperModal({ files, onConfirm, onCancel, hideContextInput }: AiImportCropperModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userContext, setUserContext] = useState('');
   const [showContextInput, setShowContextInput] = useState(false);
@@ -67,7 +68,10 @@ export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCro
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-[2px] p-2 sm:p-4 animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-2 sm:p-4 animate-in fade-in duration-200"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl w-full max-w-5xl flex flex-col h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Minimal Header */}
@@ -110,7 +114,7 @@ export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCro
         </div>
 
         {/* Context Input (Collapsible) */}
-        {showContextInput && (
+        {!hideContextInput && showContextInput && (
           <div className="border-t border-zinc-800/50 bg-zinc-900/50 p-4">
             <label className="block text-xs font-medium text-zinc-300 mb-2 flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
@@ -134,18 +138,20 @@ export function AiImportCropperModal({ files, onConfirm, onCancel }: AiImportCro
             >
               Cancel
             </button>
-            <button
-              onClick={() => setShowContextInput(!showContextInput)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                showContextInput || userContext
-                  ? 'text-blue-400 bg-blue-400/10 hover:bg-blue-400/20'
-                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              Context
-              {userContext && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-0.5"></span>}
-            </button>
+            {!hideContextInput && (
+              <button
+                onClick={() => setShowContextInput(!showContextInput)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                  showContextInput || userContext
+                    ? 'text-blue-400 bg-blue-400/10 hover:bg-blue-400/20'
+                    : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                Context
+                {userContext && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-0.5"></span>}
+              </button>
+            )}
           </div>
           <button
             onClick={handleNext}

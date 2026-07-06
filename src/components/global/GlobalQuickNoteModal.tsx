@@ -43,6 +43,7 @@ export function GlobalQuickNoteModal() {
 
   const [explicitType, setExplicitType] = useState<'note' | 'task' | 'link'>('note');
   const [explicitDate, setExplicitDate] = useState<Date | null>(null);
+  const [isMonthlyGoal, setIsMonthlyGoal] = useState(false);
 
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -149,6 +150,7 @@ export function GlobalQuickNoteModal() {
       setTagSearchQuery('');
       setExplicitType('note');
       setExplicitDate(null);
+      setIsMonthlyGoal(false);
       setUploadedFiles([]);
     }
   }, [isOpen]);
@@ -274,6 +276,11 @@ export function GlobalQuickNoteModal() {
     try {
       setIsSaving(true);
       
+      let computedGoalType: 'NONE' | 'WEEKLY' | 'MONTHLY' = 'NONE';
+      if (explicitType === 'task' && !finalReminder && !explicitDate) {
+        computedGoalType = isMonthlyGoal ? 'MONTHLY' : 'WEEKLY';
+      }
+
       const captureData = {
         title: finalTitle,
         content,
@@ -285,6 +292,7 @@ export function GlobalQuickNoteModal() {
         reminder: finalReminder ? finalReminder.toISOString() : undefined,
         explicitDate: explicitDate || undefined,
         explicitType,
+        goalType: computedGoalType,
       };
 
       let result;
@@ -616,6 +624,28 @@ export function GlobalQuickNoteModal() {
                       Resource
                     </button>
                   </div>
+                  
+                  {/* Monthly Goal Toggle for Tasks */}
+                  <AnimatePresence>
+                    {explicitType === 'task' && (
+                      <motion.button
+                        initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                        animate={{ opacity: 1, width: 'auto', marginLeft: 8 }}
+                        exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                        onClick={() => setIsMonthlyGoal(m => !m)}
+                        title="Mark as Monthly Goal"
+                        className={`flex items-center justify-center p-1.5 rounded-md transition-colors ${
+                          isMonthlyGoal 
+                            ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30' 
+                            : 'text-foreground/40 hover:text-foreground hover:bg-hover'
+                        }`}
+                      >
+                        <span className="text-[11px] font-bold tracking-wider uppercase px-1">
+                          {isMonthlyGoal ? 'Monthly' : 'M'}
+                        </span>
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Action Buttons */}

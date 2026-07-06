@@ -75,6 +75,7 @@ export async function createCapture(data: {
   reminder?: string;
   explicitDate?: Date; // To pass explicit date from native date picker
   explicitType?: 'note' | 'task' | 'link';
+  goalType?: 'NONE' | 'WEEKLY' | 'MONTHLY';
   cloudPublicId?: string;
   fileType?: string;
   attachments?: { url: string; cloudPublicId: string; fileType?: string; fileName?: string }[];
@@ -113,7 +114,27 @@ export async function createCapture(data: {
     const typeLower = data.explicitType || (isUrl ? 'link' : 'note');
     const typeEnum = typeLower.toUpperCase() as CaptureType;
 
-    const dueDate = data.explicitDate || (data.reminder === 'tomorrow' ? new Date(Date.now() + 86400000) : null);
+    let dueDate = data.explicitDate || (data.reminder === 'tomorrow' ? new Date(Date.now() + 86400000) : null);
+    let finalGoalType = data.goalType ? data.goalType.toUpperCase() as 'NONE' | 'WEEKLY' | 'MONTHLY' : 'NONE';
+
+    // Apply Weekly and Monthly Goal logic if it's a TASK and no explicit date was provided
+    if (typeEnum === 'TASK' && !dueDate && finalGoalType !== 'NONE') {
+      const now = new Date();
+      if (finalGoalType === 'MONTHLY') {
+        // End of current month
+        dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      } else if (finalGoalType === 'WEEKLY') {
+        // The "Weekend Rule": if created Sat/Sun, push to next week.
+        const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday
+        let daysUntilSunday = 7 - dayOfWeek;
+        if (dayOfWeek === 0) daysUntilSunday = 7; // Created on Sunday -> next Sunday
+        if (dayOfWeek === 6) daysUntilSunday = 8; // Created on Saturday -> next Sunday
+        
+        dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59, 999);
+      }
+    } else if (typeEnum !== 'TASK') {
+      finalGoalType = 'NONE';
+    }
 
     const savedItem = await prisma.capture.create({
       data: {
@@ -121,6 +142,7 @@ export async function createCapture(data: {
         subjectId: resolvedSubjectId,
         topicId: data.topicId || null,
         type: typeEnum,
+        goalType: finalGoalType,
         title: data.title || (typeEnum !== 'NOTE' ? textToCheck : null),
         content: data.content || null,
         url: data.url || (typeEnum === 'LINK' && isUrl ? textToCheck : null),
@@ -303,6 +325,33 @@ export async function updateCapture(id: string, data: { dueDate?: Date | null })
 
 export async function deleteCapture(id: string) {
   try {
+    const capture = await prisma.capture.findUnique({
+      where: { id },
+      include: { attachments: true }
+    });
+
+    if (!capture) {
+      return { error: 'Capture not found' };
+    }
+
+    // Delete from Cloudinary
+    const publicIdsToDelete = [];
+    if (capture.cloudPublicId) publicIdsToDelete.push(capture.cloudPublicId);
+    for (const att of capture.attachments) {
+      if (att.cloudPublicId) publicIdsToDelete.push(att.cloudPublicId);
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await Promise.all(publicIdsToDelete.map(publicId => {
+        return new Promise<void>((resolve) => {
+          cloudinary.uploader.destroy(publicId, { invalidate: true }, (err: any) => {
+            if (err) console.error(`Failed to delete Cloudinary asset ${publicId}:`, err);
+            resolve();
+          });
+        });
+      }));
+    }
+
     const item = await prisma.capture.delete({
       where: { id },
     });
@@ -315,6 +364,7 @@ export async function deleteCapture(id: string) {
 
     return { success: true };
   } catch (error: any) {
+    console.error('Delete capture error:', error);
     return { error: 'Failed to delete item' };
   }
 }
@@ -411,5 +461,70 @@ export async function generateCaptureAI(
   } catch (error: any) {
     console.error('AI Generation Error:', error);
     return { error: error.message || 'AI Generation failed' };
+  }
+}
+
+export async function getUnresolvedWeeklyGoals() {
+  try {
+    const now = new Date();
+    // Start of current week (Monday)
+    const dayOfWeek = now.getDay();
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const startOfCurrentWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday, 0, 0, 0, 0);
+
+    const goals = await prisma.capture.findMany({
+      where: {
+        workspaceId: DEV_WORKSPACE_ID,
+        type: 'TASK',
+        goalType: 'WEEKLY',
+        isDone: false,
+        dueDate: {
+          lt: startOfCurrentWeek
+        }
+      },
+      include: {
+        category: true,
+      }
+    });
+
+    return { success: true, goals };
+  } catch (error: any) {
+    console.error(error);
+    return { error: 'Failed to fetch unresolved weekly goals' };
+  }
+}
+
+export async function shiftWeeklyGoal(captureId: string, target: 'THIS_WEEK' | 'MONTHLY') {
+  try {
+    const now = new Date();
+    let newDueDate: Date;
+    let newGoalType: 'WEEKLY' | 'MONTHLY';
+
+    if (target === 'MONTHLY') {
+      newGoalType = 'MONTHLY';
+      newDueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else {
+      newGoalType = 'WEEKLY';
+      const dayOfWeek = now.getDay();
+      let daysUntilSunday = 7 - dayOfWeek;
+      if (dayOfWeek === 0) daysUntilSunday = 7;
+      if (dayOfWeek === 6) daysUntilSunday = 8;
+      newDueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59, 999);
+    }
+
+    const updated = await prisma.capture.update({
+      where: { id: captureId },
+      data: {
+        goalType: newGoalType,
+        dueDate: newDueDate,
+      }
+    });
+
+    revalidatePath('/');
+    revalidatePath('/dashboard');
+    return { success: true, capture: updated };
+  } catch (error: any) {
+    console.error(error);
+    return { error: 'Failed to shift goal' };
   }
 }

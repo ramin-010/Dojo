@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Clock,
@@ -8,6 +9,8 @@ import {
   Play,
   Zap,
   Paperclip,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { TaskActionMenu } from '@/components/dashboard/TaskActionMenu';
 import type { RevisionProp, PreviewDocument } from '../DashboardClient';
@@ -105,6 +108,7 @@ export default function RevisionsList({
   setRescheduleTaskTarget,
 }: RevisionsListProps) {
   const router = useRouter();
+  const [isOverdueCollapsed, setIsOverdueCollapsed] = useState(false);
 
   return (
     <section>
@@ -122,145 +126,178 @@ export default function RevisionsList({
         )}
       </div>
 
-      {/* Unified revision list — overdue first, then today */}
       <div className="flex flex-col gap-2">
-        {/* Overdue items (Incomplete) */}
-        {incompleteOverdueRevisions.map(rev => (
-          <div
-            key={rev.id}
-            onClick={() => {
-              if (!rev.isQuickNote) {
-                router.push(`/topic/${rev.topicId}`);
-              } else {
-                toggleTaskExpansion(rev.id);
-              }
-            }}
-            className={`group bg-sidebar border border-[#f48771]/15 rounded-lg p-4 transition-colors flex items-center justify-between cursor-pointer ${taskActionMenuId === rev.id ? 'relative z-50' : ''} hover:bg-hover`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="task-action-menu-container" onClick={(e) => e.stopPropagation()}>
-                <TaskActionMenu
-                  task={rev}
-                  isOpen={taskActionMenuId === rev.id}
-                  onToggle={async () => {
-                    const { toggleRevision } = await import('@/app/actions/planner.actions');
-                    await toggleRevision(rev.id, !rev.isDone);
-                  }}
-                  onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
-                  onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
-                  onClose={() => setTaskActionMenuId(null)}
-                  circleColorClass="text-[#f48771]/40"
-                  hoverColorClass="group-hover/btn:text-[#f48771] group-hover:text-[#f48771]"
-                  sizeClass="w-5 h-5"
-                  labels={{ complete: "Complete", reschedule: "Reschedule" }}
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">{rev.topicTitle}</span>
-                  {rev.tags[0] && (
-                    <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-                      <span className="text-[10px] text-foreground/40 font-medium">
-                        #{rev.tags[0].replace('#', '')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
-                  {rev.subjectName}
-                  <span className="text-foreground/20 mx-0.5">•</span>
-                  {rev.isQuickNote ? (
-                    <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
-                  ) : (
-                    <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
-                  )}
-                  <span className="text-foreground/20 mx-0.5">•</span>
-                  Cycle {rev.cycleNumber} of 4
-                </p>
-                {rev.isQuickNote && rev.description && (
-                  <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
-                    {rev.description}
-                  </p>
-                )}
-                {rev.isQuickNote && rev.attachments && rev.attachments.length > 0 && (
-                  <AttachmentThumbnails attachments={rev.attachments} fallbackTitle={rev.topicTitle} onPreview={setPreviewDocument} />
-                )}
-              </div>
-            </div>
-            <span className="text-xs font-medium text-[#f48771] flex items-center gap-1 shrink-0">
-              <Clock className="w-3 h-3" /> Overdue ({getCycleName(rev.intervalDays)})
-            </span>
-          </div>
-        ))}
-
         {/* Today items (Incomplete) */}
-        {Object.entries(groupedIncompleteTodayRevisions).map(([subjectId, revisions]) => (
-          revisions.map(rev => (
-            <div
-              key={rev.id}
-              onClick={() => {
-                if (!rev.isQuickNote) {
-                  router.push(`/topic/${rev.topicId}`);
-                } else {
-                  toggleTaskExpansion(rev.id);
-                }
-              }}
-              className={`group bg-sidebar border border-divider rounded-lg p-4 transition-colors flex items-center justify-between cursor-pointer ${taskActionMenuId === rev.id ? 'relative z-50' : ''} ${rev.isDone ? 'opacity-50' : 'hover:bg-hover'}`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="task-action-menu-container" onClick={(e) => e.stopPropagation()}>
-                  <TaskActionMenu
-                    task={rev}
-                    isOpen={taskActionMenuId === rev.id}
-                    onToggle={async () => {
-                      const { toggleRevision } = await import('@/app/actions/planner.actions');
-                      await toggleRevision(rev.id, true);
-                    }}
-                    onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
-                    onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
-                    onClose={() => setTaskActionMenuId(null)}
-                    circleColorClass="text-foreground/30"
-                    hoverColorClass="group-hover/btn:text-accent group-hover:text-accent"
-                    sizeClass="w-5 h-5"
-                    labels={{ complete: "Complete", reschedule: "Reschedule" }}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{rev.topicTitle}</span>
-                    {rev.tags[0] && (
-                      <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-                        <span className="text-[10px] text-foreground/40 font-medium">
-                          #{rev.tags[0].replace('#', '')}
-                        </span>
+        {Object.keys(groupedIncompleteTodayRevisions).length > 0 && (
+          <>
+            {Object.entries(groupedIncompleteTodayRevisions).map(([subjectId, revisions]) => (
+              revisions.map(rev => (
+                <div
+                  key={rev.id}
+                  onClick={() => {
+                    if (!rev.isQuickNote) {
+                      router.push(`/topic/${rev.topicId}`);
+                    } else {
+                      toggleTaskExpansion(rev.id);
+                    }
+                  }}
+                  className={`group bg-sidebar border border-divider rounded-lg p-4 transition-colors flex items-center justify-between cursor-pointer ${taskActionMenuId === rev.id ? 'relative z-50' : ''} ${rev.isDone ? 'opacity-50' : 'hover:bg-hover'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="task-action-menu-container" onClick={(e) => e.stopPropagation()}>
+                      <TaskActionMenu
+                        task={rev}
+                        isOpen={taskActionMenuId === rev.id}
+                        onToggle={async () => {
+                          const { toggleRevision } = await import('@/app/actions/planner.actions');
+                          await toggleRevision(rev.id, true);
+                        }}
+                        onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
+                        onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
+                        onClose={() => setTaskActionMenuId(null)}
+                        circleColorClass="text-foreground/30"
+                        hoverColorClass="group-hover/btn:text-accent group-hover:text-accent"
+                        sizeClass="w-5 h-5"
+                        labels={{ complete: "Complete", reschedule: "Reschedule" }}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{rev.topicTitle}</span>
+                        {rev.tags[0] && (
+                          <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
+                            <span className="text-[10px] text-foreground/40 font-medium">
+                              #{rev.tags[0].replace('#', '')}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                        {rev.subjectName}
+                        <span className="text-foreground/20 mx-0.5">•</span>
+                        {rev.isQuickNote ? (
+                          <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
+                        ) : (
+                          <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
+                        )}
+                        <span className="text-foreground/20 mx-0.5">•</span>
+                        Cycle {rev.cycleNumber} of 4
+                      </p>
+                      {rev.isQuickNote && rev.description && (
+                        <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
+                          {rev.description}
+                        </p>
+                      )}
+                      {rev.isQuickNote && rev.attachments && rev.attachments.length > 0 && (
+                        <AttachmentThumbnails attachments={rev.attachments} fallbackTitle={rev.topicTitle} onPreview={setPreviewDocument} />
+                      )}
+                    </div>
                   </div>
-                  <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
-                    {rev.subjectName}
-                    <span className="text-foreground/20 mx-0.5">•</span>
-                    {rev.isQuickNote ? (
-                      <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
-                    ) : (
-                      <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
-                    )}
-                    <span className="text-foreground/20 mx-0.5">•</span>
-                    Cycle {rev.cycleNumber} of 4
-                  </p>
-                  {rev.isQuickNote && rev.description && (
-                    <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
-                      {rev.description}
-                    </p>
-                  )}
-                  {rev.isQuickNote && rev.attachments && rev.attachments.length > 0 && (
-                    <AttachmentThumbnails attachments={rev.attachments} fallbackTitle={rev.topicTitle} onPreview={setPreviewDocument} />
-                  )}
+                  <span className="text-sm text-foreground/40 font-medium shrink-0">{getCycleName(rev.intervalDays)}</span>
                 </div>
+              ))
+            ))}
+          </>
+        )}
+
+        {/* Overdue items (Incomplete) */}
+        {incompleteOverdueRevisions.length > 0 && (
+          <div className="relative">
+            {/* Subtle divider if both sections exist */}
+            {Object.keys(groupedIncompleteTodayRevisions).length > 0 && (
+              <div className="w-full h-px bg-divider/30 my-2" />
+            )}
+            
+            <button
+              onClick={() => setIsOverdueCollapsed(!isOverdueCollapsed)}
+              className={`absolute -left-6 p-0.5 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors z-10 ${Object.keys(groupedIncompleteTodayRevisions).length > 0 ? 'top-[18px]' : 'top-4'}`}
+              title={isOverdueCollapsed ? "Show overdue" : "Hide overdue"}
+            >
+              {isOverdueCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {isOverdueCollapsed ? (
+              <div 
+                className="group bg-sidebar/50 border border-divider border-dashed rounded-lg p-3 transition-colors flex items-center justify-center cursor-pointer hover:bg-hover mt-1"
+                onClick={() => setIsOverdueCollapsed(false)}
+              >
+                <span className="text-xs font-medium text-foreground/50">
+                  {incompleteOverdueRevisions.length} overdue {incompleteOverdueRevisions.length === 1 ? 'item' : 'items'} hidden
+                </span>
               </div>
-              <span className="text-sm text-foreground/40 font-medium shrink-0">{getCycleName(rev.intervalDays)}</span>
-            </div>
-          ))
-        ))}
+            ) : (
+              <div className="flex flex-col gap-2 mt-1">
+                {incompleteOverdueRevisions.map(rev => (
+                  <div
+                    key={rev.id}
+                    onClick={() => {
+                      if (!rev.isQuickNote) {
+                        router.push(`/topic/${rev.topicId}`);
+                      } else {
+                        toggleTaskExpansion(rev.id);
+                      }
+                    }}
+                    className={`group bg-sidebar border border-[#f48771]/15 rounded-lg p-4 transition-colors flex items-center justify-between cursor-pointer ${taskActionMenuId === rev.id ? 'relative z-50' : ''} hover:bg-hover`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="task-action-menu-container" onClick={(e) => e.stopPropagation()}>
+                        <TaskActionMenu
+                          task={rev}
+                          isOpen={taskActionMenuId === rev.id}
+                          onToggle={async () => {
+                            const { toggleRevision } = await import('@/app/actions/planner.actions');
+                            await toggleRevision(rev.id, !rev.isDone);
+                          }}
+                          onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
+                          onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
+                          onClose={() => setTaskActionMenuId(null)}
+                          circleColorClass="text-[#f48771]/40"
+                          hoverColorClass="group-hover/btn:text-[#f48771] group-hover:text-[#f48771]"
+                          sizeClass="w-5 h-5"
+                          labels={{ complete: "Complete", reschedule: "Reschedule" }}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{rev.topicTitle}</span>
+                          {rev.tags[0] && (
+                            <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
+                              <span className="text-[10px] text-foreground/40 font-medium">
+                                #{rev.tags[0].replace('#', '')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                          {rev.subjectName}
+                          <span className="text-foreground/20 mx-0.5">•</span>
+                          {rev.isQuickNote ? (
+                            <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
+                          ) : (
+                            <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
+                          )}
+                          <span className="text-foreground/20 mx-0.5">•</span>
+                          Cycle {rev.cycleNumber} of 4
+                        </p>
+                        {rev.isQuickNote && rev.description && (
+                          <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
+                            {rev.description}
+                          </p>
+                        )}
+                        {rev.isQuickNote && rev.attachments && rev.attachments.length > 0 && (
+                          <AttachmentThumbnails attachments={rev.attachments} fallbackTitle={rev.topicTitle} onPreview={setPreviewDocument} />
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-[#f48771] flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3" /> Overdue ({getCycleName(rev.intervalDays)})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Completed Items (Both Overdue & Today) */}
         {completedRevisions.length > 0 && (

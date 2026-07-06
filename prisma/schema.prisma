@@ -23,6 +23,10 @@ model User {
   workspaces Workspace[]
   streaks    SubjectStreak[]
   history    DailyHistory[]
+  
+  globalStreak        Int       @default(0)
+  longestGlobalStreak Int       @default(0)
+  lastGlobalStreakUpdate DateTime?
 }
 
 model Workspace {
@@ -36,6 +40,7 @@ model Workspace {
   timeBlocks     TimeBlock[]
   dailySlots     DailyScheduleSlot[]
   routineMode    RoutineMode @default(MASTER)
+  habits         Habit[]
 }
 
 // ====================================================================
@@ -90,12 +95,19 @@ enum CaptureType {
   LINK
 }
 
+enum GoalType {
+  NONE
+  WEEKLY
+  MONTHLY
+}
+
 model Capture {
   id            String      @id @default(uuid())
   workspaceId   String
   workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   type          CaptureType @default(NOTE)
+  goalType      GoalType    @default(NONE)
 
   // ── Universal fields ──
   title         String?
@@ -266,6 +278,25 @@ model SubjectStreak {
   lastCalculated  DateTime // Prevents continuous recalculation
 
   @@id([userId, subjectId])
+}
+
+// Custom Habit Trackers
+model Habit {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  name            String    
+  icon            String?   // Lucide icon name or emoji
+  color           String?   
+  
+  currentStreak   Int       @default(0)
+  longestStreak   Int       @default(0)
+  lastCompletedAt DateTime? 
+  
+  createdAt       DateTime  @default(now())
+
+  @@index([workspaceId])
 }
 
 // Powers the 7-day flame graph per Subject

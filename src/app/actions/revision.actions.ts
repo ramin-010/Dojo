@@ -155,6 +155,53 @@ export async function completeRevision(revisionId: string) {
         });
       }
     }
+
+    // 5. Update Global Streak
+    const globalPendingDue = await tx.revision.count({
+      where: {
+        OR: [
+          { topic: { subject: { workspace: { userId: DEV_USER_ID } } } },
+          { capture: { workspace: { userId: DEV_USER_ID } } }
+        ],
+        scheduledFor: { lte: today },
+        status: 'pending'
+      }
+    });
+
+    if (globalPendingDue === 0) {
+      const user = await tx.user.findUnique({ where: { id: DEV_USER_ID } });
+      if (user) {
+        const lastUpdate = user.lastGlobalStreakUpdate;
+        const alreadyUpdatedToday = lastUpdate && 
+          lastUpdate.getDate() === today.getDate() && 
+          lastUpdate.getMonth() === today.getMonth() && 
+          lastUpdate.getFullYear() === today.getFullYear();
+        
+        if (!alreadyUpdatedToday) {
+           let newStreak = user.globalStreak;
+           if (lastUpdate) {
+               // Calculate days since last update
+               const lastDay = new Date(lastUpdate.getFullYear(), lastUpdate.getMonth(), lastUpdate.getDate());
+               const diffTime = today.getTime() - lastDay.getTime();
+               const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+               
+               if (diffDays === 1) newStreak++;
+               else if (diffDays > 1) newStreak = 1;
+           } else {
+               newStreak = 1;
+           }
+
+           await tx.user.update({
+             where: { id: DEV_USER_ID },
+             data: {
+               globalStreak: newStreak,
+               longestGlobalStreak: Math.max(newStreak, user.longestGlobalStreak),
+               lastGlobalStreakUpdate: today
+             }
+           });
+        }
+      }
+    }
   });
 
   revalidatePath(`/subject/${subjectId}`);

@@ -128,6 +128,7 @@ export default async function DashboardPage() {
         time: t.dueDate ? t.dueDate.toISOString() : undefined,
         dueDate: t.dueDate,
         type: 'task' as 'task',
+        goalType: t.goalType,
         isOverdue: !!isOverdue,
         source: undefined, // TASKS don't have linkedResource anymore
         description: t.content,
@@ -189,10 +190,13 @@ export default async function DashboardPage() {
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
 
+  const habitsResponse = await import('@/app/actions/habit.actions').then(m => m.getHabits());
+  const habits = habitsResponse.success ? habitsResponse.habits : [];
+
   // 4. Fetch Stats
-  const streak = await prisma.subjectStreak.aggregate({
-    where: { userId: DEV_USER_ID },
-    _max: { currentStreak: true }
+  const user = await prisma.user.findUnique({
+    where: { id: DEV_USER_ID },
+    select: { globalStreak: true }
   });
 
   const totalTopics = await prisma.topic.count();
@@ -224,7 +228,7 @@ export default async function DashboardPage() {
   });
 
   const stats = {
-    streak: streak._max.currentStreak || 0,
+    streak: user?.globalStreak || 0,
     totalTopics,
     totalRevisionsDone,
     weeklyActivity: [0, 0, 0, 0, 0, 0, 0], // Mock for now
@@ -248,6 +252,7 @@ export default async function DashboardPage() {
       todaySlots={todaySlots}
       unverifiedBlocks={unverifiedBlocks}
       initialRoutineMode={workspace?.routineMode || 'MASTER'}
+      habits={habits}
     />
   );
 }
