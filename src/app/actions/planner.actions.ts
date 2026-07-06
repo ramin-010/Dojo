@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { DEV_WORKSPACE_ID } from '@/lib/constants';
 import { BlockStatus } from '@prisma/client';
+import { completeRevision } from './revision.actions';
 // ====================================================================
 // TIME BLOCKS
 // ====================================================================
@@ -156,16 +157,25 @@ export async function getTasksAndRevisionsForMonth(year: number, month: number) 
 }
 export async function toggleRevision(id: string, isDone: boolean) {
   try {
-    const revision = await prisma.revision.update({
-      where: { id },
-      data: {
-        status: isDone ? 'done' : 'pending',
-        completedAt: isDone ? new Date() : null,
-      },
-    });
-    revalidatePath('/dashboard/planner');
-    revalidatePath('/dashboard');
-    return revision;
+    if (isDone) {
+      // Route through the proper pipeline to update streaks and logs
+      const revision = await completeRevision(id);
+      revalidatePath('/dashboard/planner');
+      revalidatePath('/dashboard');
+      return revision;
+    } else {
+      // For now, simply revert the status if untoggled (does not cleanly undo streak)
+      const revision = await prisma.revision.update({
+        where: { id },
+        data: {
+          status: 'pending',
+          completedAt: null,
+        },
+      });
+      revalidatePath('/dashboard/planner');
+      revalidatePath('/dashboard');
+      return revision;
+    }
   } catch (error) {
     console.error('Failed to toggle revision:', error);
     throw new Error('Failed to toggle revision');

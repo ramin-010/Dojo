@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
 import { generateAIContent } from '@/lib/ai/orchestrator';
 import { QUICK_NOTE_SYSTEM_PROMPT } from '@/lib/ai/prompts/quickNotePrompt';
 import { startCaptureRevisions } from './revision.actions';
@@ -180,11 +180,21 @@ export async function createCapture(data: {
       await startCaptureRevisions(savedItem.id);
     }
 
+    await prisma.activityLog.create({
+      data: {
+        userId: DEV_USER_ID,
+        subjectId: resolvedSubjectId,
+        topicId: data.topicId || null,
+        action: 'CREATED_CAPTURE',
+        details: savedItem.title || savedItem.content?.substring(0, 50) || 'Capture',
+      }
+    });
+
+    if (data.subjectId) {
+      revalidatePath(`/subject/${data.subjectId}`);
+    }
     if (data.topicId) {
       revalidatePath(`/topic/${data.topicId}`);
-    }
-    if (resolvedSubjectId) {
-      revalidatePath(`/subject/${resolvedSubjectId}`);
     }
     revalidatePath('/');
     revalidatePath('/dashboard');
@@ -262,8 +272,23 @@ export async function toggleTaskStatus(id: string, isDone: boolean) {
   try {
     const item = await prisma.capture.update({
       where: { id },
-      data: { isDone },
+      data: { 
+        isDone,
+        completedAt: isDone ? new Date() : null,
+      },
     });
+
+    if (isDone) {
+      await prisma.activityLog.create({
+        data: {
+          userId: DEV_USER_ID,
+          subjectId: item.subjectId,
+          topicId: item.topicId,
+          action: 'COMPLETED_TASK',
+          details: item.title || 'Untitled Task'
+        }
+      });
+    }
     
     if (item.topicId) {
       revalidatePath(`/topic/${item.topicId}`);

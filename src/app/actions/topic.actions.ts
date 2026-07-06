@@ -283,6 +283,16 @@ export async function deleteTopic(topicId: string) {
     where: { id: topicId },
   });
 
+  // 6. Log Deletion
+  await prisma.activityLog.create({
+    data: {
+      userId: DEV_USER_ID,
+      subjectId: topic.subjectId,
+      action: 'DELETED_TOPIC',
+      details: topic.title
+    }
+  });
+
   revalidatePath(`/subject/${topic.subjectId}`);
   revalidatePath('/');
 }

@@ -5,7 +5,8 @@
             "framework": "nextjs"
         },
         "note-pipeline": {
-            "root": "services/note-pipeline"
+            "root": "services/note-pipeline",
+            "entrypoint": "main.py"
         }
     },
     "rewrites": [

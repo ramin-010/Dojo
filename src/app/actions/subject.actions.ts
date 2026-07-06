@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
 import { revalidatePath } from 'next/cache';
 
 /** Fetch all subjects with their topics for the sidebar */
@@ -91,6 +91,15 @@ export async function createSubject(name: string, description?: string, color?: 
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      userId: DEV_USER_ID,
+      subjectId: subject.id,
+      action: 'CREATED_SUBJECT',
+      details: name
+    }
+  });
+
   revalidatePath('/dashboard');
   revalidatePath('/');
   return subject;
@@ -113,8 +122,16 @@ export async function updateSubject(
 
 /** Delete a subject and all its children */
 export async function deleteSubject(subjectId: string) {
-  await prisma.subject.delete({
+  const subject = await prisma.subject.delete({
     where: { id: subjectId },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      userId: DEV_USER_ID,
+      action: 'DELETED_SUBJECT',
+      details: subject.name
+    }
   });
 
   revalidatePath('/dashboard');

@@ -128,8 +128,12 @@ model Capture {
   url           String?     // LINK: the URL or text reference
   cloudPublicId String?     // LINK: If present, this is a self-hosted cloud asset
   fileType      String?     // LINK: Original mime-type for uploaded files
+
   isDone        Boolean     @default(false)  // TASK: completion state
+  completedAt   DateTime?
   dueDate       DateTime?   // TASK: when it's due (also used for Note/Link inline dates if not using Reminder)
+
+  time          String?     // e.g. "09:00"
 
   // ── Behaviors ──
   reminder      Reminder?   // 0 or 1
