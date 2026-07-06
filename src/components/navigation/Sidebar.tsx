@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, LayoutDashboard, Settings, Calendar, Brain } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight, LayoutDashboard, Settings, Calendar, Brain, Plus } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -22,7 +22,6 @@ import { reorderTopics } from '@/app/actions';
 import { useAppStore } from '@/store/useAppStore';
 import { RevisionSidebar } from './RevisionSidebar';
 import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
-import { Plus } from 'lucide-react';
 
 interface Topic {
   id: string;
@@ -33,6 +32,53 @@ interface Subject {
   id: string;
   name: string;
   topics: Topic[];
+}
+
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+  isCollapsed
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  isActive: boolean;
+  isCollapsed: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      title={isCollapsed ? label : undefined}
+      className={`w-full flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13.5px] font-medium transition-all duration-200 group relative outline-none subpixel-antialiased ${
+        isActive
+          ? 'text-foreground'
+          : 'text-muted-foreground hover:text-foreground hover:bg-hover'
+      } ${isCollapsed ? 'justify-center h-10 w-10 mx-auto px-0' : ''}`}
+    >
+      {isActive && (
+        <motion.div
+          layoutId="sidebar-active-bg"
+          className="absolute inset-0 rounded-lg bg-hover/80"
+          initial={false}
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        />
+      )}
+      {isActive && (
+        <motion.div
+          layoutId="sidebar-active-line"
+          className="absolute left-[2px] top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full bg-accent"
+          initial={false}
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        />
+      )}
+      <span className={`shrink-0 transition-all duration-300 relative z-10 ${isActive ? 'text-foreground' : 'group-hover:scale-110'}`}>
+        <Icon className="w-4 h-4" />
+      </span>
+      {!isCollapsed && <span className="truncate relative z-10 tracking-tight">{label}</span>}
+    </Link>
+  );
 }
 
 export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
@@ -65,7 +111,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // Wait until 5px movement before starting drag
+        distance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -81,7 +127,6 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     }
 
     const prevSubjects = subjects;
-    // Find the subject that contains the active topic
     const subjectIndex = prevSubjects.findIndex(subj => 
       subj.topics.some(t => t.id === active.id)
     );
@@ -90,7 +135,6 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
 
     const subject = prevSubjects[subjectIndex];
     
-    // Ensure the over item is in the same subject (no cross-subject drag support yet)
     const isOverInSameSubject = subject.topics.some(t => t.id === over.id);
     if (!isOverInSameSubject) return;
 
@@ -105,9 +149,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
       topics: newTopics
     };
 
-    // Sync the new sort order to the database without blocking the UI
     reorderTopics(subject.id, newTopics.map(t => t.id)).catch(console.error);
-
     setSubjects(newSubjects);
   };
 
@@ -115,101 +157,105 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
 
   return (
     <>
-      <aside 
-        className={`${isRevisionActive ? 'w-0 border-r-0 opacity-0 pointer-events-none' : isSplitViewActive ? 'w-0 border-r-0 opacity-0 pointer-events-none' : isCollapsed ? 'w-16 border-r' : 'w-64 border-r'} bg-sidebar flex flex-col transition-all duration-300 ease-in-out shrink-0 overflow-hidden relative z-50`}
+      <motion.aside 
+        animate={{ width: isRevisionActive || isSplitViewActive ? 0 : isCollapsed ? 72 : 256 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className={`bg-sidebar flex flex-col shrink-0 overflow-hidden relative z-50 ${isRevisionActive || isSplitViewActive ? 'border-r-0 opacity-0 pointer-events-none' : 'border-r border-border/50'}`}
       >
-      <div className={`flex items-center h-14 border-b border-border/50 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} ${isSplitViewActive ? 'hidden' : ''}`}>
-        {!isCollapsed && <span className="font-bold text-base tracking-tight text-foreground">Revise</span>}
-        <button 
-          onClick={toggleSidebar}
-          className="p-1.5 rounded-md hover:bg-hover text-muted-foreground transition-colors flex-shrink-0"
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto pt-4 space-y-1 overflow-x-hidden pb-4">
-        <div className="px-3 space-y-0.5">
-          <Link 
-            href="/dashboard" 
-            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-hover text-[13px] font-medium transition-colors ${pathname === '/dashboard' ? 'bg-accent/10 text-accent' : 'text-muted-foreground hover:text-foreground'} ${isCollapsed ? 'justify-center' : ''}`}
-            title={isCollapsed ? "Overview" : undefined}
-          >
-            <LayoutDashboard className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span className="whitespace-nowrap">Overview</span>}
-          </Link>
-
+        <div className={`flex items-center pt-4 pb-2 px-3 shrink-0 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
-            <div className="pl-7 flex flex-col gap-0.5 mt-0.5 relative before:absolute before:left-[19px] before:top-0 before:bottom-2 before:w-px before:bg-border/50">
-              <Link 
-                href="/dashboard/planner" 
-                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${pathname === '/dashboard/planner' ? 'text-foreground bg-hover' : 'text-muted-foreground hover:text-foreground hover:bg-hover/50'}`}
-              >
-                <div className={`absolute left-[-8px] top-1/2 -translate-y-1/2 w-[9px] h-px ${pathname === '/dashboard/planner' ? 'bg-foreground' : 'bg-border/50'}`} />
-                <Calendar className="w-3.5 h-3.5 shrink-0" />
-                <span>Planner</span>
-              </Link>
-              
-              <Link 
-                href="/dashboard/knowledge" 
-                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${pathname === '/dashboard/knowledge' ? 'text-foreground bg-hover' : 'text-muted-foreground hover:text-foreground hover:bg-hover/50'}`}
-              >
-                <div className={`absolute left-[-8px] top-1/2 -translate-y-1/2 w-[9px] h-px ${pathname === '/dashboard/knowledge' ? 'bg-foreground' : 'bg-border/50'}`} />
-                <Brain className="w-3.5 h-3.5 shrink-0" />
-                <span>Knowledge</span>
-              </Link>
+            <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg flex-1 min-w-0">
+              <div className="w-6 h-6 rounded bg-accent/20 flex items-center justify-center shrink-0">
+                <span className="text-[12px] font-bold text-accent">R</span>
+              </div>
+              <span className="font-semibold text-[14px] tracking-tight text-foreground/90 truncate">Revise</span>
             </div>
           )}
-        </div>
-
-      
-
-        <div className="flex items-center justify-between px-4 py-2 mt-2">
-          {!isCollapsed && <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Subjects</span>}
           <button 
-            onClick={() => setIsCreateModalOpen(true)}
-            className={`p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-hover transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
-            title="New Subject"
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground transition-colors shrink-0 ${isCollapsed ? 'mx-auto mt-1' : ''}`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            {isCollapsed ? <ChevronRight className="w-[18px] h-[18px]" /> : <ChevronLeft className="w-[18px] h-[18px]" />}
           </button>
         </div>
 
-        <div className="flex flex-col w-full px-1">
-          <DndContext 
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            {subjects.map(subject => (
-              <SidebarSubject 
-                key={subject.id} 
-                subject={subject} 
-                isCollapsed={isCollapsed} 
-              />
-            ))}
-          </DndContext>
-        </div>
-      </nav>
+        <nav className="flex-1 overflow-y-auto pt-2 space-y-1 overflow-x-hidden pb-4 custom-scrollbar">
+          <div className="px-3 space-y-0.5 shrink-0">
+            <NavItem 
+              href="/dashboard" 
+              label="Overview" 
+              icon={LayoutDashboard} 
+              isActive={pathname === '/dashboard'} 
+              isCollapsed={isCollapsed} 
+            />
+            <NavItem 
+              href="/dashboard/planner" 
+              label="Planner" 
+              icon={Calendar} 
+              isActive={pathname === '/dashboard/planner'} 
+              isCollapsed={isCollapsed} 
+            />
+            <NavItem 
+              href="/dashboard/knowledge" 
+              label="Knowledge" 
+              icon={Brain} 
+              isActive={pathname === '/dashboard/knowledge'} 
+              isCollapsed={isCollapsed} 
+            />
+          </div>
 
-      <div className="p-3 border-t border-border/50">
-        <button 
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-hover text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors ${isCollapsed ? 'justify-center' : ''}`}
-          title={isCollapsed ? "Settings" : undefined}
-        >
-          <Settings className="w-4 h-4 shrink-0" />
-          {!isCollapsed && <span className="whitespace-nowrap">Settings</span>}
-        </button>
-      </div>
-    </aside>
-    <AnimatePresence>
-      {isRevisionActive && <RevisionSidebar />}
-    </AnimatePresence>
-    
-    <CreateSubjectModal 
-      isOpen={isCreateModalOpen} 
-      onClose={() => setIsCreateModalOpen(false)} 
-    />
+          <div className="mx-4 my-3 h-[1px] bg-border/40 shrink-0" />
+
+          <div className="flex items-center justify-between px-5 py-1 mb-1 shrink-0">
+            {!isCollapsed && <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">Subjects</span>}
+            <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className={`p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-hover transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+              title="New Subject"
+            >
+              <Plus className="w-[14px] h-[14px]" />
+            </button>
+          </div>
+
+          <div className="flex flex-col w-full px-2">
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              {subjects.map(subject => (
+                <SidebarSubject 
+                  key={subject.id} 
+                  subject={subject} 
+                  isCollapsed={isCollapsed} 
+                />
+              ))}
+            </DndContext>
+          </div>
+        </nav>
+
+        <div className="p-3 border-t border-border/50 shrink-0 flex items-center justify-center">
+          {!isCollapsed ? (
+            <button className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium">
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </button>
+          ) : (
+            <button className="p-2 rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors">
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </motion.aside>
+      
+      <AnimatePresence>
+        {isRevisionActive && <RevisionSidebar />}
+      </AnimatePresence>
+      
+      <CreateSubjectModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+      />
     </>
   );
 }
