@@ -8,7 +8,8 @@
     "dev": "concurrently \"npm run dev:python\" \"npm run dev:next\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
