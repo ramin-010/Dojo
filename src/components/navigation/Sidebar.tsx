@@ -82,6 +82,9 @@ function NavItem({
 }
 
 export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
+  const userName = "Ramin";
+  const userInitials = "R";
+
   const { 
     subjects, setSubjects, 
     isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed, 
@@ -166,9 +169,9 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
           {!isCollapsed && (
             <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg flex-1 min-w-0">
               <div className="w-6 h-6 rounded bg-accent/20 flex items-center justify-center shrink-0">
-                <span className="text-[12px] font-bold text-accent">R</span>
+                <span className="text-[12px] font-bold text-accent">{userInitials}</span>
               </div>
-              <span className="font-semibold text-[14px] tracking-tight text-foreground/90 truncate">Revise</span>
+              <span className="font-semibold text-[14px] tracking-tight text-foreground/90 truncate">{userName}</span>
             </div>
           )}
           <button 
@@ -236,12 +239,24 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
 
         <div className="p-3 border-t border-border/50 shrink-0 flex items-center justify-center">
           {!isCollapsed ? (
-            <button className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium">
+            <button 
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/login';
+              }} 
+              className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium"
+            >
               <Settings className="w-4 h-4" />
-              <span>Settings</span>
+              <span>Sign out</span>
             </button>
           ) : (
-            <button className="p-2 rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors">
+            <button 
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/login';
+              }} 
+              className="p-2 rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors"
+            >
               <Settings className="w-4 h-4" />
             </button>
           )}

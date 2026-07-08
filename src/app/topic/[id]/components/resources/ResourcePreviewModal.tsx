@@ -83,7 +83,7 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
 
     if (resource.title.toLowerCase().endsWith('.md')) {
       return (
-        <div className="w-full max-w-4xl h-full bg-background rounded-2xl ring-1 ring-white/10 shadow-2xl overflow-y-auto p-6 sm:p-12 custom-scrollbar">
+        <div className="w-full max-w-5xl h-full bg-background rounded-2xl ring-1 ring-white/10 shadow-2xl overflow-y-auto p-6 sm:p-12 custom-scrollbar">
           <div className="max-w-3xl mx-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-32 text-muted-foreground animate-pulse">Loading document...</div>
@@ -93,7 +93,7 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
                 <p>{error}</p>
               </div>
             ) : (
-              <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-accent/50 prose-pre:border prose-pre:border-border prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
+              <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {markdownContent}
                 </ReactMarkdown>
@@ -107,7 +107,7 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
     if (resource.content) {
       return (
         <div className="w-full max-w-4xl h-[85vh] bg-background rounded-2xl ring-1 ring-white/10 shadow-2xl overflow-y-auto p-6 sm:p-12 custom-scrollbar flex flex-col gap-8">
-          <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-accent/50 prose-pre:border prose-pre:border-border prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
+          <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {resource.content}
             </ReactMarkdown>
@@ -163,40 +163,30 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
     <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in duration-300">
       <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
       
-      {/* Floating Controls Overlay */}
-      <div className="absolute top-0 left-0 right-0 h-24 px-8 flex items-start pt-5 justify-between z-50 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
-        <div className="flex items-center gap-3 drop-shadow-md">
-          {resource.category !== 'image' && (
-            <div className="p-2 bg-white/10 backdrop-blur-md rounded-lg text-white">
-              <FileText className="w-4 h-4" />
-            </div>
-          )}
-          <h3 className="font-medium text-white/90 text-lg tracking-wide">{resource.title}</h3>
-        </div>
-        
-        <div className="flex items-center gap-3 pointer-events-auto">
-          {resource.url && resource.url !== '#' && resource.url !== resource.title && (
-            <a 
-              href={resource.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all hover:scale-105 active:scale-95"
-              title="Download / Open Original"
-            >
-              <Download className="w-4 h-4" />
-            </a>
-          )}
-          <button 
-            onClick={onClose}
-            className="flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 hover:bg-red-500/80 backdrop-blur-md rounded-full text-white transition-all hover:scale-105 active:scale-95"
+      {/* Floating Action Buttons */}
+      <div className="absolute top-6 right-8 flex items-center gap-3 z-50 pointer-events-auto drop-shadow-lg">
+        {resource.url && resource.url !== '#' && resource.url !== resource.title && (
+          <a 
+            href={resource.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center w-11 h-11 bg-zinc-900/80 hover:bg-zinc-800 backdrop-blur-md rounded-full text-white transition-all ring-1 ring-white/10 hover:scale-105 active:scale-95 shadow-xl"
+            title="Download / Open Original"
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+            <Download className="w-4 h-4" />
+          </a>
+        )}
+        <button 
+          onClick={onClose}
+          className="flex items-center justify-center w-11 h-11 bg-zinc-900/80 hover:bg-red-500/90 backdrop-blur-md rounded-full text-white transition-all ring-1 ring-white/10 hover:scale-105 active:scale-95 shadow-xl"
+          title="Close Preview (Esc)"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Content Container */}
-      <div className="relative z-10 w-full h-full pt-20 pb-8 px-8 flex items-center justify-center pointer-events-none">
+      <div className="relative z-10 w-full h-full p-2 sm:p-4 flex items-center justify-center pointer-events-none">
         <div className="pointer-events-auto w-full h-full flex items-center justify-center">
           {renderContent()}
         </div>

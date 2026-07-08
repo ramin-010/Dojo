@@ -20,6 +20,7 @@ model User {
   id         String       @id @default(uuid()) // Hardcoded initially
   email      String?      @unique
   name       String?
+  password   String?
   workspaces Workspace[]
   streaks    SubjectStreak[]
   history    DailyHistory[]

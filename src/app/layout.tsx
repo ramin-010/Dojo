@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "A focused personal workspace for spaced repetition.",
 };
 
-import { getSubjectsWithTopics } from "@/app/actions";
+import { getSubjectsWithTopics } from "@/app/actions/subject.actions";
 import { Toaster } from 'sonner';
 import { GlobalQuickNoteModal } from "@/components/global/GlobalQuickNoteModal";
 
@@ -25,13 +25,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Since proxy.ts protects all routes except /login, we can fetch subjects safely.
   const subjects = await getSubjectsWithTopics();
 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-sans antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background">
-        
-        {/* Collapsible Left Sidebar */}
+        {/* Unconditional sidebar rendering - protected by Edge proxy */}
         <Sidebar initialSubjects={subjects} />
 
         {/* Main Content Area */}
