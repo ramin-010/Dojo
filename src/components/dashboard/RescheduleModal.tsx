@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import TasksCalendar from '@/app/dashboard/planner/TasksCalendar';
+import TasksCalendar from '@/app/(protected)/dashboard/planner/TasksCalendar';
 import { rescheduleRevision } from '@/app/actions/planner.actions';
 import { updateCapture, rescheduleReminder } from '@/app/actions/capture.actions';
 

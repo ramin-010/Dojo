@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Flame, BookOpen, CheckCircle2, FolderPlus } from 'lucide-react';
 import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
 import RescheduleModal from '@/components/dashboard/RescheduleModal';
-import { ResourcePreviewModal } from '@/app/topic/[id]/components/resources/ResourcePreviewModal';
+import { ResourcePreviewModal } from '@/app/(protected)/topic/[id]/components/resources/ResourcePreviewModal';
 import { TriageInterceptor } from '@/components/dashboard/TriageInterceptor';
 import { DayManagerModal } from '@/components/dashboard/DayManagerModal';
 import ScheduleTimeline from './dashComponents/ScheduleTimeline';

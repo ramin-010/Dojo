@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Upload, Sliders, Image as ImageIcon } from 'lucide-react';
-import { ResourcePreviewModal } from '@/app/topic/[id]/components/resources/ResourcePreviewModal';
+import { ResourcePreviewModal } from '@/app/(protected)/topic/[id]/components/resources/ResourcePreviewModal';
 
 export default function TestScannerCvPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

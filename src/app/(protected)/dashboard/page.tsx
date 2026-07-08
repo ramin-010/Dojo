@@ -1,8 +1,8 @@
 import DashboardClient from './DashboardClient';
 import { prisma } from '@/lib/db';
 import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
-import { getUnverifiedBlocks } from '../actions/planner.actions';
-import { ensureTodaySlots } from '../actions/schedule-slot.actions';
+import { getUnverifiedBlocks } from '@/app/actions/planner.actions';
+import { ensureTodaySlots } from '@/app/actions/schedule-slot.actions';
 
 export const dynamic = 'force-dynamic';
 
