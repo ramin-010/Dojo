@@ -19,20 +19,23 @@ export const metadata: Metadata = {
 import { getSubjectsWithTopics } from "@/app/actions/subject.actions";
 import { Toaster } from 'sonner';
 import { GlobalQuickNoteModal } from "@/components/global/GlobalQuickNoteModal";
+import { cookies } from "next/headers";
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Since proxy.ts protects all routes except /login, we can fetch subjects safely.
-  const subjects = await getSubjectsWithTopics();
+  const cookieStore = await cookies();
+  const isAuthenticated = cookieStore.get('revise_auth')?.value === 'authenticated';
+
+  // Only fetch subjects if the user is authenticated to save DB calls on the login page
+  const subjects = isAuthenticated ? await getSubjectsWithTopics() : [];
 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-sans antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background">
-        {/* Unconditional sidebar rendering - protected by Edge proxy */}
-        <Sidebar initialSubjects={subjects} />
+        {isAuthenticated && <Sidebar initialSubjects={subjects} />}
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col h-full relative overflow-y-auto overflow-x-hidden">
