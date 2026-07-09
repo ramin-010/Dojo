@@ -233,9 +233,18 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
         };
     }, [dragController, containerRef]); 
 
+    const visibleConnections = connections.filter(conn => !conn.hidden);
+
+    if (visibleConnections.length === 0) {
+        return null;
+    }
+
+    const endpointIds = new Set(visibleConnections.flatMap(c => [c.fromBlock, c.toBlock]));
+
     return (
         <svg 
-            className="absolute inset-0 pointer-events-none overflow-visible w-full h-full z-0"
+            className="absolute inset-0 pointer-events-none"
+            style={{ width: '100%', height: '100%', zIndex: 0 }}
         >
             <defs>
                  <marker 
@@ -259,11 +268,13 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
                         let newB = { ...b };
                         
                         // 1. Sync live dimensions from DOM to prevent React state lag (debounce) from causing flickers
-                        const el = containerEl.querySelector(`[id="smart-block-${b.id}"]`) || containerEl.querySelector(`[id="${b.id}"]`);
-                        if (el) {
-                            const r = el.getBoundingClientRect();
-                            newB.width = r.width / zoom;
-                            newB.height = r.height / zoom;
+                        if (endpointIds.has(b.id)) {
+                            const el = containerEl.querySelector(`[id="smart-block-${b.id}"]`) || containerEl.querySelector(`[id="${b.id}"]`);
+                            if (el) {
+                                const r = el.getBoundingClientRect();
+                                newB.width = r.width / zoom;
+                                newB.height = r.height / zoom;
+                            }
                         }
                         
                         // 2. Sync live drag position

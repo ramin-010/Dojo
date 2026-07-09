@@ -56,21 +56,24 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
   const [showFloatingToolbar, setShowFloatingToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState<ToolbarPosition>({ top: 0, left: 0 });
 
+  const onDimsChangeRef = useRef(onDimensionsChange);
+  onDimsChangeRef.current = onDimensionsChange;
+
   useEffect(() => {
-    if (!wrapperRef.current || !onDimensionsChange) return;
+    if (!wrapperRef.current) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
       // Defer state updates to avoid React flushSync warnings during layout
       requestAnimationFrame(() => {
         for (const entry of entries) {
-          onDimensionsChange(entry.contentRect.width, entry.contentRect.height);
+          onDimsChangeRef.current?.(entry.contentRect.width, entry.contentRect.height);
         }
       });
     });
 
     resizeObserver.observe(wrapperRef.current);
     return () => resizeObserver.disconnect();
-  }, [onDimensionsChange]);
+  }, []);
 
   useEffect(() => {
     if (wrapperRef.current) {

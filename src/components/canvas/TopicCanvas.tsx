@@ -23,7 +23,9 @@ interface TopicCanvasProps {
   readOnly?: boolean;
 }
 
-export function TopicCanvas({
+const NOOP = () => {};
+
+const MemoizedTopicCanvas = React.memo(function TopicCanvas({
   topicId,
   subjectId,
   initialContent,
@@ -42,7 +44,7 @@ export function TopicCanvas({
   const [isLoaded, setIsLoaded] = React.useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const { typography } = useAppStore();
+  const typography = useAppStore(state => state.typography);
   const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
 
   // Auto-zoom: scale canvas when container is narrower than effectiveCanvasWidth
@@ -236,7 +238,7 @@ export function TopicCanvas({
             onUpdateBlock={updateBlock}
             onDeleteBlock={deleteBlock}
             onAddBlock={addBlock}
-            onCanvasClick={() => {}}
+            onCanvasClick={NOOP}
             onConnectionsChange={setConnections}
             onSelectConnection={setSelectedConnectionId}
             onAddImage={addImageBlock}
@@ -248,4 +250,8 @@ export function TopicCanvas({
       </div>
     </div>
   );
+});
+
+export function TopicCanvas(props: TopicCanvasProps) {
+  return <MemoizedTopicCanvas {...props} />;
 }

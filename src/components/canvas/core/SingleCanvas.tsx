@@ -77,7 +77,7 @@ export function SingleCanvas({
   onMentionClick,
   onResourceAdd,
 }: SingleCanvasProps) {
-  const { typography } = useAppStore();
+  const typography = useAppStore(state => state.typography);
   const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -354,7 +354,10 @@ export function SingleCanvas({
                 onUpdateBlock(currentEditingId, { content: html });
               }
             }}
-            onDimensionsChange={(w, h_) => h.setEditingDims({ width: w, height: h_ })}
+            onDimensionsChange={(w, h_) => h.setEditingDims(prev => {
+              if (prev?.width === w && prev?.height === h_) return prev;
+              return { width: w, height: h_ };
+            })}
             zoom={zoom}
             onMoveCursor={h.handleMoveCursor}
             onResourceAdd={onResourceAdd}

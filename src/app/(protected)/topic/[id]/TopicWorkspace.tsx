@@ -263,7 +263,10 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   });
 
   // ── isSaving & splitView indicator (from store, passed to canvas) ─────────────────────
-  const { isSaving, setIsSaving, setIsSplitViewActive, typography } = useAppStore();
+  const isSaving = useAppStore(state => state.isSaving);
+  const setIsSaving = useAppStore(state => state.setIsSaving);
+  const setIsSplitViewActive = useAppStore(state => state.setIsSplitViewActive);
+  const typography = useAppStore(state => state.typography);
   const layoutWidth = typography?.layoutWidth ?? 960;
 
   // ── Canvas container width (RAF-throttled ResizeObserver) ─────────────────
@@ -371,12 +374,12 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   );
 
   // ── Mention click → open sidebar ───────────────────────────────────────────
-  const handleMentionClick = (clickedTopicId: string) => {
+  const handleMentionClick = useCallback((clickedTopicId: string) => {
     setPreviewTopicId(clickedTopicId);
     setActiveTab('resources');
     setIsSidebarOpen(true);
     setSidebarWidth(window.innerWidth / 2);
-  };
+  }, [setPreviewTopicId, setActiveTab, setIsSidebarOpen, setSidebarWidth]);
 
   const handleDeleteMention = useCallback(async (mentionId: string, isOutbound: boolean) => {
     const toastId = `del-mention-${mentionId}`;

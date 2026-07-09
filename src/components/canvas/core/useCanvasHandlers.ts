@@ -98,7 +98,7 @@ export function useCanvasHandlers({
   containerRef,
   headerRef,
 }: UseCanvasHandlersParams): CanvasHandlers {
-  const { typography } = useAppStore();
+  const typography = useAppStore(state => state.typography);
   const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
   
   const canvasWidthRef = useRef(effectiveCanvasWidth);

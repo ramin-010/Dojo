@@ -276,7 +276,7 @@ function CanvasBlockLayerComponent({
   subjectId,
   onRegisterHeight,
 }: CanvasBlockLayerProps) {
-  const { typography } = useAppStore();
+  const typography = useAppStore(state => state.typography);
   const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
 
   const connectedBlockIds = useMemo(() => {
