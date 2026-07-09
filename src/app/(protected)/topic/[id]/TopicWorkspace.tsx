@@ -38,12 +38,15 @@ import { TagsBar } from './components/TagsBar';
 import { RevisionButton } from './components/RevisionButton';
 import { ContextSidebar } from './components/ContextSidebar';
 import { SplitViewer } from './components/SplitViewer';
+import { useSplitViewResize } from './hooks/useSplitViewResize';
 
 export type { SidebarTab };
 
 export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCategories }: TopicWorkspaceProps) {
   // ── Split View State ───────────────────────────────────────────────────────
   const [splitViewData, setSplitViewData] = useState<SplitViewData | null>(null);
+  const { isDraggingSplitView, setIsDraggingSplitView } = useSplitViewResize();
+  const frozenCanvasWidthRef = useRef<number>(900);
   const [isDraggingSidebarItem, setIsDraggingSidebarItem] = useState(false);
   // ── Sidebar open / tab state ───────────────────────────────────────────────
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -543,10 +546,12 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   // to prevent React re-rendering the entire workspace at 60fps.
 
   const handleOpenSplitView = useCallback((data: SplitViewData) => {
+    // Freeze canvas width BEFORE split view opens so autoZoom stays at 1
+    frozenCanvasWidthRef.current = canvasContainerWidth;
     setSplitViewData(data);
     setIsSidebarOpen(false);
     setIsSplitViewActive(true);
-  }, [setIsSplitViewActive]);
+  }, [setIsSplitViewActive, canvasContainerWidth]);
 
   const handleCloseSplitView = useCallback(() => {
     setSplitViewData(null);
@@ -592,17 +597,22 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     <div className="h-screen w-full bg-background flex overflow-hidden relative">
       {/* ── Main Content Area ──────────────────────────────────────────────── */}
       <div
-        className={`h-full overflow-y-auto overflow-x-hidden relative ${
-          isDragging ? '' : 'transition-all duration-300 ease-in-out'
-        }`}
+        className={`h-full relative ${
+          isDragging || isDraggingSplitView ? '' : 'transition-all duration-300 ease-in-out'
+        } ${splitViewData ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
         style={{ 
-          marginRight: isSidebarOpen ? 'var(--sidebar-width, 384px)' : '0px',
-          width: splitViewData ? '65vw' : 'auto',
+          marginRight: isSidebarOpen && !splitViewData ? 'var(--sidebar-width, 384px)' : '0px',
+          width: splitViewData ? 'calc(100% - var(--split-view-width, 35vw) - 3px)' : 'auto',
           flex: splitViewData ? 'none' : 1,
-          minWidth: splitViewData ? '1000px' : '500px',
+          minWidth: splitViewData ? 0 : '400px',
         }}
-        onScroll={handleScroll}
+        onScroll={!splitViewData ? handleScroll : undefined}
       >
+        <div
+          className={`h-full w-full ${splitViewData ? 'overflow-y-auto overflow-x-hidden' : ''}`}
+          style={splitViewData ? { maxWidth: '100%' } : undefined}
+          onScroll={splitViewData ? handleScroll : undefined}
+        >
         {/* Floating Sidebar Toggle */}
         {!isSidebarOpen && !splitViewData && (
           <button
@@ -627,7 +637,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
 
         <div 
           className="mx-auto w-full min-h-full px-8 transition-all duration-300 ease-in-out"
-          style={{ maxWidth: `${layoutWidth}px`, minWidth: `${layoutWidth}px` }}
+          style={{ maxWidth: `${layoutWidth}px`, minWidth: splitViewData ? undefined : `${layoutWidth}px` }}
         >
           {/* ── Top Utility Row ─────────────────────────────────────────── */}
           <div className="pt-5 flex-shrink-0 bg-background z-30">
@@ -936,13 +946,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
             id="canvas-border-container"
             className="w-full relative transition-all duration-300"
           >
-            <div ref={canvasWrapperRef} className="w-full min-h-full relative">
+            <div ref={canvasWrapperRef} className="w-full min-h-full relative" style={{ minWidth: splitViewData ? undefined : `${layoutWidth}px` }}>
               <TopicCanvas
                 topicId={topic.id}
                 subjectId={topic.subject.id}
                 initialContent={initialCanvasContent}
                 onMentionClick={handleMentionClick}
-                containerWidth={canvasContainerWidth}
+                containerWidth={splitViewData ? frozenCanvasWidthRef.current : canvasContainerWidth}
                 onSavingChange={setIsSaving}
                 onActiveUrlsChange={setActiveUrls}
                 onBlockRemoved={handleBlockRemoved}
@@ -968,12 +978,32 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
           </div>
         </div>
       </div>
+      </div>
 
-      {/* ── Split View Pane ─────────────────────────────────────────────────── */}
+      {/* ── Split View Resize Handle + Pane ─────────────────────────────────── */}
       {splitViewData && (
-        <div className="flex-1 min-w-[300px] h-full overflow-hidden z-40 bg-background relative">
-          <SplitViewer data={splitViewData} onClose={handleCloseSplitView} />
-        </div>
+        <>
+          {/* Drag Handle */}
+          <div
+            className={`w-[3px] flex-shrink-0 cursor-col-resize z-50 transition-colors ${
+              isDraggingSplitView ? 'bg-blue-500' : 'bg-transparent hover:bg-foreground/20'
+            }`}
+            onMouseDown={() => setIsDraggingSplitView(true)}
+          />
+          {/* Right Pane */}
+          <div
+            className={`flex-shrink-0 h-full overflow-hidden z-40 bg-background relative ${
+              isDraggingSplitView ? '' : 'transition-all duration-300 ease-in-out'
+            }`}
+            style={{ width: 'var(--split-view-width, 35vw)', minWidth: '300px' }}
+          >
+            {/* Transparent overlay during drag to prevent iframe/canvas stealing mouse events */}
+            {isDraggingSplitView && (
+              <div className="absolute inset-0 z-50 bg-transparent cursor-col-resize" />
+            )}
+            <SplitViewer data={splitViewData} onClose={handleCloseSplitView} />
+          </div>
+        </>
       )}
 
       {/* ── Context Sidebar ─────────────────────────────────────────────────── */}
