@@ -132,6 +132,10 @@ export function useCanvasHandlers({
     blocksRef.current = blocks;
   }, [blocks]);
 
+  // Finding 8: Stable connections ref — avoids capturing connections in setConnections closure
+  const connectionsRef = useRef(connections);
+  useLayoutEffect(() => { connectionsRef.current = connections; }, [connections]);
+
   const editingBlockData = useMemo(() => {
     if (!editingBlockId) return null;
     return blocks.find(b => b.blockId === editingBlockId);
@@ -139,39 +143,51 @@ export function useCanvasHandlers({
 
   const editingBlockContent = editingBlockData?.content;
 
+  // Finding 8: Remove connections from dep array — read from connectionsRef instead.
+  // Was: [connections, onConnectionsChange] → new function every render
+  // Now: [onConnectionsChange] → stable as long as parent is stable
   const setConnections = useCallback(
     (updater: Connection[] | ((prev: Connection[]) => Connection[])) => {
       if (typeof updater === 'function') {
-        const next = updater(connections);
-        onConnectionsChange(next);
+        onConnectionsChange(updater(connectionsRef.current));
       } else {
         onConnectionsChange(updater);
       }
     },
-    [connections, onConnectionsChange]
+    [onConnectionsChange]
   );
+
+  // Finding 5: blockLayoutSignature — only recalculate computedHeight when blocks
+  // are moved, added, deleted, or resized. NOT when text content changes.
+  const blockLayoutSignature = useMemo(() => {
+    return blocks
+      .map(b => `${b.blockId}:${b.x}:${b.y}:${b.width}:${typeof b.height === 'number' ? b.height : 'a'}`)
+      .join('|');
+  }, [blocks]);
 
   const computedHeight = useMemo(() => {
     let maxBottom = CANVAS_MIN_HEIGHT;
 
-    if (blocks.length > 0) {
-      for (const block of blocks) {
-        let blockHeight = typeof block.height === 'number' ? block.height : (blockHeightMapRef.current.get(block.blockId) ?? 200);
-        if (block.blockId === editingBlockId && editingDims) {
-          blockHeight = editingDims.height;
-        }
-        const bottom = block.y + blockHeight + 400;
-        if (bottom > maxBottom) maxBottom = bottom;
+    for (const block of blocksRef.current) {
+      let blockHeight: number;
+      if (block.blockId === editingBlockId && editingDims) {
+        blockHeight = editingDims.height;
+      } else if (typeof block.height === 'number') {
+        blockHeight = block.height;
+      } else {
+        blockHeight = blockHeightMapRef.current.get(block.blockId) ?? 200;
       }
+      const bottom = block.y + blockHeight + 400;
+      if (bottom > maxBottom) maxBottom = bottom;
     }
 
     if (!editingBlockId && cursorPos && editingDims) {
-      const bottom = cursorPos.y + editingDims.height + 300; //canvas height extend buffer
+      const bottom = cursorPos.y + editingDims.height + 300;
       if (bottom > maxBottom) maxBottom = bottom; 
     }
 
     return maxBottom;
-  }, [blocks, editingBlockId, editingDims, cursorPos]);
+  }, [blockLayoutSignature, editingBlockId, editingDims, cursorPos]);
 
   const guideLineCount = useMemo(() => {
     return Math.floor(computedHeight / GUIDE_LINE_SPACING);
@@ -192,7 +208,7 @@ export function useCanvasHandlers({
       }
       return { id: b.blockId, x: b.x, y: b.y, width: w, height: h };
     });
-  }, [blocks, zoom, editingBlockId, editingDims]);
+  }, [blocks, editingBlockId, editingDims]); // Finding 6: zoom removed — blockHeightMapRef stores unscaled values
 
   const getCanvasPoint = useCallback(
     (e: { clientX: number; clientY: number }) => {

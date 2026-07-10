@@ -189,7 +189,23 @@ export function useCanvasState(
   }, []);
 
   const updateBlock = useCallback((blockId: string, updates: Partial<CanvasBlockData>) => {
-    setBlocks(prev => prev.map(b => b.blockId === blockId ? { ...b, ...updates } : b));
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.blockId === blockId);
+      if (idx === -1) return prev;
+
+      const current = prev[idx];
+
+      // Bail out if nothing actually changed — same array ref → zero re-renders
+      const keys = Object.keys(updates) as (keyof CanvasBlockData)[];
+      const hasChange = keys.some(k => current[k] !== (updates as any)[k]);
+      if (!hasChange) return prev;
+
+      // slice() creates a new array but keeps all OTHER elements' object identity intact.
+      // Only next[idx] gets a new ref → BlockWrapper memo passes for the other N-1 blocks.
+      const next = prev.slice();
+      next[idx] = { ...current, ...updates };
+      return next;
+    });
   }, []);
 
   const shiftBlocksY = useCallback((deltaY: number) => {

@@ -13,7 +13,7 @@ interface NativeConnectionLayerProps {
     zoom: number;
 }
 
-export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
+export const NativeConnectionLayer = React.memo(function NativeConnectionLayer({
     connections,
     blocks,
     dragController,
@@ -21,7 +21,7 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
     onSelectConnection,
     containerRef,
     zoom
-}) => {
+}: NativeConnectionLayerProps) {
     const connectionsRef = useRef(connections);
     const blocksRef = useRef(blocks);
     const zoomRef = useRef(zoom);
@@ -326,4 +326,4 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
             })})()}
         </svg>
     );
-};
+});

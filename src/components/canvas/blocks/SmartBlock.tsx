@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { SmartBlockProps } from './smartBlockTypes';
 import { DEFAULT_FONT_SIZE } from '../core/types';
@@ -52,6 +52,17 @@ function SmartBlockComponent({
   
   const bgColor = color; 
 
+  // ── Finding 2: Stable content update callback ─────────────────────────────
+  // Previously an inline arrow in the JSX: (newContent) => onUpdateBlock?.(id, { content: newContent })
+  // That changed identity every render, causing BlockEditor's debouncedOnChange
+  // to be recreated and the active debounce timer to be cancelled.
+  const handleBlockUpdate = useCallback(
+    (newContent: string) => { onUpdateBlock?.(id, { content: newContent }); },
+    [id, onUpdateBlock]
+  );
+
+  const handleBlur = useCallback(() => setIsEditing(false), []);
+
   const blockRef = useRef<HTMLDivElement>(null);
   
   const lastDimUpdate = useRef<number>(0);
@@ -60,17 +71,24 @@ function SmartBlockComponent({
   useEffect(() => {
     if (!blockRef.current) return;
 
+    const isTextBlock = type === 'text';
+
     const observer = new ResizeObserver((entries) => {
       requestAnimationFrame(() => {
         for (const entry of entries) {
           const width = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
           const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
           
+          // Always update the height cache (used by connection layer and computedHeight)
           if (onRegisterHeight) {
             onRegisterHeight(id, height);
           }
           
-          if (onDimensionsChange) {
+          // Skip onDimensionsChange for text blocks — they use height='auto' so Rnd
+          // handles their visual height internally. Calling onDimensionsChange here
+          // triggers updateBlock → setBlocks → full cascade on every character typed.
+          // Only non-text blocks (images, code) need explicit dimension tracking.
+          if (!isTextBlock && onDimensionsChange) {
             const now = Date.now();
             if (now - lastDimUpdate.current > 100) {
                onDimensionsChange(id, width, height);
@@ -92,7 +110,7 @@ function SmartBlockComponent({
       observer.disconnect();
       if (dimUpdateTimeout.current) clearTimeout(dimUpdateTimeout.current);
     };
-  }, [id, onDimensionsChange, onRegisterHeight]);
+  }, [id, type, onDimensionsChange, onRegisterHeight]);
 
   const taskStats = useMemo(() => calculateTaskStats(content), [content]);
 
@@ -204,8 +222,8 @@ function SmartBlockComponent({
             isUploading={isUploading}
             fileName={fileName}
             fileSize={fileSize}
-            onUpdate={(newContent) => onUpdateBlock?.(id, { content: newContent })}
-            onBlur={() => setIsEditing(false)}
+            onUpdate={handleBlockUpdate}
+            onBlur={handleBlur}
             onLanguageChange={(lang) => onUpdateBlock?.(id, { language: lang })}
             onMentionClick={onMentionClick}
             height={height}
@@ -244,7 +262,8 @@ const arePropsEqual = (prev: SmartBlockProps, next: SmartBlockProps) => {
     prev.fileSize === next.fileSize &&
     prev.topicId === next.topicId &&
     prev.subjectId === next.subjectId &&
-    prev.onResourceAdd === next.onResourceAdd
+    prev.onResourceAdd === next.onResourceAdd &&
+    prev.onUpdateBlock === next.onUpdateBlock
   );
 };
 

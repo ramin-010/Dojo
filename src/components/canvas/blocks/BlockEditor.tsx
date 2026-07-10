@@ -56,11 +56,22 @@ export function BlockEditor({
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Finding 3: Stable onChange ref — onChange may change identity on re-renders
+  // but the debounce should be immortal for the lifetime of this editor.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
+  // Finding 9: Local content cache — avoids calling editor.getHTML() in the
+  // content sync effect (which serializes the entire ProseMirror doc tree).
+  const localContentRef = useRef(content);
+
+  // Finding 3: Stable debounce — created once, never recreated.
+  // Reads onChange from ref so it always calls the latest version.
   const debouncedOnChange = useMemo(
     () => debounce((html: string) => {
-      onChange(html);
-    }, 300), 
-    [onChange]
+      onChangeRef.current(html);
+    }, 500),
+    [] // stable forever
   );
   
   useEffect(() => {
@@ -160,6 +171,10 @@ export function BlockEditor({
     editorProps: {
       attributes: {
         class: 'outline-none max-w-none leading-normal text-foreground',
+        spellcheck: 'false',
+        'data-gramm': 'false',
+        'data-gramm_editor': 'false',
+        'data-enable-grammarly': 'false',
       },
       handleKeyDown: (view, event) => {
         if ((event.ctrlKey || event.metaKey) && (event.key === 'Delete' || event.key === 'Backspace')) {
@@ -183,7 +198,9 @@ export function BlockEditor({
       }
     },
     onUpdate: ({ editor }) => {
-      debouncedOnChange(editor.getHTML());
+      // Track content locally so the sync effect doesn't need getHTML()
+      localContentRef.current = editor.getHTML();
+      debouncedOnChange(localContentRef.current);
     },
     onFocus: () => onFocus?.(),
     onBlur: () => {
@@ -192,11 +209,13 @@ export function BlockEditor({
     },
   });
 
+  // Finding 9: Content sync without getHTML() — compare against localContentRef
+  // instead of serializing the entire ProseMirror doc tree on every content prop change.
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-       if (!editor.isFocused) {
-           editor.commands.setContent(content);
-       }
+    if (!editor) return;
+    if (!editor.isFocused && content !== localContentRef.current) {
+      editor.commands.setContent(content, { emitUpdate: false });
+      localContentRef.current = content;
     }
   }, [content, editor]);
 

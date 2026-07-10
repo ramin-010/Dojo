@@ -33,6 +33,7 @@ interface CanvasBlockLayerProps {
   topicId?: string;
   subjectId?: string;
   onRegisterHeight?: (id: string, height: number) => void;
+  canvasWidth?: number;
 }
 
 interface BlockWrapperProps {
@@ -182,6 +183,7 @@ const BlockWrapperComponent = ({
       onDrag={handleRndDrag}
       onDragStart={handleRndDragStart}
       dragHandleClassName="smart-block-drag-handle"
+      enableUserSelectHack={false}
       lockAspectRatio={isText && resizingDir === 'bottomRight'}
       enableResizing={{
         top: false, right: isText, bottom: !isText, left: false,
@@ -275,9 +277,10 @@ function CanvasBlockLayerComponent({
   topicId,
   subjectId,
   onRegisterHeight,
+  canvasWidth,
 }: CanvasBlockLayerProps) {
   const typography = useAppStore(state => state.typography);
-  const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
+  const effectiveCanvasWidth = canvasWidth || (typography?.canvasWidth ?? 890);
 
   const connectedBlockIds = useMemo(() => {
     const set = new Set<string>();

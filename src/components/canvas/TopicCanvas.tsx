@@ -214,39 +214,35 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
         setSelectedConnectionId(null);
       }
     }}>
-      <div className="mx-auto" style={{
-        width: effectiveCanvasWidth * autoZoom,
+      <div className="w-full h-full origin-top-left" style={{
+        transform: `scale(${autoZoom})`,
+        width: `${100 / autoZoom}%`,
       }}>
-        <div style={{
-          transform: `scale(${autoZoom})`,
-          transformOrigin: 'top left',
-          width: effectiveCanvasWidth,
-        }}>
-          <SingleCanvas
-            canvasId={topicId}
-            subjectId={subjectId}
-            blocks={blocks}
-            connections={connections}
-            selectedBlockId={selectedBlockId}
-            selectedConnectionId={selectedConnectionId}
-            isActive={true}
-            title={title}
-            showTitle={showTitle}
-            zoom={autoZoom}
-            readOnly={readOnly}
-            onSelectBlock={setSelectedBlockId}
-            onUpdateBlock={updateBlock}
-            onDeleteBlock={deleteBlock}
-            onAddBlock={addBlock}
-            onCanvasClick={NOOP}
-            onConnectionsChange={setConnections}
-            onSelectConnection={setSelectedConnectionId}
-            onAddImage={addImageBlock}
-            onAddFile={addFileBlock}
-            onMentionClick={onMentionClick}
-            onResourceAdd={onResourceAdded}
-          />
-        </div>
+        <SingleCanvas
+          canvasId={topicId}
+          subjectId={subjectId}
+          blocks={blocks}
+          connections={connections}
+          selectedBlockId={selectedBlockId}
+          selectedConnectionId={selectedConnectionId}
+          isActive={true}
+          title={title}
+          showTitle={showTitle}
+          zoom={autoZoom}
+          readOnly={readOnly}
+          onSelectBlock={setSelectedBlockId}
+          onUpdateBlock={updateBlock}
+          onDeleteBlock={deleteBlock}
+          onAddBlock={addBlock}
+          onCanvasClick={NOOP}
+          onConnectionsChange={setConnections}
+          onSelectConnection={setSelectedConnectionId}
+          onAddImage={addImageBlock}
+          onAddFile={addFileBlock}
+          onMentionClick={onMentionClick}
+          onResourceAdd={onResourceAdded}
+          canvasWidth={containerWidth}
+        />
       </div>
     </div>
   );

@@ -46,6 +46,7 @@ interface SingleCanvasProps {
   onAddFile?: (canvasId: string, file: File, x?: number, y?: number) => void;
   onMentionClick?: (topicId: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  canvasWidth?: number;
 }
 
 export function SingleCanvas({
@@ -76,9 +77,10 @@ export function SingleCanvas({
   onAddFile,
   onMentionClick,
   onResourceAdd,
+  canvasWidth,
 }: SingleCanvasProps) {
   const typography = useAppStore(state => state.typography);
-  const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
+  const effectiveCanvasWidth = canvasWidth || (typography?.canvasWidth ?? 890);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -215,16 +217,14 @@ export function SingleCanvas({
 
   return (
     <div
-      className="relative group transition-all duration-200 h-full rounded-lg mx-auto"
-      style={{ width: effectiveCanvasWidth }}
+      className="relative group transition-all duration-200 h-full rounded-lg w-full"
     >
       <div
         ref={containerRef}
         onClick={h.handleSingleClick}
         onDoubleClick={h.handleDoubleClick}
-        className="relative rounded-lg bg-transparent"
+        className="relative rounded-lg bg-transparent w-full"
         style={{
-          width: effectiveCanvasWidth,
           minHeight: CANVAS_MIN_HEIGHT,
           height: h.computedHeight,
           backgroundColor: backgroundColor || undefined,
@@ -289,6 +289,7 @@ export function SingleCanvas({
           topicId={canvasId}
           subjectId={subjectId}
           onRegisterHeight={h.registerBlockHeight}
+          canvasWidth={effectiveCanvasWidth}
         />
 
         <ConnectionLayer

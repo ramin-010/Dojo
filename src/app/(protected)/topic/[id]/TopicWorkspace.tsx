@@ -307,18 +307,23 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       if (container && stickyBorder) {
         if (isDraggingBlock) {
           stickyBorder.className =
-            'w-full border-t border-l border-r rounded-t-2xl h-4 mt-2 bg-accent/5 transition-all duration-300';
-          stickyBorder.style.borderColor = '#007acc';
+            'w-full border-t border-l border-r border-dashed rounded-t-2xl h-4 mt-2 bg-accent/5 transition-all duration-300';
+          stickyBorder.style.borderColor = 'rgba(0, 122, 204, 0.3)';
+          stickyBorder.style.borderBottomColor = 'transparent';
+
           container.className =
-            'flex-1 w-full relative border-l border-r border-b rounded-b-2xl transition-all duration-300 shadow-sm bg-accent/5 border-dashed';
+            'flex-1 w-full relative border-l border-r border-b border-dashed rounded-b-2xl transition-all duration-300 shadow-sm bg-accent/5';
           container.style.borderColor = 'rgba(0, 122, 204, 0.3)';
+          container.style.borderTopColor = 'transparent';
         } else {
           stickyBorder.className =
-            'w-full border-t rounded-t-2xl h-4 mt-2 bg-background transition-all duration-300';
-          stickyBorder.style.borderColor = '#007acc';
+            'w-full border-t border-l border-r border-solid rounded-t-2xl h-4 mt-2 bg-background transition-all duration-300';
+          stickyBorder.style.borderColor = 'transparent';
+          stickyBorder.style.borderTopColor = '#007acc';
+
           container.className =
-            'flex-1 w-full relative transition-all duration-300';
-          container.style.borderColor = '';
+            'flex-1 w-full relative border-l border-r border-b border-solid rounded-b-2xl transition-all duration-300';
+          container.style.borderColor = 'transparent';
         }
       }
     };
@@ -949,7 +954,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
             id="canvas-border-container"
             className="w-full relative transition-all duration-300"
           >
-            <div ref={canvasWrapperRef} className="w-full min-h-full relative" style={{ minWidth: splitViewData ? undefined : `${layoutWidth}px` }}>
+            <div ref={canvasWrapperRef} className="w-full min-h-full relative">
               <TopicCanvas
                 topicId={topic.id}
                 subjectId={topic.subject.id}
