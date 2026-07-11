@@ -188,7 +188,8 @@ function SmartBlockComponent({
       <div 
         className={cn(
           "relative z-10 transition-colors duration-200 rounded-lg",
-          height === 'auto' || height === undefined ? "h-auto" : "flex-1 overflow-hidden"
+          height === 'auto' || height === undefined ? "h-auto" : "flex-1 overflow-hidden",
+          !isEditing && "pointer-events-none"
         )}
         style={{
           fontSize: type === 'text' ? `${currentFontSize}px` : undefined,

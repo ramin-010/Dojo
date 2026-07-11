@@ -274,10 +274,16 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   const [canvasContainerWidth, setCanvasContainerWidth] = useState(900);
   const resizeRafRef = useRef<number>(0);
 
+  const isDraggingSplitViewRef = useRef(isDraggingSplitView);
+  useEffect(() => {
+    isDraggingSplitViewRef.current = isDraggingSplitView;
+  }, [isDraggingSplitView]);
+
   useEffect(() => {
     const el = canvasWrapperRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
+      if (isDraggingSplitViewRef.current) return; // FIX 2c: Skip state updates during split-view drag
       if (resizeRafRef.current) cancelAnimationFrame(resizeRafRef.current);
       resizeRafRef.current = requestAnimationFrame(() => {
         for (const entry of entries) {
@@ -307,18 +313,19 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       if (container && stickyBorder) {
         if (isDraggingBlock) {
           stickyBorder.className =
-            'w-full border-t border-l border-r rounded-t-2xl h-4 mt-2 bg-accent/5 transition-all duration-300';
-          stickyBorder.style.borderColor = '#007acc';
+            'w-full border-t rounded-t-2xl h-4 mt-2 bg-accent/5 transition-all duration-300';
+          stickyBorder.style.boxShadow = 'inset 1px 0 0 rgba(0, 122, 204, 0.3), inset -1px 0 0 rgba(0, 122, 204, 0.3)';
           container.className =
-            'flex-1 w-full relative border-l border-r border-b rounded-b-2xl transition-all duration-300 shadow-sm bg-accent/5 border-dashed';
-          container.style.borderColor = 'rgba(0, 122, 204, 0.3)';
+            'flex-1 w-full relative transition-all duration-300 shadow-sm bg-accent/5';
+          container.style.boxShadow = 'inset 1px 0 0 rgba(0, 122, 204, 0.3), inset -1px 0 0 rgba(0, 122, 204, 0.3), inset 0 -1px 0 rgba(0, 122, 204, 0.3)';
         } else {
           stickyBorder.className =
             'w-full border-t rounded-t-2xl h-4 mt-2 bg-background transition-all duration-300';
-          stickyBorder.style.borderColor = '#007acc';
+          stickyBorder.style.boxShadow = '';
+          stickyBorder.style.borderColor = 'var(--border)';
           container.className =
             'flex-1 w-full relative transition-all duration-300';
-          container.style.borderColor = '';
+          container.style.boxShadow = '';
         }
       }
     };

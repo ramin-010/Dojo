@@ -49,8 +49,9 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
 
   // Auto-zoom: scale canvas when container is narrower than effectiveCanvasWidth
   const autoZoom = useMemo(() => {
-    if (!containerWidth || containerWidth >= effectiveCanvasWidth) return 1;
-    return containerWidth / effectiveCanvasWidth;
+    // [DISABLED] if (!containerWidth || containerWidth >= effectiveCanvasWidth) return 1;
+    // [DISABLED] return containerWidth / effectiveCanvasWidth;
+    return 1;
   }, [containerWidth, effectiveCanvasWidth]);
 
   const canvasStateRef = useRef({ blocks: [] as any[], connections: [] as any[] });
@@ -200,6 +201,31 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedBlockId, selectedConnectionId, blocks, connections, deleteBlock, setSelectedBlockId, setSelectedConnectionId, setConnections]);
+
+  // Global click-outside to deselect blocks
+  useEffect(() => {
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Ignore clicks on any canvas blocks or their resize handles
+      if (target.closest('.react-draggable')) return;
+      if (target.closest('[id^="smart-block-"]')) return;
+      
+      // Ignore clicks on tippy popups (Slash Commands, Mentions, Tooltips)
+      if (target.closest('[data-tippy-root]')) return;
+      
+      // Ignore clicks on interactive dialogs/popovers/dropdowns
+      if (target.closest('[role="dialog"]') || target.closest('[role="menu"]') || target.closest('[role="listbox"]')) return;
+
+      // If we clicked completely outside, unselect the block
+      if (selectedBlockId !== null) {
+        setSelectedBlockId(null);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [selectedBlockId, setSelectedBlockId]);
 
   if (!isLoaded) {
     return <div className="w-full min-h-full min-h-[600px] bg-background relative flex items-center justify-center">
