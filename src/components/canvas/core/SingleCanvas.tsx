@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef,useMemo } from 'react';
 import { CanvasBlockData, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
 import { Connection } from '@/types/canvas';
 import { CanvasBlockLayer } from '../blocks/CanvasBlockLayer';
@@ -213,6 +213,10 @@ export function SingleCanvas({
     return () => window.removeEventListener('paste', handlePaste);
   }, [isActive, canvasId, onAddImage, onAddBlock, onUpdateBlock, zoom]);
 
+  const renderBlocks = useMemo(() => {
+    return h.cursorPos && h.editingBlockId ? blocks.filter(b => b.blockId !== h.editingBlockId) : blocks;
+  }, [blocks, h.cursorPos, h.editingBlockId]);
+
   return (
     <div
       className="relative group transition-all duration-200 h-full rounded-lg mx-auto"
@@ -268,7 +272,7 @@ export function SingleCanvas({
         />
 
         <CanvasBlockLayer
-          blocks={h.cursorPos && h.editingBlockId ? blocks.filter(b => b.blockId !== h.editingBlockId) : blocks}
+          blocks={renderBlocks}
           connections={connections}
           selectedBlockId={selectedBlockId}
           readOnly={readOnly}

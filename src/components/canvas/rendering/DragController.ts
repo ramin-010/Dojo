@@ -16,10 +16,32 @@ export class DragController {
         } else {
             this.activeOffset = null;
         }
+
+        // Imperative GPU fast-path: promote the dragged block to its own
+        // compositor layer and strip backdrop-filter for the duration of the drag.
+        // This avoids per-frame blur recomputation and repaint of the block's
+        // entire DOM subtree (which can be thousands of pixels tall for large blocks).
+        if (typeof document !== 'undefined') {
+            const el = document.getElementById(`smart-block-${id}`);
+            if (el) {
+                el.style.willChange = 'transform';
+                el.dataset.dragging = 'true';
+            }
+        }
+
         this.notify();
     }
 
     stopDrag() {
+        // Restore normal rendering on the previously-dragged block
+        if (typeof document !== 'undefined' && this._activeId) {
+            const el = document.getElementById(`smart-block-${this._activeId}`);
+            if (el) {
+                el.style.willChange = '';
+                delete el.dataset.dragging;
+            }
+        }
+
         this.isDragging = false;
         this._activeId = null;
         this.notify();

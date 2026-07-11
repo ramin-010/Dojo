@@ -124,8 +124,8 @@ function SmartBlockComponent({
       className={cn(
         "relative group flex flex-col animate-in fade-in zoom-in-95 duration-200",
         isMinimalText
-          ? "rounded-none border-transparent bg-transparent backdrop-blur-xs shadow-none"
-          : "rounded-md border backdrop-blur-sm " + (isEditing ? "shadow-md" : "shadow-none"),
+          ? "rounded-none border-transparent bg-background/95 shadow-none"
+          : "rounded-md border bg-background/95 " + (isEditing ? "shadow-md" : "shadow-none"),
         isSelected && !isMinimalText
           ? "border-foreground/25 ring-1 ring-foreground/10"
           : isSelected && isMinimalText
@@ -137,6 +137,7 @@ function SmartBlockComponent({
         !isMinimalText && bgColor
       )}
       style={{
+        contain: 'layout style paint',
         width: '100%',
         height: height === 'auto' || height === undefined ? 'auto' : '100%',
         color: textColor || undefined,

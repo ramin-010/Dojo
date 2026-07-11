@@ -59,12 +59,13 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
                     }
                 }
 
-                const fromEl = containerEl.querySelector(`[id="smart-block-${conn.fromBlock}"]`) || containerEl.querySelector(`[id="${conn.fromBlock}"]`);
-                const toEl = containerEl.querySelector(`[id="smart-block-${conn.toBlock}"]`) || containerEl.querySelector(`[id="${conn.toBlock}"]`);
+                // Fix 1b: getElementById O(1) instead of querySelector attribute selector O(n)
+                const fromEl = document.getElementById(`smart-block-${conn.fromBlock}`) || document.getElementById(conn.fromBlock);
+                const toEl = document.getElementById(`smart-block-${conn.toBlock}`) || document.getElementById(conn.toBlock);
                 if (!fromEl || !toEl) return;
                 
                 const newPath = calculatePathFromRects(conn, elToRect(fromEl, contRect), elToRect(toEl, contRect));
-                const pathEl = containerEl.querySelector(`[id="conn-path-${conn.id}"]`);
+                const pathEl = document.getElementById(`conn-path-${conn.id}`);
                 if (pathEl) pathEl.setAttribute('d', newPath);
             });
         };
@@ -85,7 +86,7 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
         });
 
         blockIdsToObserve.forEach(id => {
-            const el = containerEl.querySelector(`[id="smart-block-${id}"]`) || containerEl.querySelector(`[id="${id}"]`);
+            const el = document.getElementById(`smart-block-${id}`) || document.getElementById(id);
             if (el) observer.observe(el);
         });
 
@@ -115,11 +116,11 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
         const updatePaths = () => {
             const contRect = containerEl.getBoundingClientRect();
             connections.filter(conn => !conn.hidden).forEach(conn => {
-                const fromEl = containerEl.querySelector(`[id="smart-block-${conn.fromBlock}"]`) || containerEl.querySelector(`[id="${conn.fromBlock}"]`);
-                const toEl = containerEl.querySelector(`[id="smart-block-${conn.toBlock}"]`) || containerEl.querySelector(`[id="${conn.toBlock}"]`);
+                const fromEl = document.getElementById(`smart-block-${conn.fromBlock}`) || document.getElementById(conn.fromBlock);
+                const toEl = document.getElementById(`smart-block-${conn.toBlock}`) || document.getElementById(conn.toBlock);
                 if (!fromEl || !toEl) return;
                 const newPath = calculatePathFromRects(conn, elToRect(fromEl, contRect), elToRect(toEl, contRect));
-                const pathEl = containerEl.querySelector(`[id="conn-path-${conn.id}"]`);
+                const pathEl = document.getElementById(`conn-path-${conn.id}`);
                 if (pathEl) pathEl.setAttribute('d', newPath);
             });
         };
@@ -139,6 +140,8 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
         
         // Cache for static block geometries during drag
         let staticGeos = new Map<string, BlockRect>();
+        // Fix 1c: Cache the active block's dimensions at drag start — never read from DOM during RAF
+        let activeBlockDims = { width: 200, height: 200 };
 
         const updateLoop = () => {
             if (!isActive) return;
@@ -149,16 +152,12 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
             const activeId = dragController.activeId;
             if (!activeId) return;
 
-            const containerEl = containerRef.current;
-            if (!containerEl) return;
-            const blockEl = containerEl.querySelector(`[id="smart-block-${activeId}"]`) || containerEl.querySelector(`[id="${activeId}"]`) as HTMLElement | null;
             const currentConnections = connectionsRef.current;
             
-            if (blockEl && containerEl && dragController.activeOffset) {
+            if (dragController.activeOffset) {
                 const { x, y } = dragController.activeOffset;
-                const width = (blockEl as HTMLElement).offsetWidth || 200; 
-                const height = (blockEl as HTMLElement).offsetHeight || 200;
-                const activeBlockGeo: BlockRect = { x, y, width, height };
+                // Fix 1c: Read dimensions from the cache, not from the DOM
+                const activeBlockGeo: BlockRect = { x, y, width: activeBlockDims.width, height: activeBlockDims.height };
 
                 currentConnections.forEach(conn => {
                     if (conn.hidden) return;
@@ -171,7 +170,7 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
 
                     if (fromGeo && toGeo) {
                         const newPath = calculatePathFromRects(conn, fromGeo, toGeo);
-                        const pathEl = containerEl.querySelector(`[id="conn-path-${conn.id}"]`);
+                        const pathEl = document.getElementById(`conn-path-${conn.id}`);
                         if (pathEl) pathEl.setAttribute('d', newPath);
                     }
                 });
@@ -180,13 +179,22 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
 
         const unsubscribe = dragController.subscribe((isDragging) => {
             if (isDragging) {
+                const activeId = dragController.activeId;
+                if (!activeId) return;
+
+                // Fix 1c: Check if the dragged block has ANY connections before scheduling RAF
+                const currentConnections = connectionsRef.current;
+                const hasConnections = currentConnections.some(
+                    conn => !conn.hidden && (conn.fromBlock === activeId || conn.toBlock === activeId)
+                );
+                if (!hasConnections) return; // Skip RAF loop entirely — nothing to update
+
                 isActive = true;
                 
                 // Cache geometries of all connected blocks
                 staticGeos.clear();
                 const containerEl = containerRef.current;
-                const activeId = dragController.activeId;
-                if (containerEl && activeId) {
+                if (containerEl) {
                     const contRect = containerEl.getBoundingClientRect();
                     const currentZoom = zoomRef.current;
                     const elToRect = (el: Element): BlockRect => {
@@ -201,13 +209,22 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
                             height: r.height / currentZoom,
                         };
                     };
+
+                    // Fix 1c: Cache the active block's dimensions ONCE at drag start
+                    const activeBlockEl = document.getElementById(`smart-block-${activeId}`) || document.getElementById(activeId);
+                    if (activeBlockEl) {
+                        activeBlockDims = {
+                            width: (activeBlockEl as HTMLElement).offsetWidth || 200,
+                            height: (activeBlockEl as HTMLElement).offsetHeight || 200,
+                        };
+                    }
                     
-                    connectionsRef.current.forEach(conn => {
+                    currentConnections.forEach(conn => {
                         if (conn.hidden) return;
                         if (conn.fromBlock === activeId || conn.toBlock === activeId) {
                             const staticId = conn.fromBlock === activeId ? conn.toBlock : conn.fromBlock;
                             if (!staticGeos.has(staticId)) {
-                                const el = containerEl.querySelector(`[id="smart-block-${staticId}"]`) || containerEl.querySelector(`[id="${staticId}"]`);
+                                const el = document.getElementById(`smart-block-${staticId}`) || document.getElementById(staticId);
                                 if (el) {
                                     staticGeos.set(staticId, elToRect(el));
                                 } else {
@@ -267,9 +284,9 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
                     renderBlocks = blocks.map(b => {
                         let newB = { ...b };
                         
-                        // 1. Sync live dimensions from DOM to prevent React state lag (debounce) from causing flickers
+                        // Sync live dimensions from DOM for endpoint blocks
                         if (endpointIds.has(b.id)) {
-                            const el = containerEl.querySelector(`[id="smart-block-${b.id}"]`) || containerEl.querySelector(`[id="${b.id}"]`);
+                            const el = document.getElementById(`smart-block-${b.id}`) || document.getElementById(b.id);
                             if (el) {
                                 const r = el.getBoundingClientRect();
                                 newB.width = r.width / zoom;
@@ -277,7 +294,7 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
                             }
                         }
                         
-                        // 2. Sync live drag position
+                        // Sync live drag position
                         if (dragController?.isDragging && dragController.activeId === b.id && dragController.activeOffset) {
                             newB.x = dragController.activeOffset.x;
                             newB.y = dragController.activeOffset.y;
@@ -299,8 +316,8 @@ export const NativeConnectionLayer: React.FC<NativeConnectionLayerProps> = ({
                         (conn.fromBlock === dragController.activeId || conn.toBlock === dragController.activeId);
                     
                     let path: string;
-                    if (isTransitionalFrame && containerEl) {
-                        const existingPathEl = containerEl.querySelector(`[id="conn-path-${conn.id}"]`);
+                    if (isTransitionalFrame) {
+                        const existingPathEl = document.getElementById(`conn-path-${conn.id}`);
                         path = existingPathEl?.getAttribute('d') || calculateConnectionPath(conn, renderBlocks);
                     } else {
                         path = calculateConnectionPath(conn, renderBlocks);
