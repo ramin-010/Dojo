@@ -334,6 +334,37 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     return () => window.removeEventListener('canvas-drag-state', handleCanvasDrag);
   }, []);
 
+  // ── Canvas upload-border animation (DOM mutation) ──
+  useEffect(() => {
+    const handleCanvasUpload = (e: Event) => {
+      const customEvent = e as CustomEvent<{ isUploading: boolean }>;
+      const isUploading = customEvent.detail.isUploading;
+      const container = document.getElementById('canvas-border-container');
+      const stickyBorder = document.getElementById('canvas-top-sticky-border');
+
+      if (container && stickyBorder) {
+        if (isUploading) {
+          stickyBorder.className =
+            'w-full border-t rounded-t-2xl h-4 mt-2 bg-blue-500/5 transition-all duration-300';
+          stickyBorder.style.borderColor = '#007acc';
+          container.className =
+            'flex-1 w-full relative transition-all duration-300 shadow-sm bg-blue-500/5 border-b border-x border-dashed rounded-b-2xl';
+          container.style.borderColor = 'rgba(0, 122, 204, 0.4)';
+        } else {
+          stickyBorder.className =
+            'w-full border-t rounded-t-2xl h-4 mt-2 bg-background transition-all duration-300';
+          stickyBorder.style.borderColor = 'var(--border)';
+          container.className =
+            'flex-1 w-full relative transition-all duration-300';
+          container.style.borderColor = 'transparent';
+        }
+      }
+    };
+
+    window.addEventListener('canvas-upload-state', handleCanvasUpload);
+    return () => window.removeEventListener('canvas-upload-state', handleCanvasUpload);
+  }, []);
+
   // ── Derived data ───────────────────────────────────────────────────────────
   const initialCanvasContent = useMemo(() => {
     if (!topic.canvasData) return '';

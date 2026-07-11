@@ -125,16 +125,17 @@ function SmartBlockComponent({
         "relative group flex flex-col animate-in fade-in zoom-in-95 duration-200",
         isMinimalText
           ? "rounded-none border-transparent bg-background/95 shadow-none"
-          : "rounded-md border bg-background/95 " + (isEditing ? "shadow-md" : "shadow-none"),
-        isSelected && !isMinimalText
+          : `rounded-md bg-background/95 shadow-none ${!isEditing ? "border" : "border-0"}`,
+        (isSelected && !isEditing) && !isMinimalText
           ? "border-foreground/25 ring-1 ring-foreground/10"
-          : isSelected && isMinimalText
+          : (isSelected && !isEditing) && isMinimalText
             ? "ring-1 ring-foreground/10 rounded-md"
-            : isConnected 
+            : (isConnected && !isEditing)
               ? "border-divider/50 bg-hover/60" 
-              : "border-divider",
+              : !isEditing ? "border-divider" : "border-transparent",
         !isEditing && "smart-block-drag-handle cursor-grab active:cursor-grabbing",
-        !isMinimalText && bgColor
+        !isMinimalText && bgColor,
+        isEditing && "ring-0 shadow-none outline-none"
       )}
       style={{
         contain: 'layout style paint',
@@ -188,8 +189,7 @@ function SmartBlockComponent({
       <div 
         className={cn(
           "relative z-10 transition-colors duration-200 rounded-lg",
-          height === 'auto' || height === undefined ? "h-auto" : "flex-1 overflow-hidden",
-          !isEditing && "pointer-events-none"
+          height === 'auto' || height === undefined ? "h-auto" : "flex-1 overflow-hidden"
         )}
         style={{
           fontSize: type === 'text' ? `${currentFontSize}px` : undefined,

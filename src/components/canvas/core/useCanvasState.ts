@@ -298,7 +298,7 @@ export function useCanvasState(
 
       // Show canvas border while uploading
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('canvas-drag-state', { detail: { isDragging: true } }));
+        window.dispatchEvent(new CustomEvent('canvas-upload-state', { detail: { isUploading: true } }));
       }
 
       // Start asynchronous upload
@@ -312,7 +312,7 @@ export function useCanvasState(
         toast.error(`Failed to upload ${file.name}`, { id: toastId });
       }).finally(() => {
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('canvas-drag-state', { detail: { isDragging: false } }));
+          window.dispatchEvent(new CustomEvent('canvas-upload-state', { detail: { isUploading: false } }));
         }
       });
 

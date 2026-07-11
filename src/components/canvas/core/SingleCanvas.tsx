@@ -286,7 +286,6 @@ export function SingleCanvas({
           isConnectionDragging={!!h.activeDragStart}
           dragController={h.dragControllerInstance}
           zoom={zoom}
-          onEditRequest={h.handleEditRequest}
           onMentionClick={onMentionClick}
           editingBlockId={h.editingBlockId}
           onResourceAdd={onResourceAdd}

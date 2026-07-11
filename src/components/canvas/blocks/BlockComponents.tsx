@@ -150,39 +150,29 @@ export const BlockContent = React.memo<BlockContentProps>(({
   subjectId
 }) => {
   if (type === 'text') {
-    if (isEditing) {
-      return (
-        <BlockEditor 
-          content={content} 
-          onChange={onUpdate}
-          autoFocus={true}
-          onBlur={onBlur}
-          onDelete={onDelete}
-          onMentionClick={onMentionClick}
-          onResourceAdd={onResourceAdd}
-          topicId={topicId}
-          subjectId={subjectId}
-        />
-      );
-    }
     return (
       <div 
-        className="notion-editor h-full w-full" 
+        className={!isEditing ? "notion-editor h-full w-full" : "h-full w-full"}
         style={{ color: 'inherit', fontSize: 'inherit' }}
         onClick={(e) => {
-          const target = e.target as HTMLElement;
-          const mentionId = target.getAttribute('data-mention-id');
-          if (mentionId && onMentionClick) {
-            e.stopPropagation();
-            onMentionClick(mentionId);
+          if (!isEditing) {
+            const target = e.target as HTMLElement;
+            const mentionId = target.getAttribute('data-mention-id');
+            if (mentionId && onMentionClick) {
+              e.stopPropagation();
+              onMentionClick(mentionId);
+            }
           }
         }}
       >
         <BlockEditor 
           content={content} 
-          onChange={() => {}} 
-          readOnly={true}
+          onChange={onUpdate}
+          readOnly={!isEditing}
+          onBlur={onBlur}
+          onDelete={onDelete}
           onMentionClick={onMentionClick}
+          onResourceAdd={onResourceAdd}
           topicId={topicId}
           subjectId={subjectId}
         />
