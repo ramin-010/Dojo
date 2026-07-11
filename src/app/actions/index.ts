@@ -25,7 +25,10 @@ export {
   searchTopicsInSubject,
   searchAllSubjects,
   getAllSubjectsForMention,
-  getAllTopicsInSubjectForMention
+  getAllTopicsInSubjectForMention,
+  searchGlobalCaptures,
+  getTopicPinnedCaptures,
+  toggleTopicCapturePin
 } from './topic.actions';
 
 export {

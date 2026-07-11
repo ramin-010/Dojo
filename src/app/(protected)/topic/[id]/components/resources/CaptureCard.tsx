@@ -10,6 +10,7 @@ interface CaptureCardProps {
   onDragStartSidebarItem?: (data: any) => void;
   onOpenSplitView?: (data: any) => void;
   onAttachmentClick?: (attachment: { url: string; fileType?: string | null; fileName?: string | null }) => void;
+  sourceContext?: string;
 }
 
 export function CaptureCard({
@@ -17,7 +18,8 @@ export function CaptureCard({
   onDelete,
   onDragStartSidebarItem,
   onOpenSplitView,
-  onAttachmentClick
+  onAttachmentClick,
+  sourceContext
 }: CaptureCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -107,6 +109,11 @@ export function CaptureCard({
             {categoryName !== 'Others' && capture.type !== 'LINK' && (
               <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold uppercase tracking-wider">
                 {categoryName}
+              </span>
+            )}
+            {sourceContext && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-zinc-800 text-zinc-300 font-bold tracking-wider">
+                {sourceContext}
               </span>
             )}
             {categoryName === 'Others' && capture.type === 'NOTE' && (

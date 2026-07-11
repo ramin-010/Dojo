@@ -1,7 +1,7 @@
 // ─── Shared types for TopicWorkspace and its sub-components / hooks ───────────
 // Place this file at:  src/app/topic/[id]/types.ts
 
-export type SidebarTab = 'symlinks' | 'resources';
+export type SidebarTab = 'symlinks' | 'resources' | 'library';
 
 export type SplitViewItemType = 'note' | 'resource' | 'topic_link';
 
@@ -76,6 +76,10 @@ export interface Capture {
   categoryId: string | null;
   category: NoteCategory | null;
   attachments?: { url: string; fileType?: string | null; fileName?: string | null }[];
+  topicId?: string | null;
+  subjectId?: string | null;
+  topic?: { title: string } | null;
+  subject?: { name: string } | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -95,6 +99,7 @@ export interface Topic {
   mentionsOut: TopicMentionOut[];
   mentionsIn: TopicMentionIn[];
   captures: Capture[];
+  captureLinks?: { capture: Capture }[];
 }
 
 export interface TopicWorkspaceProps {

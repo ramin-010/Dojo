@@ -92,6 +92,19 @@ export async function getTopicById(topicId: string) {
           { createdAt: 'desc' }
         ],
       },
+      captureLinks: {
+        include: {
+          capture: {
+            include: {
+              category: true,
+              reminder: true,
+              attachments: true,
+              topic: { select: { title: true } },
+              subject: { select: { name: true } },
+            }
+          }
+        }
+      },
     },
   });
 
@@ -100,8 +113,8 @@ export async function getTopicById(topicId: string) {
 
 /** Fetch only link captures for a topic */
 export async function getTopicLinks(topicId: string) {
-  return await prisma.capture.findMany({
-    where: { topicId, type: 'LINK' },
+  const local = await prisma.capture.findMany({
+    where: { topicId },
     include: {
       category: true,
       reminder: true,
@@ -109,6 +122,24 @@ export async function getTopicLinks(topicId: string) {
     },
     orderBy: { createdAt: 'desc' },
   });
+  
+  const pinnedLinks = await prisma.topicCaptureLink.findMany({
+    where: { topicId },
+    include: {
+      capture: {
+        include: {
+          category: true,
+          reminder: true,
+          attachments: true,
+        }
+      }
+    }
+  });
+  
+  const pinned = pinnedLinks.map(l => ({ ...l.capture, isPinnedViaLink: true }));
+  const combined = [...local, ...pinned];
+  const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+  return unique;
 }
 
 /** Save canvas data for a topic (the debounced auto-save target) */
@@ -601,4 +632,64 @@ export async function duplicateTopic(topicId: string) {
   
   revalidatePath('/dashboard');
   return copy.id;
+}
+ 
+export async function getTopicPinnedCaptures(topicId: string) {
+  const links = await prisma.topicCaptureLink.findMany({
+    where: { topicId },
+    include: {
+      capture: {
+        include: {
+          topic: { select: { title: true } },
+          subject: { select: { name: true } },
+          attachments: true
+        }
+      }
+    },
+    orderBy: { pinnedAt: 'desc' }
+  });
+  return links.map(l => ({
+    ...l.capture,
+    pinnedAt: l.pinnedAt,
+    linkId: l.id
+  }));
+}
+
+export async function searchGlobalCaptures(topicId: string, query: string) {
+  if (!query.trim()) return [];
+  const topic = await prisma.topic.findUnique({ where: { id: topicId }, include: { subject: true } });
+  if (!topic) return [];
+  const captures = await prisma.capture.findMany({
+    where: {
+      workspaceId: topic.subject.workspaceId,
+      title: { contains: query, mode: 'insensitive' }
+    },
+    include: {
+      topic: { select: { title: true } },
+      subject: { select: { name: true } },
+      attachments: true
+    },
+    take: 20,
+    orderBy: { createdAt: 'desc' }
+  });
+  return captures;
+}
+
+export async function toggleTopicCapturePin(topicId: string, captureId: string, pin: boolean) {
+  if (pin) {
+    await prisma.topicCaptureLink.upsert({
+      where: {
+        topicId_captureId: { topicId, captureId }
+      },
+      create: { topicId, captureId },
+      update: {}
+    });
+  } else {
+    await prisma.topicCaptureLink.delete({
+      where: {
+        topicId_captureId: { topicId, captureId }
+      }
+    }).catch(() => {});
+  }
+  revalidatePath('/dashboard');
 }

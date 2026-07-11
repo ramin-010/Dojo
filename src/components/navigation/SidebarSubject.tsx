@@ -36,7 +36,7 @@ export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
         <Link 
           href={`/subject/${subject.id}`} 
           title={subject.name} 
-          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-hover text-muted-foreground hover:text-foreground transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-hover text-muted-foreground hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
         >
           <Folder className="w-[18px] h-[18px]" />
         </Link>

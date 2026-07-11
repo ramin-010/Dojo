@@ -24,6 +24,7 @@ export interface ResourceRowProps {
   onDragStartSidebarItem?: (data: any) => void;
   onOpenSplitView?: (data: any) => void;
   onAttachmentClick?: (attachment: { url: string; fileType?: string | null; fileName?: string | null }) => void;
+  sourceContext?: string;
 }
 
 export function ResourceRow({
@@ -45,6 +46,7 @@ export function ResourceRow({
   content,
   attachments,
   onAttachmentClick,
+  sourceContext,
 }: ResourceRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -269,6 +271,14 @@ export function ResourceRow({
         <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-zinc-500 truncate">
           {category === 'link' && (
             <>
+              {sourceContext && (
+                <>
+                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-300">
+                    {sourceContext}
+                  </span>
+                  <span>•</span>
+                </>
+              )}
               <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-black/40 text-zinc-300">
                 Link
               </span>
@@ -279,6 +289,14 @@ export function ResourceRow({
 
           {category === 'file' && (
             <>
+              {sourceContext && (
+                <>
+                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-300">
+                    {sourceContext}
+                  </span>
+                  <span>•</span>
+                </>
+              )}
               {fileSize && <span>{fileSize}</span>}
               {fileFormat && (
                 <span className="px-1 py-0.5 rounded text-[9px] uppercase font-medium bg-black/40 text-zinc-300">
@@ -292,6 +310,14 @@ export function ResourceRow({
 
           {category === 'image' && (
             <>
+              {sourceContext && (
+                <>
+                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-300">
+                    {sourceContext}
+                  </span>
+                  <span>•</span>
+                </>
+              )}
               <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-black/40 text-zinc-300">
                 Image
               </span>

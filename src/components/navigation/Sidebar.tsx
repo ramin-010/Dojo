@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, LayoutDashboard, Settings, Calendar, Brain, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutDashboard, Settings,LogOutIcon, Calendar, Brain, Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
@@ -55,7 +55,7 @@ function NavItem({
         isActive
           ? 'text-foreground'
           : 'text-muted-foreground hover:text-foreground hover:bg-hover'
-      } ${isCollapsed ? 'justify-center h-10 w-10 mx-auto px-0' : ''}`}
+      } ${isCollapsed ? 'justify-center h-10 w-10 mx-auto px-0 opacity-15 hover:opacity-100' : ''}`}
     >
       {isActive && (
         <motion.div
@@ -163,7 +163,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
       <motion.aside 
         animate={{ width: isRevisionActive || isSplitViewActive ? 0 : isCollapsed ? 72 : 256 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`bg-sidebar flex flex-col shrink-0 overflow-hidden relative z-50 ${isRevisionActive || isSplitViewActive ? 'border-r-0 opacity-0 pointer-events-none' : 'border-r border-border/50'}`}
+        className={`${isCollapsed ? 'bg-background border-r-transparent' : 'bg-sidebar border-r border-border/50'} flex flex-col shrink-0 overflow-hidden relative z-50 ${isRevisionActive || isSplitViewActive ? 'border-r-0 opacity-0 pointer-events-none' : ''}`}
       >
         <div className={`flex items-center pt-4 pb-2 px-3 shrink-0 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
@@ -207,37 +207,41 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
             />
           </div>
 
-          <div className="mx-4 my-3 h-[1px] bg-border/40 shrink-0" />
+          {!isCollapsed && <div className="mx-4 my-3 h-[1px] bg-border/40 shrink-0" />}
 
-          <div className="flex items-center justify-between px-5 py-1 mb-1 shrink-0">
-            {!isCollapsed && <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">Subjects</span>}
-            <button 
-              onClick={() => setIsCreateModalOpen(true)}
-              className={`p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-hover transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
-              title="New Subject"
-            >
-              <Plus className="w-[14px] h-[14px]" />
-            </button>
-          </div>
+          {!isCollapsed && (
+            <>
+              <div className="flex items-center justify-between px-5 py-1 mb-1 shrink-0">
+                <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">Subjects</span>
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-hover transition-all duration-200"
+                  title="New Subject"
+                >
+                  <Plus className="w-[14px] h-[14px]" />
+                </button>
+              </div>
 
-          <div className="flex flex-col w-full px-2">
-            <DndContext 
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              {subjects.map(subject => (
-                <SidebarSubject 
-                  key={subject.id} 
-                  subject={subject} 
-                  isCollapsed={isCollapsed} 
-                />
-              ))}
-            </DndContext>
-          </div>
+              <div className="flex flex-col w-full px-2">
+                <DndContext 
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  {subjects.map(subject => (
+                    <SidebarSubject 
+                      key={subject.id} 
+                      subject={subject} 
+                      isCollapsed={isCollapsed} 
+                    />
+                  ))}
+                </DndContext>
+              </div>
+            </>
+          )}
         </nav>
 
-        <div className="p-3 border-t border-border/50 shrink-0 flex items-center justify-center">
+        <div className="p-3 shrink-0 flex items-center justify-center">
           {!isCollapsed ? (
             <button 
               onClick={async () => {
@@ -246,7 +250,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
               }} 
               className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium"
             >
-              <Settings className="w-4 h-4" />
+              <LogOutIcon className="w-4 h-4" />
               <span>Sign out</span>
             </button>
           ) : (
@@ -255,9 +259,9 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
                 await fetch('/api/auth/logout', { method: 'POST' });
                 window.location.href = '/login';
               }} 
-              className="p-2 rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
             >
-              <Settings className="w-4 h-4" />
+              <LogOutIcon className="w-4 h-4" />
             </button>
           )}
         </div>

@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { TopicCanvas } from '@/components/canvas/TopicCanvas';
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
-import { createTopic, deleteCapturePermanently, getTopicLinks, createTextCaptureLink, renameCapture, deleteMultipleCapturesPermanently, deleteTopicMention, saveCanvasData } from '@/app/actions';
+import { createTopic, deleteCapturePermanently, getTopicLinks, createTextCaptureLink, renameCapture, deleteMultipleCapturesPermanently, deleteTopicMention, saveCanvasData, toggleTopicCapturePin, getTopicPinnedCaptures } from '@/app/actions';
 import { TopicHistoryModal } from './TopicHistoryModal';
 import { FloatingCommandBar } from '@/components/ui/FloatingCommandBar';
 import { TopicSettingsModal } from './TopicSettingsModal';
@@ -54,10 +54,12 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   const [previewTopicId, setPreviewTopicId] = useState<string | null>(null);
   const [activeUrls, setActiveUrls] = useState<string[]>([]);
   const [localResources, setLocalResources] = useState<any[]>(topic.captures?.filter(c => c.type === 'LINK') || []);
+  const [pinnedCaptures, setPinnedCaptures] = useState<any[]>(topic.captureLinks?.map(l => l.capture) || []);
 
   useEffect(() => {
     setLocalResources(topic.captures?.filter(c => c.type === 'LINK') || []);
-  }, [topic.captures]);
+    setPinnedCaptures(topic.captureLinks?.map(l => l.capture) || []);
+  }, [topic.captures, topic.captureLinks]);
 
   useEffect(() => {
     const handleGlobalCapture = (e: Event) => {
@@ -561,6 +563,27 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     }
   }, [localResources]);
 
+  const handlePinCapture = useCallback(async (captureId: string) => {
+    try {
+      await toggleTopicCapturePin(topic.id, captureId, true);
+      toast.success('Pinned to topic');
+      const fresh = await getTopicPinnedCaptures(topic.id);
+      setPinnedCaptures(fresh);
+    } catch (e) {
+      toast.error('Failed to pin capture');
+    }
+  }, [topic.id]);
+
+  const handleUnpinCapture = useCallback(async (captureId: string) => {
+    try {
+      await toggleTopicCapturePin(topic.id, captureId, false);
+      toast.success('Unpinned from topic');
+      setPinnedCaptures(prev => prev.filter(r => r.id !== captureId));
+    } catch (e) {
+      toast.error('Failed to unpin capture');
+    }
+  }, [topic.id]);
+
   // Fetch fresh resources if we switch to the resources tab
   useEffect(() => {
     if (activeTab === 'resources') {
@@ -1062,6 +1085,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         quickNotes={topic.captures?.filter(c => c.type === 'NOTE') || []}
         noteCategories={noteCategories || []}
         resources={localResources}
+        pinnedCaptures={pinnedCaptures}
         activeUrls={activeUrls}
         onMentionClick={handleMentionClick}
         onDeleteResource={handleResourceDelete}
@@ -1070,6 +1094,8 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         onDeleteMention={handleDeleteMention}
         onDragStartSidebarItem={handleDragStartSidebarItem}
         onOpenSplitView={handleOpenSplitView}
+        onPinCapture={handlePinCapture}
+        onUnpinCapture={handleUnpinCapture}
       />
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}

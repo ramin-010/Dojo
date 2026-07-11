@@ -112,9 +112,9 @@ function ResourcePreview({ data }: { data: any }) {
     );
   }
 
-  if (data.title?.toLowerCase().endsWith('.md')) {
+  if (data.title?.toLowerCase().endsWith('.md') || data.content) {
     return (
-      <div className="w-full h-full bg-background overflow-y-auto p-6 sm:p-12 custom-scrollbar border-t border-divider">
+      <div className="w-full h-full bg-background overflow-y-auto p-6 sm:p-6 sm:pt-12 custom-scrollbar border-t border-divider">
         <div className="max-w-3xl mx-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-32 text-muted-foreground animate-pulse">Loading document...</div>
@@ -124,9 +124,9 @@ function ResourcePreview({ data }: { data: any }) {
               <p>{error}</p>
             </div>
           ) : (
-            <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-accent/50 prose-pre:border prose-pre:border-border prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
+            <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {markdownContent}
+                {data.content || markdownContent}
               </ReactMarkdown>
             </div>
           )}
@@ -164,10 +164,10 @@ export function SplitViewer({ data, onClose }: SplitViewerProps) {
       {/* Floating Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 p-2 bg-background/80 backdrop-blur-md border border-border shadow-sm hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all z-50 opacity-50 hover:opacity-100"
+        className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-md  border-border shadow-sm hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all z-50 opacity-50 hover:opacity-100"
         title="Close Split View"
       >
-        <X className="w-4 h-4" />
+        <X className="w-3 h-3" />
       </button>
 
       {/* Content Area */}

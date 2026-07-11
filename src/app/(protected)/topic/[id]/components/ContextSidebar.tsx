@@ -5,6 +5,7 @@ import React from 'react';
 import { X, Link as LinkIcon } from 'lucide-react';
 import { TopicLinksTimeline } from '../TopicLinksTimeline';
 import { ResourcesTab } from './ResourcesTab';
+import { LibraryTab } from './LibraryTab';
 import { SidebarTab, ContextLinks, Capture, NoteCategory } from '../types';
 
 interface ContextSidebarProps {
@@ -21,6 +22,7 @@ interface ContextSidebarProps {
   quickNotes: Capture[];
   noteCategories: NoteCategory[];
   resources: Capture[];
+  pinnedCaptures?: Capture[];
   activeUrls?: string[];
   onMentionClick: (topicId: string) => void;
   onDeleteResource?: (id: string, url: string) => void;
@@ -29,6 +31,8 @@ interface ContextSidebarProps {
   onDeleteMention?: (id: string, isOutbound: boolean) => void;
   onDragStartSidebarItem?: (data: any) => void;
   onOpenSplitView?: (data: any) => void;
+  onPinCapture?: (captureId: string) => void;
+  onUnpinCapture?: (captureId: string) => void;
 }
 
 export function ContextSidebar({
@@ -45,6 +49,7 @@ export function ContextSidebar({
   quickNotes,
   noteCategories,
   resources,
+  pinnedCaptures = [],
   activeUrls = [],
   onMentionClick,
   onDeleteResource,
@@ -53,6 +58,8 @@ export function ContextSidebar({
   onDeleteMention,
   onDragStartSidebarItem,
   onOpenSplitView,
+  onPinCapture,
+  onUnpinCapture,
 }: ContextSidebarProps) {
   return (
     <>
@@ -92,7 +99,7 @@ export function ContextSidebar({
           {/* Header & Tabs */}
           <div className="flex items-center justify-between px-6 border-b border-divider pt-4">
             <div className="flex space-x-6">
-              {(['symlinks', 'resources'] as SidebarTab[]).map((tab) => (
+              {(['symlinks', 'resources', 'library'] as SidebarTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => onTabChange(tab)}
@@ -144,6 +151,17 @@ export function ContextSidebar({
                 onRename={onRenameResource}
                 onDragStartSidebarItem={onDragStartSidebarItem}
                 onOpenSplitView={onOpenSplitView}
+              />
+            )}
+
+            {activeTab === 'library' && (
+              <LibraryTab 
+                topicId={topicId}
+                pinnedCaptures={pinnedCaptures}
+                onDragStartSidebarItem={onDragStartSidebarItem}
+                onOpenSplitView={onOpenSplitView}
+                onPinCapture={onPinCapture}
+                onUnpinCapture={onUnpinCapture}
               />
             )}
           </div>

@@ -140,6 +140,7 @@ model Capture {
   reminder      Reminder?   // 0 or 1
   revisions     Revision[]  // 0 to many
   attachments   Attachment[] // 0 to many
+  topicLinks    TopicCaptureLink[] // NEW: Global library references
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -212,6 +213,7 @@ model Topic {
   mentionsIn  TopicMention[] @relation("TargetTopic")
   
   captures    Capture[]
+  captureLinks TopicCaptureLink[] // NEW: Pinned assets from the Global Library
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -221,12 +223,30 @@ model Topic {
 model TopicMention {
   id            String   @id @default(uuid())
   sourceTopicId String
-  sourceTopic   Topic    @relation("SourceTopic", fields: [sourceTopicId], references: [id], onDelete: Cascade)
   targetTopicId String
-  targetTopic   Topic    @relation("TargetTopic", fields: [targetTopicId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
+  
+  sourceTopic   Topic    @relation("SourceTopic", fields: [sourceTopicId], references: [id], onDelete: Cascade)
+  targetTopic   Topic    @relation("TargetTopic", fields: [targetTopicId], references: [id], onDelete: Cascade)
 
   @@unique([sourceTopicId, targetTopicId])
+  @@index([sourceTopicId])
+  @@index([targetTopicId])
+}
+
+// ── The Universal Reference Tracking Table ──
+model TopicCaptureLink {
+  id         String   @id @default(uuid())
+  topicId    String
+  captureId  String
+  pinnedAt   DateTime @default(now())
+
+  topic      Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  capture    Capture  @relation(fields: [captureId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, captureId])
+  @@index([topicId])
+  @@index([captureId])
 }
 
 // ====================================================================
