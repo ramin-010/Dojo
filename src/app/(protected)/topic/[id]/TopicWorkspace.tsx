@@ -949,7 +949,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
             id="canvas-border-container"
             className="w-full relative transition-all duration-300"
           >
-            <div ref={canvasWrapperRef} className="w-full min-h-full relative" style={{ minWidth: splitViewData ? undefined : `${layoutWidth}px` }}>
+            <div ref={canvasWrapperRef} className="w-full min-h-full relative">
               <TopicCanvas
                 topicId={topic.id}
                 subjectId={topic.subject.id}
