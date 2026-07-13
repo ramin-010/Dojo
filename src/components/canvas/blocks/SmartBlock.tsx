@@ -143,7 +143,7 @@ function SmartBlockComponent({
         isEditing && "ring-0 shadow-none outline-none"
       )}
       style={{
-        contain: 'layout style paint',
+        contain: 'layout style',
         width: '100%',
         height: height === 'auto' || height === undefined ? 'auto' : '100%',
         color: textColor || undefined,

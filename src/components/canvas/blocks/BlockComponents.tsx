@@ -71,22 +71,22 @@ export const AnchorPoints: React.FC<AnchorPointsProps> = ({
     <>
       <div 
         className={cn(anchorClassName, "absolute -top-1.5 left-1/2 -translate-x-1/2")}
-        onMouseDown={(e) => { e.stopPropagation(); onAnchorMouseDown?.('top', e); }}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onAnchorMouseDown?.('top', e); }}
         onMouseUp={(e) => { e.stopPropagation(); onAnchorMouseUp?.('top', e); }}
       />
       <div 
         className={cn(anchorClassName, "absolute top-1/2 -translate-y-1/2 -right-1.5")}
-        onMouseDown={(e) => { e.stopPropagation(); onAnchorMouseDown?.('right', e); }}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onAnchorMouseDown?.('right', e); }}
         onMouseUp={(e) => { e.stopPropagation(); onAnchorMouseUp?.('right', e); }}
       />
       <div 
         className={cn(anchorClassName, "absolute -bottom-1.5 left-1/2 -translate-x-1/2")}
-        onMouseDown={(e) => { e.stopPropagation(); onAnchorMouseDown?.('bottom', e); }}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onAnchorMouseDown?.('bottom', e); }}
         onMouseUp={(e) => { e.stopPropagation(); onAnchorMouseUp?.('bottom', e); }}
       />
       <div 
         className={cn(anchorClassName, "absolute top-1/2 -translate-y-1/2 -left-1.5")}
-        onMouseDown={(e) => { e.stopPropagation(); onAnchorMouseDown?.('left', e); }}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onAnchorMouseDown?.('left', e); }}
         onMouseUp={(e) => { e.stopPropagation(); onAnchorMouseUp?.('left', e); }}
       />
     </>
