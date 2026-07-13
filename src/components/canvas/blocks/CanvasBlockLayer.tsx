@@ -199,8 +199,13 @@ const BlockWrapperComponent = ({
       onResizeStart={handleResizeStart}
       onResize={handleRndResize}
       onResizeStop={handleResizeStop}
-      className="z-100"
-      style={{ zIndex, opacity: editingBlockId === block.blockId ? 0 : 1, pointerEvents: editingBlockId === block.blockId ? 'none' : 'auto' }}
+      className="z-100 rnd-responsive-block"
+      style={{
+        zIndex,
+        opacity: editingBlockId === block.blockId ? 0 : 1,
+        pointerEvents: editingBlockId === block.blockId ? 'none' : 'auto',
+        '--rnd-x': `${block.x + SIDE_PADDING}px`
+      } as React.CSSProperties}
       resizeHandleStyles={{
         right: { zIndex: 5 },
         bottom: { zIndex: 5 },

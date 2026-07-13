@@ -285,6 +285,10 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   const isDraggingSplitViewRef = useRef(isDraggingSplitView);
   useEffect(() => {
     isDraggingSplitViewRef.current = isDraggingSplitView;
+    if (!isDraggingSplitView && canvasWrapperRef.current) {
+      // Sync the container width after drag ends since ResizeObserver skips updates during drag
+      setCanvasContainerWidth(canvasWrapperRef.current.getBoundingClientRect().width);
+    }
   }, [isDraggingSplitView]);
 
   useEffect(() => {

@@ -236,7 +236,7 @@ export function SingleCanvas({
   return (
     <div
       className="relative group transition-all duration-200 h-full rounded-lg mx-auto"
-      style={{ width: effectiveCanvasWidth }}
+      style={{ width: effectiveCanvasWidth, maxWidth: '100%' }}
     >
       <div
         ref={containerRef}
@@ -245,6 +245,7 @@ export function SingleCanvas({
         className="relative rounded-lg bg-transparent"
         style={{
           width: effectiveCanvasWidth,
+          maxWidth: '100%',
           minHeight: CANVAS_MIN_HEIGHT,
           height: h.computedHeight,
           backgroundColor: backgroundColor || undefined,

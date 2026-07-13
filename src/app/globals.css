@@ -244,3 +244,8 @@ input, textarea, button {
   border-radius: 0 4px 4px 0;
   padding: 0.5rem 1rem;
 }
+
+/* ─── Split-View Responsive Block Wrap ─── */
+.rnd-responsive-block {
+  max-width: calc(100% - var(--rnd-x, 0px)) !important;
+}

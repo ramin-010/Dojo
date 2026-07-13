@@ -243,7 +243,11 @@ export function useCanvasHandlers({
 
   const handleDimensionsChange = useCallback(
     (id: string, width: number, height: number) => {
-      onUpdateBlock(id, { width, height });
+      // We purposefully DO NOT update `width` here.
+      // react-rnd explicitly controls block width via user resize handles.
+      // If we update `width` from the DOM's ResizeObserver, we accidentally 
+      // permanently save the temporary CSS squish from side-by-side mode.
+      onUpdateBlock(id, { height });
     },
     [onUpdateBlock]
   );

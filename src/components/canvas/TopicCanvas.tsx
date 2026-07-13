@@ -248,11 +248,13 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
     }}>
       <div className="mx-auto" style={{
         width: effectiveCanvasWidth * autoZoom,
+        maxWidth: '100%',
       }}>
         <div style={{
           transform: `scale(${autoZoom})`,
           transformOrigin: 'top left',
           width: effectiveCanvasWidth,
+          maxWidth: '100%',
         }}>
           <SingleCanvas
             canvasId={topicId}
