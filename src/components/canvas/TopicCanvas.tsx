@@ -21,6 +21,9 @@ interface TopicCanvasProps {
   onBlockRemoved?: (block: any) => void;
   onResourceAdded?: (resource: any) => void;
   readOnly?: boolean;
+  defaultCollapsed?: boolean;
+  isAllExpanded?: boolean;
+  onToggleExpandAll?: (expand: boolean) => void;
 }
 
 const NOOP = () => {};
@@ -39,6 +42,9 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
   onBlockRemoved,
   onResourceAdded,
   readOnly = false,
+  defaultCollapsed = false,
+  isAllExpanded = false,
+  onToggleExpandAll,
 }: TopicCanvasProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
@@ -271,6 +277,9 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
             onAddFile={addFileBlock}
             onMentionClick={onMentionClick}
             onResourceAdd={onResourceAdded}
+            defaultCollapsed={defaultCollapsed}
+            isAllExpanded={isAllExpanded}
+            onToggleExpandAll={onToggleExpandAll}
           />
         </div>
       </div>

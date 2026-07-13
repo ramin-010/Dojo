@@ -33,6 +33,10 @@ interface CanvasBlockLayerProps {
   topicId?: string;
   subjectId?: string;
   onRegisterHeight?: (id: string, height: number) => void;
+  defaultCollapsed?: boolean;
+  isAllExpanded?: boolean;
+  expandedBlocks?: Set<string>;
+  onExpandBlock?: (id: string) => void;
 }
 
 interface BlockWrapperProps {
@@ -59,6 +63,8 @@ interface BlockWrapperProps {
   topicId?: string;
   subjectId?: string;
   onRegisterHeight?: (id: string, height: number) => void;
+  isCollapsed?: boolean;
+  onExpandBlock?: (id: string) => void;
   effectiveCanvasWidth: number;
 }
 
@@ -87,11 +93,14 @@ const BlockWrapperComponent = ({
   subjectId,
   onRegisterHeight,
   effectiveCanvasWidth,
+  isCollapsed,
+  onExpandBlock,
 }: BlockWrapperProps) => {
   const isResizingRef = useRef(false);
   const resizeStartRef = useRef<{ width: number; fontSize: number } | null>(null);
   const [liveFontSize, setLiveFontSize] = useState<number | null>(null);
   const [resizingDir, setResizingDir] = useState<string | null>(null);
+  const [isEditingLocal, setIsEditingLocal] = useState(false);
 
   const handleRndDragStop = useCallback((_e: any, d: any) => {
     onDragStop(block.blockId, d.x, d.y);
@@ -222,6 +231,8 @@ const BlockWrapperComponent = ({
         textColor={block.textColor}
         fontSize={liveFontSize !== null ? liveFontSize : block.fontSize}
         onEditRequest={onEditRequest}
+        onEditStart={() => setIsEditingLocal(true)}
+        onEditEnd={() => setIsEditingLocal(false)}
         onMentionClick={onMentionClick}
         isUploading={block.isUploading}
         fileName={block.fileName}
@@ -231,6 +242,8 @@ const BlockWrapperComponent = ({
         subjectId={subjectId}
         onRegisterHeight={onRegisterHeight}
         metadata={block.metadata}
+        isCollapsed={isCollapsed}
+        onExpand={() => onExpandBlock?.(block.blockId)}
       />
     </Rnd>
   );
@@ -247,7 +260,8 @@ const BlockWrapper = memo(BlockWrapperComponent, (prev, next) => {
     prev.effectiveCanvasWidth === next.effectiveCanvasWidth &&
     prev.onEditRequest === next.onEditRequest &&
     prev.editingBlockId === next.editingBlockId &&
-    prev.block.fontSize === next.block.fontSize
+    prev.block.fontSize === next.block.fontSize &&
+    prev.isCollapsed === next.isCollapsed
   );
 });
 
@@ -275,6 +289,10 @@ function CanvasBlockLayerComponent({
   topicId,
   subjectId,
   onRegisterHeight,
+  defaultCollapsed,
+  isAllExpanded,
+  expandedBlocks,
+  onExpandBlock,
 }: CanvasBlockLayerProps) {
   const typography = useAppStore(state => state.typography);
   const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
@@ -292,35 +310,40 @@ function CanvasBlockLayerComponent({
 
   return (
     <>
-      {blocks.map(block => (
-        <BlockWrapper
-          key={block.blockId}
-          block={block}
-          isSelected={block.blockId === selectedBlockId || selectedBlockId === 'ALL'}
-          isConnected={connectedBlockIds.has(block.blockId)}
-          readOnly={readOnly}
-          onDragStop={onDragStop}
-          onDrag={onDrag}
-          onDragStart={onDragStart}
-          onUpdateBlock={onUpdateBlock}
-          onDeleteBlock={onDeleteBlock}
-          onSelectBlock={onSelectBlock}
-          onDimensionsChange={onDimensionsChange}
-          onAnchorMouseDown={onAnchorMouseDown}
-          onAnchorMouseUp={onAnchorMouseUp}
-          isConnectionDragging={isConnectionDragging}
-          dragController={dragController}
-          zoom={zoom}
-          onEditRequest={onEditRequest}
-          editingBlockId={editingBlockId}
-          onMentionClick={onMentionClick}
-          onResourceAdd={onResourceAdd}
-          topicId={topicId}
-          subjectId={subjectId}
-          onRegisterHeight={onRegisterHeight}
-          effectiveCanvasWidth={effectiveCanvasWidth}
-        />
-      ))}
+      {blocks.map(block => {
+        const isCollapsed = !!defaultCollapsed && !isAllExpanded && !expandedBlocks?.has(block.blockId);
+        return (
+          <BlockWrapper
+            key={block.blockId}
+            block={block}
+            isSelected={block.blockId === selectedBlockId || selectedBlockId === 'ALL'}
+            isConnected={connectedBlockIds.has(block.blockId)}
+            readOnly={readOnly}
+            onDragStop={onDragStop}
+            onDrag={onDrag}
+            onDragStart={onDragStart}
+            onUpdateBlock={onUpdateBlock}
+            onDeleteBlock={onDeleteBlock}
+            onSelectBlock={onSelectBlock}
+            onDimensionsChange={onDimensionsChange}
+            onAnchorMouseDown={onAnchorMouseDown}
+            onAnchorMouseUp={onAnchorMouseUp}
+            isConnectionDragging={isConnectionDragging}
+            dragController={dragController}
+            zoom={zoom}
+            onEditRequest={onEditRequest}
+            editingBlockId={editingBlockId}
+            onMentionClick={onMentionClick}
+            onResourceAdd={onResourceAdd}
+            topicId={topicId}
+            subjectId={subjectId}
+            onRegisterHeight={onRegisterHeight}
+            effectiveCanvasWidth={effectiveCanvasWidth}
+            isCollapsed={isCollapsed}
+            onExpandBlock={onExpandBlock}
+          />
+        );
+      })}
     </>
   );
 }

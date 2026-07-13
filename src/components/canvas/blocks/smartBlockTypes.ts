@@ -22,6 +22,8 @@ export interface SmartBlockProps {
   color?: string;
   /** If provided, double-click on text blocks calls this instead of opening inline editor */
   onEditRequest?: (id: string) => void;
+  onEditStart?: () => void;
+  onEditEnd?: () => void;
   isConnected?: boolean;
   onMentionClick?: (topicId: string) => void;
   isUploading?: boolean;
@@ -35,6 +37,8 @@ export interface SmartBlockProps {
     sourceImages?: string[];
     [key: string]: any;
   };
+  isCollapsed?: boolean;
+  onExpand?: () => void;
 }
 
 export interface TaskStats {

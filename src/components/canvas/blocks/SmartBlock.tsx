@@ -35,6 +35,8 @@ function SmartBlockComponent({
   color,
   textColor,
   onEditRequest,
+  onEditStart,
+  onEditEnd,
   fontSize,
   isConnected,
   onMentionClick,
@@ -46,6 +48,8 @@ function SmartBlockComponent({
   subjectId,
   onRegisterHeight,
   metadata,
+  isCollapsed,
+  onExpand,
 }: SmartBlockProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -111,6 +115,7 @@ function SmartBlockComponent({
           onEditRequest(id);
         } else {
           setIsEditing(true);
+          onEditStart?.();
         }
       }
     }
@@ -153,7 +158,7 @@ function SmartBlockComponent({
       {/* <DragHandle isVisible={isHovered || isSelected} /> */}
       
       <AnchorPoints 
-        isVisible={isSelected || !!isConnectionDragging}
+        isVisible={(isSelected && !isEditing) || !!isConnectionDragging}
         isDragging={!!isConnectionDragging}
         readOnly={readOnly}
         onAnchorMouseDown={(side, e) => onAnchorMouseDown?.(id, side, e)}
@@ -189,7 +194,8 @@ function SmartBlockComponent({
       <div 
         className={cn(
           "relative z-10 transition-colors duration-200 rounded-lg",
-          height === 'auto' || height === undefined ? "h-auto" : "flex-1 overflow-hidden"
+          height === 'auto' || height === undefined ? "h-auto" : "flex-1 overflow-hidden",
+          isCollapsed && "revision-collapsed"
         )}
         style={{
           fontSize: type === 'text' ? `${currentFontSize}px` : undefined,
@@ -207,7 +213,10 @@ function SmartBlockComponent({
             fileName={fileName}
             fileSize={fileSize}
             onUpdate={(newContent) => onUpdateBlock?.(id, { content: newContent })}
-            onBlur={() => setIsEditing(false)}
+            onBlur={() => {
+              setIsEditing(false);
+              onEditEnd?.();
+            }}
             onLanguageChange={(lang) => onUpdateBlock?.(id, { language: lang })}
             onMentionClick={onMentionClick}
             height={height}
@@ -246,7 +255,8 @@ const arePropsEqual = (prev: SmartBlockProps, next: SmartBlockProps) => {
     prev.fileSize === next.fileSize &&
     prev.topicId === next.topicId &&
     prev.subjectId === next.subjectId &&
-    prev.onResourceAdd === next.onResourceAdd
+    prev.onResourceAdd === next.onResourceAdd &&
+    prev.isCollapsed === next.isCollapsed
   );
 };
 

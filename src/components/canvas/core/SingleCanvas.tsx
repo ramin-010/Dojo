@@ -46,6 +46,9 @@ interface SingleCanvasProps {
   onAddFile?: (canvasId: string, file: File, x?: number, y?: number) => void;
   onMentionClick?: (topicId: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  defaultCollapsed?: boolean;
+  isAllExpanded?: boolean;
+  onToggleExpandAll?: (expand: boolean) => void;
 }
 
 export function SingleCanvas({
@@ -76,6 +79,9 @@ export function SingleCanvas({
   onAddFile,
   onMentionClick,
   onResourceAdd,
+  defaultCollapsed = false,
+  isAllExpanded = false,
+  onToggleExpandAll,
 }: SingleCanvasProps) {
   const typography = useAppStore(state => state.typography);
   const effectiveCanvasWidth = typography?.canvasWidth ?? 890;
@@ -83,6 +89,16 @@ export function SingleCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const absoluteMouseRef = useRef({ clientX: 0, clientY: 0 });
+
+  const [expandedBlocks, setExpandedBlocks] = React.useState<Set<string>>(new Set());
+
+  // Reset expansion state if defaultCollapsed changes
+  React.useEffect(() => {
+    if (defaultCollapsed) {
+      if (onToggleExpandAll) onToggleExpandAll(false);
+      setExpandedBlocks(new Set());
+    }
+  }, [defaultCollapsed, onToggleExpandAll]);
 
   React.useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
@@ -292,6 +308,16 @@ export function SingleCanvas({
           topicId={canvasId}
           subjectId={subjectId}
           onRegisterHeight={h.registerBlockHeight}
+          defaultCollapsed={defaultCollapsed}
+          isAllExpanded={isAllExpanded}
+          expandedBlocks={expandedBlocks}
+          onExpandBlock={(id) => {
+            setExpandedBlocks(prev => {
+              const next = new Set(prev);
+              next.add(id);
+              return next;
+            });
+          }}
         />
 
         <ConnectionLayer

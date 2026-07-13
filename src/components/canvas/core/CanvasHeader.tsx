@@ -80,9 +80,8 @@ export function CanvasHeader({
             />
           </div>
         )}
+
       </div>
-
-
     </>
   );
 }

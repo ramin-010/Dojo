@@ -640,6 +640,7 @@ export async function getTopicPinnedCaptures(topicId: string) {
     include: {
       capture: {
         include: {
+          category: true,
           topic: { select: { title: true } },
           subject: { select: { name: true } },
           attachments: true
@@ -665,6 +666,7 @@ export async function searchGlobalCaptures(topicId: string, query: string) {
       title: { contains: query, mode: 'insensitive' }
     },
     include: {
+      category: true,
       topic: { select: { title: true } },
       subject: { select: { name: true } },
       attachments: true

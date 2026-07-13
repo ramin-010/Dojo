@@ -12,6 +12,8 @@ import {
   Settings,
   ChevronRight,
   Columns,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -55,6 +57,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
   const [activeUrls, setActiveUrls] = useState<string[]>([]);
   const [localResources, setLocalResources] = useState<any[]>(topic.captures?.filter(c => c.type === 'LINK') || []);
   const [pinnedCaptures, setPinnedCaptures] = useState<any[]>(topic.captureLinks?.map(l => l.capture) || []);
+  const [isAllExpanded, setIsAllExpanded] = useState(false);
 
   useEffect(() => {
     setLocalResources(topic.captures?.filter(c => c.type === 'LINK') || []);
@@ -259,10 +262,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     revisionButtonText,
     handleRevisionAction,
     isPending,
+    nextPendingRevision,
   } = useTopicRevisions({
     topicId: topic.id,
     revisions: topic.revisions,
   });
+
+  const isRecallMode = nextPendingRevision && nextPendingRevision.cycleNumber > 1 && nextPendingRevision.cycleNumber < 5;
 
   // ── isSaving & splitView indicator (from store, passed to canvas) ─────────────────────
   const isSaving = useAppStore(state => state.isSaving);
@@ -910,6 +916,15 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                           accept="image/*" 
                           className="hidden" 
                         />
+                        {!!isRecallMode && (
+                          <button
+                            onClick={() => setIsAllExpanded(!isAllExpanded)}
+                            className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                          >
+                            {isAllExpanded ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            {isAllExpanded ? 'Collapse' : 'Reveal'}
+                          </button>
+                        )}
                         <button
                           onClick={() => setShowAiCommandBar(true)}
                           disabled={isAiImporting}
@@ -947,6 +962,16 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                         accept="image/*"
                         className="hidden"
                       />
+                      {!!isRecallMode && (
+                        <button
+                          onClick={() => setIsAllExpanded(!isAllExpanded)}
+                          title={isAllExpanded ? "Collapse All Blocks" : "Reveal All Blocks"}
+                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                        >
+                          {isAllExpanded ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {isAllExpanded ? 'Collapse' : 'Reveal'}
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowAiCommandBar(true)}
                         disabled={isAiImporting}
@@ -1021,6 +1046,9 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                 onActiveUrlsChange={setActiveUrls}
                 onBlockRemoved={handleBlockRemoved}
                 onResourceAdded={handleResourceAdded}
+                defaultCollapsed={!!isRecallMode}
+                isAllExpanded={isAllExpanded}
+                onToggleExpandAll={setIsAllExpanded}
               />
               
               {/* Split View Dropzone Overlay */}
