@@ -11,7 +11,11 @@ import TaskItem from '@tiptap/extension-task-item';
 import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import { Bold, Italic, Underline as UnderlineIcon, CheckSquare, Highlighter, Link as LinkIcon, Trash2, Code } from 'lucide-react';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { createLowlight, common } from 'lowlight';
 import { SlashCommands } from '../extensions/SlashCommands';
+
+const lowlight = createLowlight(common);
 import { CalloutExtension } from '../extensions/CalloutExtension';
 import { CustomMention } from '../extensions/MentionExtension';
 import { createMentionSuggestions } from '../extensions/MentionExtension';
@@ -74,10 +78,14 @@ export function BlockEditor({
     shouldRerenderOnTransaction: false,
     extensions: [
       StarterKit.configure({
+        codeBlock: false,
         heading: { levels: [1, 2, 3] }, 
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }) as any,
+      CodeBlockLowlight.configure({
+        lowlight,
+      }),
       Placeholder.configure({
         placeholder: "Type '/' for commands...",
         includeChildren: true,

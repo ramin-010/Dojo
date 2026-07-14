@@ -243,11 +243,18 @@ export default async function DashboardPage() {
   // 6. Fetch Unverified Blocks
   const unverifiedBlocks = await getUnverifiedBlocks();
 
+  // 7. Fetch Quick Notes
+  const quickNotes = await prisma.quickNote.findMany({
+    where: { workspaceId: DEV_WORKSPACE_ID },
+    orderBy: { createdAt: 'asc' }
+  });
+
   return (
     <DashboardClient 
       revisions={mappedRevisions}
       tasks={tasks}
       inbox={inboxItems}
+      quickNotes={quickNotes}
       stats={stats}
       todaySlots={todaySlots}
       unverifiedBlocks={unverifiedBlocks}

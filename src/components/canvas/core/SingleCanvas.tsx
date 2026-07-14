@@ -108,8 +108,6 @@ export function SingleCanvas({
     return () => window.removeEventListener('mousemove', handleGlobalMouseMove);
   }, []);
 
-  // Paste handler moved below useCanvasHandlers — see below
-
   const h = useCanvasHandlers({
     canvasId,
     blocks,

@@ -119,11 +119,6 @@ export default function RevisionsList({
             {totalDue}
           </span>
         </h2>
-        {totalDue > 0 && (
-          <button className="flex items-center gap-1.5 bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
-            <Play className="w-3.5 h-3.5 fill-current" /> Start Revision
-          </button>
-        )}
       </div>
 
       <div className="flex flex-col gap-2">

@@ -404,11 +404,6 @@ export default function TasksSidebar({
                 className="group bg-sidebar border border-divider rounded-lg px-4 py-3 hover:bg-hover transition-colors cursor-pointer"
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="mt-0.5 shrink-0">
-                    {item.type === 'link' && <Link2 className="w-4 h-4 text-accent/50" />}
-                    {item.type === 'file' && <FileText className="w-4 h-4 text-amber-400/50" />}
-                    {item.type === 'note' && <FileText className="w-4 h-4 text-emerald-400/50" />}
-                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium leading-snug text-foreground/90">{item.title}</p>
                     {item.attachments && item.attachments.length > 0 && (

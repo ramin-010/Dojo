@@ -107,7 +107,7 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
     if (resource.content) {
       return (
         <div className="w-full max-w-4xl h-[85vh] bg-background rounded-2xl ring-1 ring-white/10 shadow-2xl overflow-y-auto p-6 sm:p-12 custom-scrollbar flex flex-col gap-8">
-          <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
+          <div className="prose prose-zinc prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {resource.content}
             </ReactMarkdown>

@@ -124,7 +124,7 @@ function ResourcePreview({ data }: { data: any }) {
               <p>{error}</p>
             </div>
           ) : (
-            <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
+            <div className="prose prose-zinc prose-invert max-w-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:font-semibold">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {data.content || markdownContent}
               </ReactMarkdown>

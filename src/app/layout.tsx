@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import "highlight.js/styles/atom-one-dark.css";
 import "./globals.css";
 
 const inter = Inter({

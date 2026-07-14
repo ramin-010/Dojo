@@ -12,6 +12,8 @@ import ScheduleTimeline from './dashComponents/ScheduleTimeline';
 import RevisionsList from './dashComponents/RevisionsList';
 import TasksSidebar from './dashComponents/TasksSidebar';
 import { WeeklyReviewModal } from '@/components/dashboard/WeeklyReviewModal';
+import { QuickNotesWidget, QuickNoteType } from '@/components/dashboard/QuickNotesWidget';
+import { DEV_WORKSPACE_ID } from '@/lib/constants';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // TYPES & PROPS (shared — imported as `type` by the dashcomponents files)
@@ -99,6 +101,7 @@ interface DashboardClientProps {
   revisions: RevisionProp[];
   tasks: TaskProp[];
   inbox: InboxProp[];
+  quickNotes: QuickNoteType[];
   stats: StatsProp;
   todaySlots: ScheduleSlotProp[];
   initialRoutineMode: 'MASTER' | 'DAILY';
@@ -127,6 +130,7 @@ export default function DashboardClient({
   revisions = [],
   tasks: initialTasks = [],
   inbox: rawInbox = [],
+  quickNotes = [],
   stats,
   todaySlots = [],
   initialRoutineMode,
@@ -292,19 +296,25 @@ export default function DashboardClient({
       {/* ── Main Content: 2-column layout ───────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-10 items-start">
 
-        {/* ── Left Column: Revisions ───────────────────────────────────────── */}
-        <RevisionsList
-          incompleteOverdueRevisions={incompleteOverdueRevisions}
-          groupedIncompleteTodayRevisions={groupedIncompleteTodayRevisions}
-          completedRevisions={completedRevisions}
-          totalDue={totalDue}
-          taskActionMenuId={taskActionMenuId}
-          setTaskActionMenuId={setTaskActionMenuId}
-          expandedTaskIds={expandedTaskIds}
-          toggleTaskExpansion={toggleTaskExpansion}
-          setPreviewDocument={setPreviewDocument}
-          setRescheduleTaskTarget={setRescheduleTaskTarget}
-        />
+        {/* ── Left Column: Revisions & Quick Notes ───────────────────────────────────────── */}
+        <div className="flex flex-col gap-16 min-w-0">
+          <RevisionsList
+            incompleteOverdueRevisions={incompleteOverdueRevisions}
+            groupedIncompleteTodayRevisions={groupedIncompleteTodayRevisions}
+            completedRevisions={completedRevisions}
+            totalDue={totalDue}
+            taskActionMenuId={taskActionMenuId}
+            setTaskActionMenuId={setTaskActionMenuId}
+            expandedTaskIds={expandedTaskIds}
+            toggleTaskExpansion={toggleTaskExpansion}
+            setPreviewDocument={setPreviewDocument}
+            setRescheduleTaskTarget={setRescheduleTaskTarget}
+          />
+          <QuickNotesWidget 
+            initialNotes={quickNotes || []} 
+            workspaceId={DEV_WORKSPACE_ID} 
+          />
+        </div>
 
         {/* ── Right Column: Tasks / Inbox / Progress ──────────────────────────── */}
         <TasksSidebar

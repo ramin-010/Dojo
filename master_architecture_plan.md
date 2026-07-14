@@ -11,3 +11,10 @@
   - `/api/auth/login` verifies against `process.env.APP_PASSWORD` and sets the cookie with a 1-year expiration.
   - `/api/auth/logout` clears the cookie.
 - **Benefits**: Zero database overhead, instant edge-level protection, minimal friction for personal usage.
+
+## Dashboard Quick Notes
+- **Purpose**: Provide a zero-friction, WhatsApp-style scratchpad directly on the Dashboard.
+- **Architecture**:
+  - **Database**: `QuickNote` model tied to `Workspace` with `content`, `createdAt`.
+  - **Frontend**: A sleek, timeline-style minimalist widget located below the `RevisionsList`. Notes auto-save via debouncing.
+  - **Behavior**: Entering empty strings deletes the note. Optimistic state updates mask server latency.

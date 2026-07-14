@@ -42,6 +42,7 @@ model Workspace {
   dailySlots     DailyScheduleSlot[]
   routineMode    RoutineMode @default(MASTER)
   habits         Habit[]
+  quickNotes     QuickNote[]
 }
 
 // ====================================================================
@@ -432,4 +433,23 @@ model DailyScheduleSlot {
 
   @@unique([sourceBlockId, date])
   @@index([workspaceId, date])
+}
+
+// ====================================================================
+// NEW: QUICK NOTES (Dashboard scratchpad)
+// ====================================================================
+model QuickNote {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  content     String
+
+  // Attachments stored as JSON array: [{url, publicId, fileName, fileType}, ...]
+  attachments Json?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId, createdAt])
 }

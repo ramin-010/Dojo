@@ -152,14 +152,13 @@ input, textarea, button {
 
 .tiptap pre {
   background-color: #1a1a1a;
-  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   margin: 1.25rem 0;
   overflow-x: auto;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 3px solid #f2a6c8; /* subtle pink accent to match inline code */
   line-height: 1.6;
-  color: #e5e7eb; /* clean, readable gray text */
+  color: #e5e7eb; /* Fallback for plain text */
 }
 
 /* Ensure inline code styles don't bleed into code blocks */
@@ -169,6 +168,12 @@ input, textarea, button {
   color: inherit;
   font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Base highlight.js overrides if needed */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
 }
 
 .tiptap blockquote {

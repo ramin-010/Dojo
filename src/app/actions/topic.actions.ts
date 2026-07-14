@@ -149,6 +149,7 @@ export async function saveCanvasData(
   extractedMentions?: string[]
 ) {
   // 1. Update the canvas JSON
+  console.log(`[saveCanvasData] Saving canvas for topic ${topicId}. Payload size:`, JSON.stringify(canvasData).length);
   await prisma.topic.update({
     where: { id: topicId },
     data: {
@@ -156,6 +157,7 @@ export async function saveCanvasData(
       updatedAt: new Date(),
     },
   });
+  revalidatePath(`/topic/${topicId}`);
 
   // 2. Refresh mentions if provided
   if (extractedMentions) {
