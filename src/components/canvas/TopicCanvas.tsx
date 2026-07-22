@@ -6,6 +6,8 @@ import { useCanvasState } from './core/useCanvasState';
 import { canvasOfflineStorage } from '@/lib/storage/canvasOfflineStorage';
 import { saveCanvasData } from '@/app/actions';
 import { useAppStore } from '@/store/useAppStore';
+import { uploadToCloud } from '@/lib/utils/upload';
+import { v4 as uuidv4 } from 'uuid';
 
 interface TopicCanvasProps {
   topicId: string;
@@ -105,9 +107,29 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
     hydrate,
   } = useCanvasState(topicId, initialContent, handleCanvasChange, onBlockRemoved, onResourceAdded);
 
+  React.useEffect(() => {
+    const handleRequestAll = () => {
+      // Sort top-to-bottom so AI reads them in visual order
+      const sortedBlocks = [...blocks].sort((a, b) => (a.y || 0) - (b.y || 0));
+      window.dispatchEvent(new CustomEvent('RESPONSE_ALL_CANVAS_BLOCKS', { detail: { blocks: sortedBlocks } }));
+    };
+    window.addEventListener('REQUEST_ALL_CANVAS_BLOCKS', handleRequestAll);
+    return () => window.removeEventListener('REQUEST_ALL_CANVAS_BLOCKS', handleRequestAll);
+  }, [blocks]);
+
   React.useLayoutEffect(() => {
     canvasStateRef.current = { blocks, connections };
   }, [blocks, connections]);
+
+  // Callback for inline image uploads inside text blocks
+  const handleUploadImage = useCallback(async (file: File): Promise<string> => {
+    const imageId = uuidv4();
+    const result = await uploadToCloud(file, imageId, topicId);
+    if (result.resource && onResourceAdded) {
+      onResourceAdded(result.resource);
+    }
+    return result.url;
+  }, [topicId, onResourceAdded]);
 
   // Expose active URLs for sidebar bifurcation
   const activeUrls = useMemo(() => {
@@ -279,6 +301,7 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
             onAddFile={addFileBlock}
             onMentionClick={onMentionClick}
             onResourceAdd={onResourceAdded}
+            onUploadImage={handleUploadImage}
             defaultCollapsed={defaultCollapsed}
             isAllExpanded={isAllExpanded}
             onToggleExpandAll={onToggleExpandAll}
@@ -292,3 +315,5 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
 export function TopicCanvas(props: TopicCanvasProps) {
   return <MemoizedTopicCanvas {...props} />;
 }
+
+

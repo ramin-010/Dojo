@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -261,3 +261,4 @@ const arePropsEqual = (prev: SmartBlockProps, next: SmartBlockProps) => {
 };
 
 export const SmartBlock = React.memo(SmartBlockComponent, arePropsEqual);
+

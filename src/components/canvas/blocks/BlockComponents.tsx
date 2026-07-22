@@ -170,7 +170,7 @@ export const BlockContent = React.memo<BlockContentProps>(({
           onChange={onUpdate}
           readOnly={!isEditing}
           onBlur={onBlur}
-          onDelete={onDelete}
+          // onDelete={onDelete}
           onMentionClick={onMentionClick}
           onResourceAdd={onResourceAdd}
           topicId={topicId}
@@ -287,3 +287,5 @@ export const BlockContent = React.memo<BlockContentProps>(({
 
   return null;
 });
+
+

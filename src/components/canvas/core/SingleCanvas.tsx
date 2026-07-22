@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import React, { useRef,useMemo } from 'react';
 import { CanvasBlockData, CANVAS_MIN_HEIGHT, GUIDE_LINE_SPACING, DEFAULT_FONT_SIZE } from './types';
@@ -46,6 +46,7 @@ interface SingleCanvasProps {
   onAddFile?: (canvasId: string, file: File, x?: number, y?: number) => void;
   onMentionClick?: (topicId: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  onUploadImage?: (file: File) => Promise<string>;
   defaultCollapsed?: boolean;
   isAllExpanded?: boolean;
   onToggleExpandAll?: (expand: boolean) => void;
@@ -79,6 +80,7 @@ export function SingleCanvas({
   onAddFile,
   onMentionClick,
   onResourceAdd,
+  onUploadImage,
   defaultCollapsed = false,
   isAllExpanded = false,
   onToggleExpandAll,
@@ -146,6 +148,10 @@ export function SingleCanvas({
         target.closest('[contenteditable="true"]') !== null ||
         document.querySelector('.inline-cursor-editor') !== null;
 
+      // If the user is actively typing inside a block editor, let Tiptap handle
+      // all paste events (including images) natively — don't hijack them.
+      if (isInsideEditor) return;
+
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const { clientX, clientY } = absoluteMouseRef.current;
@@ -184,9 +190,6 @@ export function SingleCanvas({
           }
         }
       }
-
-      // If inside an editor, let Tiptap handle paste natively
-      if (isInsideEditor) return;
 
       // Try to read HTML first (preserves rich formatting from websites/Notion)
       const htmlItem = Array.from(items).find(item => item.type === 'text/html');
@@ -389,6 +392,7 @@ export function SingleCanvas({
             zoom={zoom}
             onMoveCursor={h.handleMoveCursor}
             onResourceAdd={onResourceAdd}
+            onUploadImage={onUploadImage}
             topicId={canvasId}
             subjectId={subjectId}
           />
@@ -405,3 +409,5 @@ export function SingleCanvas({
     </div>
   );
 }
+
+

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "highlight.js/styles/atom-one-dark.css";
+import "highlight.js/styles/tokyo-night-dark.css";
 import "./globals.css";
 
 const inter = Inter({
@@ -24,6 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      </head>
       <body className="font-sans antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background">
         {children}
         

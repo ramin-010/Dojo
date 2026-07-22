@@ -95,7 +95,7 @@ input, textarea, button {
 
 .tiptap h1 {
   font-size: 2em; /* 32px */
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.25;
   margin-top: var(--dynamic-heading-spacing, 2.5rem);
   margin-bottom: 1rem;
@@ -151,29 +151,35 @@ input, textarea, button {
 }
 
 .tiptap pre {
-  background-color: #1a1a1a;
-  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.03); /* Sleek, minimal elevation */
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   margin: 1.25rem 0;
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   line-height: 1.6;
-  color: #e5e7eb; /* Fallback for plain text */
+  color: #c0caf5; /* Tokyo Night Dark default text */
 }
 
 /* Ensure inline code styles don't bleed into code blocks */
 .tiptap pre code {
-  background-color: transparent;
-  padding: 0;
-  color: inherit;
+  background-color: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
   font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  border-radius: 0;
 }
 
-/* Base highlight.js overrides if needed */
+/* Base highlight.js overrides */
 .hljs {
   background: transparent !important;
   padding: 0 !important;
+}
+
+.hljs-comment {
+  color: rgba(255, 255, 255, 0.45) !important;
+  font-style: italic;
 }
 
 .tiptap blockquote {
@@ -264,13 +270,41 @@ input, textarea, button {
 /* ─── Split-View Responsive Block Wrap ─── */
 .rnd-responsive-block {
   max-width: calc(100% - var(--rnd-x, 0px)) !important;
-  overflow: visible !important;
 }
 
-/* Prevent text selection globally while dragging blocks */
-body.react-draggable-transparent-selection * {
-  user-select: none !important;
+/* ─── Tiptap Table Styles ─── */
+.tiptap table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.react-draggable-dragging {
-  user-select: none !important;
+
+.tiptap table td,
+.tiptap table th {
+  min-width: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.tiptap table th {
+  font-weight: 600;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tiptap table .column-resize-handle {
+  background-color: rgba(59, 130, 246, 0.5);
+  bottom: -2px;
+  position: absolute;
+  right: -2px;
+  pointer-events: none;
+  top: 0;
+  width: 4px;
 }

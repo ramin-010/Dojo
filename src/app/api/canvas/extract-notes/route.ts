@@ -633,18 +633,45 @@ JSON RESPONSE FORMAT
 ═══════════════════════════════════════════════════
 
 Respond with ONLY valid JSON. No markdown fences. No text outside the JSON.
+Because this is a linear document editor (not an infinite canvas), you only need to return an array of content blocks containing the HTML.
 
 [
   {
-    "blockId": "generated-ai-block",
-    "type": "text",
-    "x": 40,
-    "y": 40,
-    "width": 800,
-    "height": "auto",
-    "content": "<h1>...</h1>..."
+    "content": "<h1>...</h1><p>...</p>..."
   }
 ]
+
+═══════════════════════════════════════════════════
+INLINE CONTEXT MARKERS (important)
+═══════════════════════════════════════════════════
+
+The developer's selected content is sent as HTML. It may contain inline
+markers positioned EXACTLY where they belong in the document. Their
+position tells you which section they enrich.
+
+1. CONTEXT PILLS — appear as:
+   <blockquote data-context-pill="[Label]" data-pill-instruction="...">
+     <p><strong>[CONTEXT PILL: Label]</strong></p>
+     <pre>raw content...</pre>
+   </blockquote>
+   
+   These are separated from surrounding content by <hr> tags.
+   They contain supplementary learning material (ChatGPT conversations,
+   docs, etc.) for THAT specific section. Use the pill's content to
+   enrich your output for the surrounding section.
+   Do NOT reproduce the pill itself, its markers, or its raw content
+   in your output.
+
+2. INLINE IMAGE MARKERS — appear as:
+   <p><strong>[INLINE_IMAGE_N: optional alt text]</strong></p>
+   
+   Separated by <hr> tags. Each marker corresponds to a multimodal
+   image part sent alongside this text. The marker tells you WHERE
+   in the document that image belongs and what it illustrates.
+   
+   Additional images without markers may also be sent — these are
+   freshly attached by the user in the command bar and are not
+   positionally anchored. Treat them as general supplementary input.
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -679,7 +706,12 @@ CRITICAL REMINDERS:
 
 7. DO NOT add what their notes already cover. Only add what is missing.
 
-8. Output ONLY valid JSON. No markdown fences.
+8. DIAGRAMS: If the notes contain a flow chart, system architecture, or state machine, 
+   output it as a Mermaid diagram using exactly this format:
+   <pre><code class="language-mermaid">graph TD; A-->B;</code></pre>
+   Do not explain the diagram, just provide the code block.
+
+9. Output ONLY valid JSON. No markdown fences.
 
 Now produce the re-activation document.
 `;
@@ -721,7 +753,12 @@ CONTEXT MODE REMINDERS:
 
 11. FALLBACK: Concepts with no matching context → strict blockquote mode.
 
-12. Output ONLY valid JSON. No markdown fences.
+12. DIAGRAMS: If the context/notes imply a flow chart, system architecture, or state machine, 
+    output it as a Mermaid diagram using exactly this format:
+    <pre><code class="language-mermaid">graph TD; A-->B;</code></pre>
+    Do not explain the diagram, just provide the code block.
+
+13. Output ONLY valid JSON. No markdown fences.
 
 Now produce the re-activation field guide.
 `;
@@ -749,7 +786,12 @@ REMINDERS:
 
 7. DEPTH: Concepts that took significant time in the context → richest treatment.
 
-8. Output ONLY valid JSON. No markdown fences.
+8. DIAGRAMS: If the context implies a flow chart, system architecture, or state machine, 
+   output it as a Mermaid diagram using exactly this format:
+   <pre><code class="language-mermaid">graph TD; A-->B;</code></pre>
+   Do not explain the diagram, just provide the code block.
+
+9. Output ONLY valid JSON. No markdown fences.
 
 Now build the personal re-activation note.
 `;

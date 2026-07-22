@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { TopicCanvas } from '@/components/canvas/TopicCanvas';
+import { TopicEditor } from '@/components/canvas/TopicEditor';
 import { getTopicById } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 
@@ -80,7 +80,7 @@ export function ReadOnlyTopicCanvas({ topicId }: ReadOnlyTopicCanvasProps) {
     <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-background">
       <div className="w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
         <div className="w-full max-w-5xl mx-auto pt-16 pb-16 px-4 sm:px-8">
-          <TopicCanvas
+          <TopicEditor
             topicId={topicData.id}
             subjectId={topicData.subjectId}
             initialContent={topicData.canvasData}

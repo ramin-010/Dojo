@@ -8,7 +8,7 @@ import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperat
 import {
   Heading1, Heading2, Heading3, List, ListOrdered,
   Quote, Code, Minus, CheckSquare, Type,
-  Info, AlertTriangle, Lightbulb, AlertOctagon, Globe
+  Info, AlertTriangle, Lightbulb, AlertOctagon, Globe, Table as TableIcon, GitBranch, Brain
 } from 'lucide-react';
 
 interface CommandItem {
@@ -97,6 +97,36 @@ export const getSuggestionItems = (): CommandItem[] => [
     icon: <Minus className="w-4 h-4" />,
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+    },
+  },
+  {
+    title: 'Table',
+    description: 'Insert a 3x3 table',
+    icon: <TableIcon className="w-4 h-4" />,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    },
+  },
+  {
+    title: 'Context Pill',
+    description: 'Embed hidden raw context data',
+    icon: <Brain className="w-4 h-4" />,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent({
+        type: 'contextPill',
+        attrs: { label: 'Context Pill', content: '' }
+      }).run();
+    },
+  },
+  {
+    title: 'Diagram',
+    description: 'Insert a Mermaid diagram',
+    icon: <GitBranch className="w-4 h-4" />,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent({
+        type: 'mermaid',
+        attrs: { code: 'graph TD;\n  A[Start] --> B{Is it ready?};\n  B -- Yes --> C[Deploy];\n  B -- No --> D[Refactor];' }
+      }).run();
     },
   },
   // --- Callout Commands ---

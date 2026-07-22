@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import React, { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { Rnd } from 'react-rnd';
@@ -354,3 +354,5 @@ function CanvasBlockLayerComponent({
 }
 
 export const CanvasBlockLayer = memo(CanvasBlockLayerComponent);
+
+

@@ -21,6 +21,9 @@ import { searchTopicsInSubject, searchAllSubjects, addTopicMention } from '@/app
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { DEFAULT_FONT_SIZE } from '../core/types';
+import { ImageGalleryExtension } from '../extensions/ImageGalleryExtension';
+import { ContextPillExtension } from '../extensions/ContextPillExtension';
+import { v4 as uuidv4 } from 'uuid';
 
 interface InlineCursorProps {
   x: number;
@@ -39,6 +42,7 @@ interface InlineCursorProps {
   initialMinWidth?: number;
   onMoveCursor?: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  onUploadImage?: (file: File) => Promise<string>;
   topicId?: string;
   subjectId?: string;
 }
@@ -48,7 +52,7 @@ interface ToolbarPosition {
   left: number;
 }
 
-export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, onChange, onDimensionsChange, zoom = 1, maxWidth, initialMinWidth, color, textColor, fontSize, onMoveCursor, onResourceAdd, topicId, subjectId }: InlineCursorProps) {
+export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, onChange, onDimensionsChange, zoom = 1, maxWidth, initialMinWidth, color, textColor, fontSize, onMoveCursor, onResourceAdd, onUploadImage, topicId, subjectId }: InlineCursorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isToolbarClickRef = useRef(false);
   const router = useRouter();
@@ -58,6 +62,9 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
 
   const onDimsChangeRef = useRef(onDimensionsChange);
   onDimsChangeRef.current = onDimensionsChange;
+
+  const onUploadImageRef = useRef(onUploadImage);
+  onUploadImageRef.current = onUploadImage;
 
   useEffect(() => {
     if (!wrapperRef.current) return;
@@ -168,6 +175,8 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
           }
         }
       }),
+      ImageGalleryExtension,
+      ContextPillExtension,
     ],
     content: initialContent || '',
     autofocus: 'end',
@@ -212,7 +221,139 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
           }
         }
         return false;
-      }
+      },
+      handlePaste: (view, event) => {
+        const files = Array.from(event.clipboardData?.files || []);
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length === 0) return false;
+
+        event.preventDefault();
+
+        // Create blob URLs for all images at once for instant preview
+        const imageEntries = imageFiles.map(file => ({
+          file,
+          blobUrl: URL.createObjectURL(file),
+        }));
+
+        const placeholderImages = imageEntries.map(e => ({
+          src: e.blobUrl,
+          alt: e.file.name,
+          uploading: true,
+        }));
+
+        // Check if the node right before the cursor is an existing imageGallery
+        const { selection, doc } = view.state;
+        const $pos = selection.$from;
+        let existingGalleryPos: number | null = null;
+        let existingGalleryImages: any[] = [];
+
+        // Check if the node itself is selected
+        if ((selection as any).node && (selection as any).node.type.name === 'imageGallery') {
+          existingGalleryPos = selection.from;
+          existingGalleryImages = (selection as any).node.attrs.images || [];
+        }
+        // Look at the node before the cursor position
+        else if ($pos.nodeBefore && $pos.nodeBefore.type.name === 'imageGallery') {
+          existingGalleryPos = $pos.pos - $pos.nodeBefore.nodeSize;
+          existingGalleryImages = $pos.nodeBefore.attrs.images || [];
+        } else {
+          // Check the node at the position before in the parent
+          const posBeforeCursor = $pos.before($pos.depth);
+          doc.nodesBetween(Math.max(0, posBeforeCursor - 1), posBeforeCursor, (node, pos) => {
+            if (node.type.name === 'imageGallery' && existingGalleryPos === null) {
+              existingGalleryPos = pos;
+              existingGalleryImages = node.attrs.images || [];
+            }
+          });
+        }
+
+        if (existingGalleryPos !== null) {
+          // Append to existing gallery
+          const mergedImages = [...existingGalleryImages, ...placeholderImages];
+          view.dispatch(
+            view.state.tr.setNodeMarkup(existingGalleryPos, undefined, {
+              images: mergedImages,
+            })
+          );
+        } else {
+          // Insert ONE new gallery with all images
+          view.dispatch(
+            view.state.tr.replaceSelectionWith(
+              view.state.schema.nodes.imageGallery.create({
+                images: placeholderImages,
+              })
+            )
+          );
+        }
+
+        // Upload each image in the background and replace blob URLs
+        imageEntries.forEach(async ({ file, blobUrl }) => {
+          const uploadFn = onUploadImageRef.current;
+          if (uploadFn) {
+            try {
+              const permanentUrl = await uploadFn(file);
+              const { doc } = view.state;
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'imageGallery') {
+                  const imgs = node.attrs.images || [];
+                  const idx = imgs.findIndex((img: any) => img.src === blobUrl);
+                  if (idx !== -1) {
+                    const newImages = [...imgs];
+                    newImages[idx] = { src: permanentUrl, alt: file.name, uploading: false };
+                    view.dispatch(
+                      view.state.tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        images: newImages,
+                      })
+                    );
+                    URL.revokeObjectURL(blobUrl);
+                  }
+                }
+              });
+            } catch (err) {
+              console.error('[InlineCursor] Image upload failed:', err);
+              const { doc } = view.state;
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'imageGallery') {
+                  const imgs = node.attrs.images || [];
+                  const idx = imgs.findIndex((img: any) => img.src === blobUrl);
+                  if (idx !== -1) {
+                    const newImages = [...imgs];
+                    newImages[idx] = { ...newImages[idx], uploading: false };
+                    view.dispatch(
+                      view.state.tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        images: newImages,
+                      })
+                    );
+                  }
+                }
+              });
+            }
+          } else {
+            // No upload handler — show blob URL directly
+            const { doc } = view.state;
+            doc.descendants((node, pos) => {
+              if (node.type.name === 'imageGallery') {
+                const imgs = node.attrs.images || [];
+                const idx = imgs.findIndex((img: any) => img.src === blobUrl);
+                if (idx !== -1) {
+                  const newImages = [...imgs];
+                  newImages[idx] = { ...newImages[idx], uploading: false };
+                  view.dispatch(
+                    view.state.tr.setNodeMarkup(pos, undefined, {
+                      ...node.attrs,
+                      images: newImages,
+                    })
+                  );
+                }
+              }
+            });
+          }
+        });
+
+        return true;
+      },
     },
     onUpdate: ({ editor }) => {
       // Delay the onChange callback to the next tick to prevent React flushSync errors
@@ -296,7 +437,9 @@ export function InlineCursor({ x, y, id, initialContent, onCommit, onDiscard, on
 
     const updateToolbar = () => {
       const { from, to } = editor.state.selection;
-      const hasSelection = from !== to;
+      const isNodeSelection = editor.state.selection.hasOwnProperty('node');
+      const isImageGallery = editor.isActive('imageGallery');
+      const hasSelection = from !== to && !isNodeSelection && !isImageGallery;
 
       if (hasSelection) {
         const { view } = editor;

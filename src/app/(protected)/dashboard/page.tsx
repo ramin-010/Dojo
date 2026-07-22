@@ -244,10 +244,15 @@ export default async function DashboardPage() {
   const unverifiedBlocks = await getUnverifiedBlocks();
 
   // 7. Fetch Quick Notes
-  const quickNotes = await prisma.quickNote.findMany({
+  const quickNotesRaw = await prisma.quickNote.findMany({
     where: { workspaceId: DEV_WORKSPACE_ID },
     orderBy: { createdAt: 'asc' }
   });
+
+  const quickNotes = quickNotesRaw.map(qn => ({
+    ...qn,
+    attachments: qn.attachments as any
+  }));
 
   return (
     <DashboardClient 

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { TopicCanvas } from '@/components/canvas/TopicCanvas';
+import { TopicEditor } from '@/components/canvas/TopicEditor';
 import { timeAgo } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 import { createTopic, deleteCapturePermanently, getTopicLinks, createTextCaptureLink, renameCapture, deleteMultipleCapturesPermanently, deleteTopicMention, saveCanvasData, toggleTopicCapturePin, getTopicPinnedCaptures } from '@/app/actions';
@@ -106,19 +106,29 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     e.target.value = ''; // Reset input so same files can be re-selected if canceled
   };
 
-  const processAiCommand = async (croppedFiles: File[], userContext?: string, taggedBlocks?: CanvasBlockData[]) => {
+  const processAiCommand = async (croppedFiles: File[], userContext?: string, selectedContext?: { text: string; html: string; range: { from: number; to: number }; contextPills?: { label: string; content: string }[] } | null, actionType: 'ai' | 'enhance' = 'ai') => {
     setRawImagesForCrop(null); // Close modal immediately if open
     setShowAiCommandBar(false); // Close command bar
 
-    let combinedContext = userContext || '';
-    if (taggedBlocks && taggedBlocks.length > 0) {
-      const taggedContent = taggedBlocks.map(b => `--- Block ID: ${b.blockId} ---\n${b.content}\n--- End Block ---`).join('\n\n');
-      combinedContext = `Here are some existing blocks for context:\n${taggedContent}\n\n${combinedContext}`;
-    }
+    console.log('[processAiCommand] contextPills:', selectedContext?.contextPills);
 
-    if (croppedFiles.length === 0 && combinedContext.trim() === '') {
-      toast.error('Please provide an image or some text context.', { id: 'ai-import' });
-      return;
+    if (actionType === 'enhance') {
+      if (croppedFiles.length === 0) {
+        toast.error('Please attach images to enhance.', { id: 'ai-import' });
+        return;
+      }
+    } else {
+      // Build combined context for AI path
+      let combinedContext = userContext || '';
+      if (selectedContext && selectedContext.text.trim()) {
+        if (combinedContext) combinedContext += '\n\n--- SELECTED NOTES CONTEXT ---\n';
+        combinedContext += selectedContext.text.trim();
+      }
+
+      if (croppedFiles.length === 0 && combinedContext.trim() === '') {
+        toast.error('Please provide an image, a prompt, or highlighted context.', { id: 'ai-import' });
+        return;
+      }
     }
 
     setIsAiImporting(true);
@@ -129,59 +139,195 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     try {
       if (croppedFiles.length > 0) {
         toast.loading('Processing images through CV pipeline...', { id: 'ai-import' });
+
         // Helper function to chunk array
-      const chunkArray = <T,>(arr: T[], size: number): T[][] => {
-        return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
-          arr.slice(i * size, i * size + size)
-        );
-      };
+        const chunkArray = <T,>(arr: T[], size: number): T[][] => {
+          return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+            arr.slice(i * size, i * size + size)
+          );
+        };
 
-      // We process 2 images at a time to prevent overloading the Python CV proxy
-      const chunks = chunkArray(croppedFiles, 2);
+        // Process 2 images at a time to prevent overloading the Python CV proxy
+        const chunks = chunkArray(croppedFiles, 2);
 
-      // 1. Process via CV Pipeline & Upload to Cloudinary (Batched)
-      for (let c = 0; c < chunks.length; c++) {
-        const chunk = chunks[c];
-        toast.loading(`Enhancing images batch ${c + 1}/${chunks.length}...`, { id: 'ai-import' });
-        
-        const uploadPromises = chunk.map(async (file) => {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('output_mode', 'cream');
-          formData.append('denoise_strength', '10');
-          if (topic.id) formData.append('topicId', topic.id);
-          if (topic.subjectId) formData.append('subjectId', topic.subjectId);
+        for (let c = 0; c < chunks.length; c++) {
+          const chunk = chunks[c];
+          toast.loading(`Enhancing images batch ${c + 1}/${chunks.length}...`, { id: 'ai-import' });
 
-          const cvRes = await fetch('/api/test-scan-cv', {
-            method: 'POST',
-            body: formData,
+          const uploadPromises = chunk.map(async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('output_mode', 'cream');
+            formData.append('denoise_strength', '10');
+            if (topic.id) formData.append('topicId', topic.id);
+            if (topic.subjectId) formData.append('subjectId', topic.subjectId);
+
+            const cvRes = await fetch('/api/test-scan-cv', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!cvRes.ok) {
+              const errText = await cvRes.text();
+              throw new Error(`CV Processing failed: ${errText}`);
+            }
+            return cvRes.json();
           });
 
-          if (!cvRes.ok) {
-            const errText = await cvRes.text();
-            throw new Error(`CV Processing failed: ${errText}`);
-          }
-          return cvRes.json();
-        });
-
-        const results = await Promise.all(uploadPromises);
-        results.forEach(res => {
-          if (res.url) imageUrls.push(res.url);
-          if (res.publicId) publicIdsToCleanup.push(res.publicId);
-        });
-      }
+          const results = await Promise.all(uploadPromises);
+          results.forEach(res => {
+            if (res.url) imageUrls.push(res.url);
+            if (res.publicId) publicIdsToCleanup.push(res.publicId);
+          });
+        }
 
         if (imageUrls.length === 0) {
           throw new Error('No images were successfully processed.');
         }
       }
 
-      // 2. Call Gemini
-      toast.loading(croppedFiles.length > 0 ? 'AI is synthesizing your notes...' : 'AI is processing your context...', { id: 'ai-import' });
+      // ── ENHANCE path: just inject the cleaned cloud URLs as images ──
+      if (actionType === 'enhance') {
+        window.dispatchEvent(new CustomEvent('INJECT_IMAGES_INTO_EDITOR', { detail: { urls: imageUrls } }));
+        toast.success(`Enhanced and injected ${imageUrls.length} image(s)!`, { id: 'ai-import' });
+        return;
+      }
+
+      // ── AI path: build context with inline pill/image expansion ──
+      // We parse the selection HTML, expand pills and image galleries inline,
+      // then send the MODIFIED HTML directly to the AI (not plaintext).
+      // This preserves code blocks, headings, structure — format-symmetric with the output.
+      
+      let combinedContext = userContext || '';
+      const taggedImages: { id: string; url: string }[] = []; // Self-describing image references
+
+      if (selectedContext?.html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(selectedContext.html, 'text/html');
+
+        // 1. Expand Context Pills inline safely (using inline-safe elements to prevent parent <p> fragmentation)
+        const pillElements = doc.querySelectorAll('span[data-type="context-pill"]');
+        pillElements.forEach((el) => {
+          const label = el.getAttribute('data-label') || 'Context Pill';
+          let content = el.getAttribute('data-content') || '';
+          
+          if (content.trim()) {
+            // Use inline-safe elements (span, br, code) because `el` is inside a <p>.
+            // Inserting <blockquote> or <hr> inside a <p> causes invalid HTML and browser DOM mutation bugs.
+            const pill = doc.createElement('span');
+            pill.setAttribute('data-context-pill', label);
+            pill.style.display = 'block'; // visually block, but semantically safe
+            
+            // Inject content safely via DOM text nodes to avoid ANY quote mangling
+            const header = doc.createElement('span');
+            header.innerHTML = `<br/><br/><strong>--- CONTEXT PILL: ${label} (use as background knowledge, do NOT reproduce verbatim) ---</strong><br/>`;
+            
+            const body = doc.createElement('code');
+            body.style.display = 'block';
+            body.style.whiteSpace = 'pre-wrap';
+            body.textContent = content;
+            
+            const footer = doc.createElement('span');
+            footer.innerHTML = `<br/><strong>--- END CONTEXT PILL ---</strong><br/><br/>`;
+            
+            pill.appendChild(header);
+            pill.appendChild(body);
+            pill.appendChild(footer);
+            el.replaceWith(pill);
+          } else {
+            el.remove();
+          }
+        });
+
+        // 2. Replace Image Galleries with positional markers + collect their URLs
+        let inlineImageIndex = 1;
+        const galleryElements = doc.querySelectorAll('div[data-type="image-gallery"]');
+        galleryElements.forEach((el) => {
+          try {
+            const imagesData = JSON.parse(el.getAttribute('data-images') || '[]');
+            const markerElements: HTMLElement[] = [];
+            imagesData.forEach((img: any) => {
+              if (img.src) {
+                const id = `INLINE_IMAGE_${inlineImageIndex}`;
+                const alt = img.alt || '';
+                taggedImages.push({ id, url: img.src });
+                
+                const marker = doc.createElement('p');
+                marker.innerHTML = `<strong>[${id}${alt ? `: ${alt}` : ''}]</strong>`;
+                markerElements.push(marker);
+                inlineImageIndex++;
+              }
+            });
+            if (markerElements.length > 0) {
+              const wrapper = doc.createDocumentFragment();
+              wrapper.appendChild(doc.createElement('hr'));
+              markerElements.forEach(m => wrapper.appendChild(m));
+              wrapper.appendChild(doc.createElement('hr'));
+              el.replaceWith(wrapper);
+            } else {
+              el.remove();
+            }
+          } catch {
+            el.remove();
+          }
+        });
+
+        // 3. Expand Mermaid diagrams into standard markdown code blocks
+        // The AI expects <pre><code class="language-mermaid"> for proper rule matching
+        const mermaidElements = doc.querySelectorAll('div[data-type="mermaid"]');
+        mermaidElements.forEach((el) => {
+          const code = el.getAttribute('code') || el.getAttribute('data-code') || '';
+          if (code.trim()) {
+            const pre = doc.createElement('pre');
+            const codeEl = doc.createElement('code');
+            codeEl.className = 'language-mermaid';
+            codeEl.textContent = code;
+            pre.appendChild(codeEl);
+            el.replaceWith(pre);
+          } else {
+            el.remove();
+          }
+        });
+
+        // 4. Send the MODIFIED HTML directly — preserves code blocks, headings, structure
+        const processedHtml = doc.body.innerHTML?.trim() || '';
+        if (processedHtml) {
+          if (combinedContext) combinedContext += '\n\n--- SELECTED NOTES CONTEXT (HTML) ---\n';
+          combinedContext += processedHtml;
+        }
+
+        console.log('[processAiCommand] Inline expansion — pills:', pillElements.length, 'galleries:', galleryElements.length, 'mermaid:', mermaidElements.length, 'inline images:', taggedImages.length);
+      } else if (selectedContext?.text?.trim()) {
+        // Fallback: no HTML available, use plain text
+        if (combinedContext) combinedContext += '\n\n--- SELECTED NOTES CONTEXT ---\n';
+        combinedContext += selectedContext.text.trim();
+      }
+
+      // Add command-bar attached images with explicit tags (no positional marker — not in doc)
+      let cmdBarIndex = 1;
+      imageUrls.forEach((url) => {
+        taggedImages.push({ id: `COMMAND_BAR_${cmdBarIndex}`, url });
+        cmdBarIndex++;
+      });
+
+      // Extract just the URLs for the API (order matches taggedImages)
+      const allImageUrls = taggedImages.map(t => t.url);
+
+      toast.loading(croppedFiles.length > 0 || taggedImages.some(t => t.id.startsWith('INLINE')) ? 'AI is synthesizing your notes...' : 'AI is processing your context...', { id: 'ai-import' });
+
+      // ── DEBUG: Log exact payload being sent to the AI backend ──
+      console.log('═══════════════════════════════════════════');
+      console.log('[processAiCommand] EXACT PAYLOAD TO BACKEND:');
+      console.log('── userContext (full string) ──');
+      console.log(combinedContext);
+      console.log('── taggedImages (self-describing) ──');
+      console.log(taggedImages);
+      console.log('═══════════════════════════════════════════');
+
       const geminiRes = await fetch('/api/canvas/extract-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrls, userContext: combinedContext }),
+        body: JSON.stringify({ imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined, userContext: combinedContext || undefined }),
       });
 
       if (!geminiRes.ok) {
@@ -190,20 +336,29 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       }
       const { blocks } = await geminiRes.json();
 
-      // 3. Append to Canvas seamlessly via Event Bus
-      if (blocks && blocks.length > 0) {
-        blocks.forEach((newBlock: any) => {
-          window.dispatchEvent(new CustomEvent('CANVAS_INSERT_AI_BLOCK', { detail: { block: newBlock } }));
-        });
-        toast.success('Notes successfully synthesized and appended!', { id: 'ai-import' });
-      } else {
+      if (!blocks || blocks.length === 0) {
         throw new Error('No blocks returned from AI');
       }
 
+      // Inject the AI-generated HTML into the editor
+      const htmlContent = blocks.map((b: any) => b.content || '').join('');
+
+      if (selectedContext && selectedContext.range) {
+        window.dispatchEvent(new CustomEvent('APPLY_AI_IMPORT', {
+          detail: { text: htmlContent, replaceRange: selectedContext.range }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('APPLY_AI_IMPORT', {
+          detail: { text: htmlContent }
+        }));
+      }
+
+      toast.success('Notes successfully synthesized!', { id: 'ai-import' });
+
     } catch (error: any) {
-      console.error(error);
+      console.error('[AI Import] Error:', error);
       toast.error(error.message || 'Import failed', { id: 'ai-import' });
-      
+
       // Cleanup Cloudinary uploads if pipeline failed after uploading
       if (publicIdsToCleanup.length > 0) {
         toast.loading('Cleaning up failed upload data...', { id: 'ai-import' });
@@ -645,6 +800,41 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     return () => window.removeEventListener('CANVAS_OPEN_SPLIT_VIEW', handleCanvasOpenSplitView);
   }, [handleOpenSplitView]);
 
+  // Global event listener for detecting images deleted from the editor to offer permanent cleanup
+  useEffect(() => {
+    const handleImageDeletion = (e: Event) => {
+      const customEvent = e as CustomEvent<{ urls: string[] }>;
+      if (customEvent.detail && customEvent.detail.urls && customEvent.detail.urls.length > 0) {
+        const urls = customEvent.detail.urls;
+        const toastId = `del-images-${Date.now()}`;
+        toast(urls.length > 1 ? `${urls.length} images removed from document` : 'Image removed from document', {
+          id: toastId,
+          duration: 7000,
+          action: {
+            label: 'Delete Permanently',
+            onClick: async (ev) => {
+              ev.preventDefault();
+              toast.dismiss(toastId);
+              const delToastId = toast.loading(urls.length > 1 ? 'Deleting images permanently...' : 'Deleting image permanently...');
+              try {
+                for (const url of urls) {
+                  await deleteCapturePermanently(url);
+                }
+                toast.success(urls.length > 1 ? 'Images deleted permanently' : 'Image deleted permanently', { id: delToastId });
+              } catch (err) {
+                console.error('Failed to permanently delete image(s):', err);
+                toast.error('Failed to delete', { id: delToastId });
+              }
+            }
+          }
+        });
+      }
+    };
+    
+    window.addEventListener('IMAGES_DELETED_FROM_EDITOR', handleImageDeletion);
+    return () => window.removeEventListener('IMAGES_DELETED_FROM_EDITOR', handleImageDeletion);
+  }, []);
+
   const handleDragStartSidebarItem = useCallback((data: SplitViewData | null) => {
     setIsDraggingSidebarItem(data !== null);
   }, []);
@@ -1040,7 +1230,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
             className="w-full relative transition-all duration-300"
           >
             <div ref={canvasWrapperRef} className="w-full min-h-full relative">
-              <TopicCanvas
+              <TopicEditor
                 topicId={topic.id}
                 subjectId={topic.subject.id}
                 initialContent={initialCanvasContent}
@@ -1048,11 +1238,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                 containerWidth={splitViewData ? frozenCanvasWidthRef.current : canvasContainerWidth}
                 onSavingChange={setIsSaving}
                 onActiveUrlsChange={setActiveUrls}
-                onBlockRemoved={handleBlockRemoved}
                 onResourceAdded={handleResourceAdded}
-                defaultCollapsed={!!isRecallMode}
-                isAllExpanded={isAllExpanded}
-                onToggleExpandAll={setIsAllExpanded}
               />
               
               {/* Split View Dropzone Overlay */}
@@ -1152,10 +1338,11 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
       {/* ── AI Command Bar ─────────────────────────────────────────────── */}
       {showAiCommandBar && (
         <FloatingCommandBar 
-          onSubmit={(files, text, taggedBlocks) => processAiCommand(files, text, taggedBlocks)}
+          onSubmit={(files, text, selectedCtx, actionType) => processAiCommand(files, text, selectedCtx, actionType)}
           onCancel={() => setShowAiCommandBar(false)} 
         />
       )}
     </div>
   );
 }
+

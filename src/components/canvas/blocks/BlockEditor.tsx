@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { DOMSerializer } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
@@ -12,17 +13,25 @@ import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import { Bold, Italic, Underline as UnderlineIcon, CheckSquare, Highlighter, Link as LinkIcon, Trash2, Code } from 'lucide-react';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
 import { createLowlight, common } from 'lowlight';
 import { SlashCommands } from '../extensions/SlashCommands';
 
 const lowlight = createLowlight(common);
 import { CalloutExtension } from '../extensions/CalloutExtension';
+import { MermaidExtension } from '../extensions/MermaidExtension';
 import { CustomMention } from '../extensions/MentionExtension';
 import { createMentionSuggestions } from '../extensions/MentionExtension';
 import { SavedResourceExtension } from '../extensions/SavedResourceExtension';
 import { searchTopicsInSubject, searchAllSubjects, addTopicMention } from '@/app/actions';
 import { debounce } from 'lodash';
 import { useRouter } from 'next/navigation';
+import { ImageGalleryExtension } from '../extensions/ImageGalleryExtension';
+import { ContextPillExtension } from '../extensions/ContextPillExtension';
+import { v4 as uuidv4 } from 'uuid';
 
 interface BlockEditorProps {
   content: string;
@@ -32,9 +41,10 @@ interface BlockEditorProps {
   readOnly?: boolean;
   autoFocus?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
-  onDelete?: () => void;
   onMentionClick?: (id: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
+  onUploadImage?: (file: File) => Promise<string>;
+  // onDelete?: () => void; // Unused in linear editor
   topicId?: string;
   subjectId?: string;
 }
@@ -47,9 +57,10 @@ export function BlockEditor({
   readOnly = false,
   autoFocus = false,
   onKeyDown,
-  onDelete,
+  // onDelete,
   onMentionClick,
   onResourceAdd,
+  onUploadImage,
   topicId,
   subjectId
 }: BlockEditorProps) {
@@ -59,6 +70,9 @@ export function BlockEditor({
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const onUploadImageRef = useRef(onUploadImage);
+  onUploadImageRef.current = onUploadImage;
 
   const debouncedOnChange = useMemo(
     () => debounce((html: string) => {
@@ -79,12 +93,20 @@ export function BlockEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: false,
+        code: {
+          HTMLAttributes: {
+            spellcheck: 'false',
+          },
+        },
         heading: { levels: [1, 2, 3] }, 
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
       }) as any,
       CodeBlockLowlight.configure({
         lowlight,
+        HTMLAttributes: {
+          spellcheck: 'false',
+        },
       }),
       Placeholder.configure({
         placeholder: "Type '/' for commands...",
@@ -101,6 +123,11 @@ export function BlockEditor({
       Underline,
       SlashCommands,
       CalloutExtension,
+      MermaidExtension,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
       CustomMention.configure({
         HTMLAttributes: {
           class: 'mention',
@@ -161,6 +188,8 @@ export function BlockEditor({
           }
         }
       }),
+      ImageGalleryExtension,
+      ContextPillExtension,
     ],
     content: content,
     editable: !readOnly,
@@ -170,11 +199,13 @@ export function BlockEditor({
         class: 'outline-none max-w-none leading-normal text-foreground',
       },
       handleKeyDown: (view, event) => {
-        if ((event.ctrlKey || event.metaKey) && (event.key === 'Delete' || event.key === 'Backspace')) {
-          event.preventDefault();
-          onDelete?.();
-          return true;
-        }
+        // [CANVAS CLEANUP] Disabled spatial block deletion logic
+        // if ((event.ctrlKey || event.metaKey) && (event.key === 'Delete' || event.key === 'Backspace')) {
+        //   event.preventDefault();
+        //   onDelete?.();
+        //   return true;
+        // }
+        
         if (onKeyDown) {
             onKeyDown(event as any);
         }
@@ -188,9 +219,162 @@ export function BlockEditor({
           return true;
         }
         return false;
-      }
+      },
+      handlePaste: (view, event) => {
+        const files = Array.from(event.clipboardData?.files || []);
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length === 0) return false;
+
+        event.preventDefault();
+
+        // Create blob URLs for all images at once for instant preview
+        const imageEntries = imageFiles.map(file => ({
+          file,
+          blobUrl: URL.createObjectURL(file),
+        }));
+
+        const placeholderImages = imageEntries.map(e => ({
+          src: e.blobUrl,
+          alt: e.file.name,
+          uploading: true,
+        }));
+
+        // Check if the node right before the cursor is an existing imageGallery
+        const { selection, doc } = view.state;
+        const $pos = selection.$from;
+        let existingGalleryPos: number | null = null;
+        let existingGalleryImages: any[] = [];
+
+        // Check if the node itself is selected
+        if ((selection as any).node && (selection as any).node.type.name === 'imageGallery') {
+          existingGalleryPos = selection.from;
+          existingGalleryImages = (selection as any).node.attrs.images || [];
+        }
+        else if ($pos.nodeBefore && $pos.nodeBefore.type.name === 'imageGallery') {
+          existingGalleryPos = $pos.pos - $pos.nodeBefore.nodeSize;
+          existingGalleryImages = $pos.nodeBefore.attrs.images || [];
+        } else {
+          const posBeforeCursor = $pos.before($pos.depth);
+          doc.nodesBetween(Math.max(0, posBeforeCursor - 1), posBeforeCursor, (node, pos) => {
+            if (node.type.name === 'imageGallery' && existingGalleryPos === null) {
+              existingGalleryPos = pos;
+              existingGalleryImages = node.attrs.images || [];
+            }
+          });
+        }
+
+        if (existingGalleryPos !== null) {
+          // Append to existing gallery
+          const mergedImages = [...existingGalleryImages, ...placeholderImages];
+          view.dispatch(
+            view.state.tr.setNodeMarkup(existingGalleryPos, undefined, {
+              images: mergedImages,
+            })
+          );
+        } else {
+          // Insert ONE new gallery with all images
+          view.dispatch(
+            view.state.tr.replaceSelectionWith(
+              view.state.schema.nodes.imageGallery.create({
+                images: placeholderImages,
+              })
+            )
+          );
+        }
+
+        // Upload each image in the background and replace blob URLs
+        imageEntries.forEach(async ({ file, blobUrl }) => {
+          const uploadFn = onUploadImageRef.current;
+          if (uploadFn) {
+            try {
+              const permanentUrl = await uploadFn(file);
+              const { doc } = view.state;
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'imageGallery') {
+                  const imgs = node.attrs.images || [];
+                  const idx = imgs.findIndex((img: any) => img.src === blobUrl);
+                  if (idx !== -1) {
+                    const newImages = [...imgs];
+                    newImages[idx] = { src: permanentUrl, alt: file.name, uploading: false };
+                    view.dispatch(
+                      view.state.tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        images: newImages,
+                      })
+                    );
+                    URL.revokeObjectURL(blobUrl);
+                  }
+                }
+              });
+            } catch (err) {
+              console.error('[BlockEditor] Image upload failed:', err);
+              const { doc } = view.state;
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'imageGallery') {
+                  const imgs = node.attrs.images || [];
+                  const idx = imgs.findIndex((img: any) => img.src === blobUrl);
+                  if (idx !== -1) {
+                    const newImages = [...imgs];
+                    newImages[idx] = { ...newImages[idx], uploading: false };
+                    view.dispatch(
+                      view.state.tr.setNodeMarkup(pos, undefined, {
+                        ...node.attrs,
+                        images: newImages,
+                      })
+                    );
+                  }
+                }
+              });
+            }
+          } else {
+            // No upload handler — show blob URL directly
+            const { doc } = view.state;
+            doc.descendants((node, pos) => {
+              if (node.type.name === 'imageGallery') {
+                const imgs = node.attrs.images || [];
+                const idx = imgs.findIndex((img: any) => img.src === blobUrl);
+                if (idx !== -1) {
+                  const newImages = [...imgs];
+                  newImages[idx] = { ...newImages[idx], uploading: false };
+                  view.dispatch(
+                    view.state.tr.setNodeMarkup(pos, undefined, {
+                      ...node.attrs,
+                      images: newImages,
+                    })
+                  );
+                }
+              }
+            });
+          }
+        });
+
+        return true;
+      },
     },
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor, transaction }) => {
+      if (transaction.docChanged) {
+        const prevImages = new Set<string>();
+        const currentImages = new Set<string>();
+        
+        transaction.before.descendants((node) => {
+          if (node.type.name === 'imageGallery') {
+            (node.attrs.images || []).forEach((img: any) => prevImages.add(img.src));
+          }
+        });
+        
+        transaction.doc.descendants((node) => {
+          if (node.type.name === 'imageGallery') {
+            (node.attrs.images || []).forEach((img: any) => currentImages.add(img.src));
+          }
+        });
+        
+        const deletedImages = Array.from(prevImages).filter(src => 
+          !currentImages.has(src) && !src.startsWith('blob:') && !src.startsWith('data:')
+        );
+        if (deletedImages.length > 0) {
+          window.dispatchEvent(new CustomEvent('IMAGES_DELETED_FROM_EDITOR', { detail: { urls: deletedImages }}));
+        }
+      }
       debouncedOnChange(editor.getHTML());
     },
     onFocus: () => onFocus?.(),
@@ -214,14 +398,121 @@ export function BlockEditor({
     }
   }, [readOnly, editor]);
 
+  // AI Import Context Pipeline (Zero-overhead Pull Architecture)
+  const isAiBarOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!editor) return;
+    
+    const sendCurrentSelection = () => {
+      const { from, to, empty } = editor.state.selection;
+      if (!empty) {
+        // Extract context pills separately as structured data
+        const contextPills: { label: string; content: string }[] = [];
+        editor.state.doc.nodesBetween(from, to, (node) => {
+          if (node.type.name === 'contextPill') {
+            contextPills.push({
+              label: node.attrs.label || 'Context Pill',
+              content: node.attrs.content || '',
+            });
+          }
+        });
+
+        // Extract text and explicitly parse atom nodes like Mermaid diagrams
+        const text = editor.state.doc.textBetween(from, to, '\n\n', (node) => {
+          if (node.type.name === 'mermaid') {
+            return `\n\`\`\`mermaid\n${node.attrs.code || ''}\n\`\`\`\n`;
+          }
+          if (node.type.name === 'imageGallery') {
+            const images = node.attrs.images || [];
+            return '\n' + images.map((img: any) => `![Image](${img.src})`).join('\n') + '\n';
+          }
+          if (node.type.name === 'contextPill') {
+            return ` [Context Pill: ${node.attrs.label}] `;
+          }
+          return ''; 
+        }).trim();
+
+        // Also extract perfect semantic HTML for the AI
+        // ProseMirror's slice() preserves open wrapper context (openStart/openEnd),
+        // which can spuriously wrap content in <blockquote> or other parent nodes.
+        // We serialize the fragment's raw content nodes instead.
+        const slice = editor.state.doc.slice(from, to);
+        const serializer = DOMSerializer.fromSchema(editor.state.schema);
+        const div = document.createElement('div');
+        
+        // Serialize each top-level node individually to avoid wrapper leaking
+        slice.content.forEach((node) => {
+          const rendered = serializer.serializeNode(node);
+          div.appendChild(rendered);
+        });
+        
+        const html = div.innerHTML;
+        
+        window.dispatchEvent(new CustomEvent('RESPONSE_CURRENT_EDITOR_SELECTION', {
+          detail: { text, html, range: { from, to }, contextPills }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('RESPONSE_CURRENT_EDITOR_SELECTION', {
+          detail: { text: '', html: '', range: null }
+        }));
+      }
+    };
+
+    const handleBarStateChange = (e: any) => {
+      isAiBarOpenRef.current = e.detail.isOpen;
+      if (e.detail.isOpen) {
+        sendCurrentSelection(); // Immediately pull selection on open
+        setShowBubbleMenu(false); // Hide the formatting bubble menu immediately if AI bar opens
+      }
+    };
+
+    const handleSelectionUpdate = () => {
+      if (isAiBarOpenRef.current) {
+        sendCurrentSelection();
+      }
+    };
+    
+    const handleInjectImages = (e: any) => {
+      const urls = e.detail.urls;
+      if (urls && urls.length > 0) {
+        const images = urls.map((url: string) => ({ src: url }));
+        if (!editor.isFocused) {
+          editor.commands.focus('end');
+        }
+        editor.commands.insertImageGallery(images);
+      }
+    };
+    
+    const handleSelectAll = () => {
+      editor.chain().focus().selectAll().run();
+    };
+    
+    window.addEventListener('AI_BAR_STATE_CHANGED', handleBarStateChange);
+    window.addEventListener('REQUEST_CURRENT_EDITOR_SELECTION', sendCurrentSelection); // Fallback
+    window.addEventListener('INJECT_IMAGES_INTO_EDITOR', handleInjectImages);
+    window.addEventListener('REQUEST_SELECT_ALL_CANVAS', handleSelectAll);
+    editor.on('selectionUpdate', handleSelectionUpdate);
+    
+    return () => {
+      window.removeEventListener('AI_BAR_STATE_CHANGED', handleBarStateChange);
+      window.removeEventListener('REQUEST_CURRENT_EDITOR_SELECTION', sendCurrentSelection);
+      window.removeEventListener('INJECT_IMAGES_INTO_EDITOR', handleInjectImages);
+      window.removeEventListener('REQUEST_SELECT_ALL_CANVAS', handleSelectAll);
+      editor.off('selectionUpdate', handleSelectionUpdate);
+    };
+  }, [editor]);
+
   useEffect(() => {
     if (!editor) return;
 
     const updateMenu = () => {
       const { from, to } = editor.state.selection;
-      const hasSelection = from !== to;
+      const isNodeSelection = editor.state.selection.hasOwnProperty('node');
+      const isImageGallery = editor.isActive('imageGallery');
+      const hasSelection = from !== to && !isNodeSelection && !isImageGallery;
       
-      if (hasSelection && !readOnly) {
+      if (hasSelection && !readOnly && !isAiBarOpenRef.current) {
         const { view } = editor;
         const start = view.coordsAtPos(from);
         const end = view.coordsAtPos(to);
