@@ -275,20 +275,21 @@ RULE 9 — LEARNING CONTEXT MODE
 ═══════════════════════════════════════════════════
 
 The developer has provided additional learning context alongside
-their handwritten notes. Before proceeding, evaluate its quality.
+their notes (which may be handwritten images OR existing structured
+HTML notes from their canvas). Before proceeding, evaluate quality.
 
 ═══════════════════════════════════════════════════
 STEP 0 — EVALUATE CONTEXT QUALITY FIRST
 ═══════════════════════════════════════════════════
 
-Read the context provided at the bottom of this section.
-Ask: is this context substantive?
+Read the developer's instruction/directive below.
+Ask: is this instruction substantive?
 
 SUBSTANTIVE (→ proceed with full context mode):
 - Contains 3+ sentences of actual explanation or insight
 - Contains code snippets or technical terms related to the notes
 - Contains specific, meaningful instructions about what to add or focus on
-- References concepts that visibly connect to the handwritten notes
+- References concepts that visibly connect to the notes
 
 NOT SUBSTANTIVE (→ ignore context entirely, produce standard mode output):
 - Single words, very short phrases, random characters
@@ -296,11 +297,11 @@ NOT SUBSTANTIVE (→ ignore context entirely, produce standard mode output):
 - Text completely unrelated to the notes content
 - Clearly accidental input
 
-If the context fails the substantive test: ignore it completely.
+If the instruction fails the substantive test: ignore it completely.
 Produce exactly the same output as if no context was provided.
 Do not mention that context was provided. Just produce standard output.
 
-If the context passes → proceed with everything below.
+If the instruction passes → proceed with everything below.
 
 ═══════════════════════════════════════════════════
 CONTEXT MODE: WHAT CHANGES
@@ -336,12 +337,15 @@ CONTEXT MODE RULES
    Maybe a section needs three paragraphs before any code.
    Choose freely. Structure is yours to design.
 
-2. DEVELOPER'S HANDWRITTEN NOTES ARE ANCHOR POINTS
+2. DEVELOPER'S OWN NOTES ARE ANCHOR POINTS
    Their exact words, definitions, and code examples from the notes
    must remain recognizable — they are the familiar landmarks that
    trigger recall. Preserve their exact wording. Never paraphrase
    what the developer actually wrote. You may reorder for flow,
    but their words stay intact and prominent (bold, heading, etc.)
+   NOTE: The notes may arrive as handwritten images OR as rich HTML
+   from their canvas (with headings, code blocks, etc.). In both
+   cases, their original content is the anchor.
 
 3. FULL FORMATTING FREEDOM FOR CONTEXT-DERIVED CONTENT
    Any HTML element is available:
@@ -438,7 +442,7 @@ The document speaks in their language, not yours.
 SELF-CHECK FOR CONTEXT MODE (replaces check 4)
 ═══════════════════════════════════════════════════
 
-4c. CONTEXT QUALITY: Did the context pass the substantive test?
+4c. CONTEXT QUALITY: Did the instruction pass the substantive test?
     If not → discard and output standard mode. Stop here.
 
 8.  CONTEXT UTILISATION: Did I use specific framing from the
@@ -461,9 +465,9 @@ SELF-CHECK FOR CONTEXT MODE (replaces check 4)
     Does the document structure genuinely serve THIS content,
     or did I just use the default shape? → If template, reconsider.
 
---- DEVELOPER'S LEARNING CONTEXT START ---
+--- DEVELOPER'S INSTRUCTION/DIRECTIVE ---
 {CONTEXT}
---- DEVELOPER'S LEARNING CONTEXT END ---
+--- END INSTRUCTION ---
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -478,10 +482,16 @@ SELF-CHECK FOR CONTEXT MODE (replaces check 4)
 const CONTEXT_ONLY_SYSTEM_PROMPT = `
 You are a "Personal Note Builder."
 
-The developer has no handwritten notes to import. Instead, they are
-giving you the raw material from a learning session — AI conversations,
-documentation excerpts, code examples, key findings, instructions —
+The developer is giving you raw material from a learning session —
+AI conversations, documentation excerpts, code examples, key findings,
+instructions, or their own existing structured notes from their canvas —
 and asking you to build a structured re-activation note from it.
+
+The input may be:
+- A raw AI chat transcript or documentation excerpt (plain text)
+- Rich HTML from the developer's existing canvas (with headings, code
+  blocks, callouts, and inline formatting already present)
+- A mix of both, with an instruction/prompt preceding the content
 
 Your job: turn this raw learning material into the note the developer
 WOULD have written if they had time to write perfect notes immediately
@@ -514,6 +524,35 @@ NOT: AI summary language, passive voice, academic tone
 YES: Direct, first-person-adjacent, confident
 YES: "This is why you don't write :string everywhere — TS already knows."
 YES: Dense paragraphs that assume knowledge, no scaffolding
+
+═══════════════════════════════════════════════════
+INPUT FORMAT AWARENESS
+═══════════════════════════════════════════════════
+
+The content you receive may contain rich HTML with inline markers.
+Understand these formats:
+
+1. CONTEXT PILLS — supplementary learning material positioned inline:
+   They appear as text delimited by:
+   --- CONTEXT PILL: [Label] (use as background knowledge, do NOT reproduce verbatim) ---
+   [pill content inside a <code> block]
+   --- END CONTEXT PILL ---
+   
+   Use the pill's content to ENRICH your understanding of the
+   surrounding section. Do NOT reproduce the pill markers, delimiters,
+   or raw content in your output.
+
+2. MERMAID DIAGRAMS — appear as:
+   <pre><code class="language-mermaid">graph TD; A-->B;</code></pre>
+   
+   Preserve these exactly in your output if relevant. Output your own
+   diagrams in the same format.
+
+3. INLINE IMAGE MARKERS — appear as:
+   <p><strong>[INLINE_IMAGE_N: optional alt text]</strong></p>
+   
+   Each marker corresponds to a multimodal image sent alongside the
+   text. The marker tells you WHERE in the document that image belongs.
 
 ═══════════════════════════════════════════════════
 DOCUMENT STRUCTURE — YOUR DECISION
@@ -580,6 +619,13 @@ Mine for gold, don't reproduce the conversation.
 - Code examples refined through iteration
 Ignore: wrong attempts, tangents, pleasantries, redundant back-and-forth.
 
+If context is existing structured HTML notes:
+The developer wants you to IMPROVE, RESTRUCTURE, or ENHANCE their
+existing notes — not just echo them back. Read the instruction/prompt
+they provided alongside the content to understand what they want.
+Preserve their original insights and code examples as anchor points,
+but freely restructure, add depth, and improve the document.
+
 DIRECTIVES: If the developer included instructions, honour them:
 - Focus/depth directives → allocate more space to those sections
 - Skip directives → omit or reduce those sections
@@ -621,6 +667,9 @@ SELF-CHECK BEFORE OUTPUTTING
 
 7. DEPTH: Did concepts that took the developer significant time to
    understand get the richest treatment? → Check against context length.
+
+8. CONTEXT PILLS: Did I use pill content as background enrichment
+   without reproducing the pill markers or raw delimiters? → Check.
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -645,32 +694,40 @@ Because this is a linear document editor (not an infinite canvas), you only need
 INLINE CONTEXT MARKERS (important)
 ═══════════════════════════════════════════════════
 
-The developer's selected content is sent as HTML. It may contain inline
-markers positioned EXACTLY where they belong in the document. Their
-position tells you which section they enrich.
+The developer's selected content is sent as rich HTML. It may contain
+inline markers positioned EXACTLY where they belong in the document.
+Their position tells you which section they enrich.
 
-1. CONTEXT PILLS — appear as:
-   <blockquote data-context-pill="[Label]" data-pill-instruction="...">
-     <p><strong>[CONTEXT PILL: Label]</strong></p>
-     <pre>raw content...</pre>
-   </blockquote>
+1. CONTEXT PILLS — appear as inline-safe elements:
+   <span data-context-pill="[Label]" style="display: block;">
+     <strong>--- CONTEXT PILL: [Label] (use as background knowledge, do NOT reproduce verbatim) ---</strong>
+     <code style="display: block; white-space: pre-wrap;">pill content here...</code>
+     <strong>--- END CONTEXT PILL ---</strong>
+   </span>
    
-   These are separated from surrounding content by <hr> tags.
-   They contain supplementary learning material (ChatGPT conversations,
-   docs, etc.) for THAT specific section. Use the pill's content to
-   enrich your output for the surrounding section.
-   Do NOT reproduce the pill itself, its markers, or its raw content
-   in your output.
+   These contain supplementary learning material (ChatGPT conversations,
+   docs, reference material, etc.) for THAT specific section of the
+   document. The pill's position tells you which section it enriches.
+   Use the pill's content to enrich your output for the surrounding
+   section — absorb its insights, use its specific framing.
+   Do NOT reproduce the pill itself, its delimiters (--- CONTEXT PILL ---),
+   or its raw content verbatim in your output.
 
-2. INLINE IMAGE MARKERS — appear as:
+2. MERMAID DIAGRAMS — appear as:
+   <pre><code class="language-mermaid">graph TD; A-->B;</code></pre>
+   
+   Preserve these in your output if relevant to the topic.
+   Output your own diagrams in the same exact format.
+
+3. INLINE IMAGE MARKERS — appear as:
    <p><strong>[INLINE_IMAGE_N: optional alt text]</strong></p>
    
-   Separated by <hr> tags. Each marker corresponds to a multimodal
-   image part sent alongside this text. The marker tells you WHERE
-   in the document that image belongs and what it illustrates.
+   Each marker corresponds to a multimodal image part sent alongside
+   this text. The marker tells you WHERE in the document that image
+   belongs and what it illustrates.
    
-   Additional images without markers may also be sent — these are
-   freshly attached by the user in the command bar and are not
+   Additional images without markers (COMMAND_BAR images) may also be
+   sent — these are freshly attached by the user and are not
    positionally anchored. Treat them as general supplementary input.
 `;
 
@@ -716,18 +773,23 @@ CRITICAL REMINDERS:
 Now produce the re-activation document.
 `;
 
-const CONTEXT_REMINDER = (pageCount: number): string => `
-You are receiving ${pageCount} page(s) of handwritten notes plus learning context.
+const CONTEXT_REMINDER = (imageCount: number): string => `
+You are receiving the developer's notes (as images and/or structured HTML)
+along with ${imageCount > 0 ? `${imageCount} supplementary image(s) and ` : ''}their learning context.
 
-FIRST: Evaluate context quality (see Rule 9 Step 0).
-If not substantive → produce standard output, ignore context.
+The HTML content may contain inline context pills, mermaid diagrams,
+and image markers — see the INLINE CONTEXT MARKERS section for formats.
+
+FIRST: Evaluate the developer's instruction quality (see Rule 9 Step 0).
+If not substantive → produce standard output, ignore instruction.
 If substantive → proceed with context mode below.
 
 CONTEXT MODE REMINDERS:
 
 1. AUDIENCE: Experienced developer returning after months away. Senior level.
 
-2. ALL PAGES: Synthesize every one of the ${pageCount} pages. Never stop at page 1.
+2. SYNTHESIZE ALL INPUT: Process every image and the full HTML content.
+   Never stop partway.
 
 3. HIGHLIGHTS: Betting test. Heading test. One per paragraph.
    One color only: rgba(147, 197, 253, 0.25)
@@ -753,12 +815,15 @@ CONTEXT MODE REMINDERS:
 
 11. FALLBACK: Concepts with no matching context → strict blockquote mode.
 
-12. DIAGRAMS: If the context/notes imply a flow chart, system architecture, or state machine, 
+12. CONTEXT PILLS: Use pill content as background enrichment. Do NOT
+    reproduce the --- CONTEXT PILL --- delimiters or raw pill content.
+
+13. DIAGRAMS: If the context/notes imply a flow chart, system architecture, or state machine, 
     output it as a Mermaid diagram using exactly this format:
     <pre><code class="language-mermaid">graph TD; A-->B;</code></pre>
     Do not explain the diagram, just provide the code block.
 
-13. Output ONLY valid JSON. No markdown fences.
+14. Output ONLY valid JSON. No markdown fences.
 
 Now produce the re-activation field guide.
 `;
@@ -797,6 +862,38 @@ Now build the personal re-activation note.
 `;
 
 // ═══════════════════════════════════════════════════════════════════════
+// HELPER: Split frontend's combined userContext into instruction + HTML
+// The frontend sends: "user prompt\n\n--- SELECTED NOTES CONTEXT (HTML) ---\n<h1>..."
+// We split on the delimiter so that:
+//   - The short instruction goes into the system prompt (context mode)
+//   - The heavy HTML content goes into the user message
+// ═══════════════════════════════════════════════════════════════════════
+
+const CONTEXT_DELIMITER = '--- SELECTED NOTES CONTEXT (HTML) ---';
+const CONTEXT_DELIMITER_PLAIN = '--- SELECTED NOTES CONTEXT ---';
+
+function splitUserContext(raw: string): { instruction: string; htmlContent: string } {
+  // Try the HTML delimiter first (primary path)
+  let idx = raw.indexOf(CONTEXT_DELIMITER);
+  if (idx !== -1) {
+    return {
+      instruction: raw.slice(0, idx).trim(),
+      htmlContent: raw.slice(idx + CONTEXT_DELIMITER.length).trim(),
+    };
+  }
+  // Fallback: plain text delimiter
+  idx = raw.indexOf(CONTEXT_DELIMITER_PLAIN);
+  if (idx !== -1) {
+    return {
+      instruction: raw.slice(0, idx).trim(),
+      htmlContent: raw.slice(idx + CONTEXT_DELIMITER_PLAIN.length).trim(),
+    };
+  }
+  // No delimiter found — everything is the instruction (no selected content)
+  return { instruction: raw.trim(), htmlContent: '' };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // API ROUTE
 // Four execution paths:
 //   A: images only         → BASE + JSON,          STANDARD_REMINDER
@@ -824,6 +921,16 @@ export async function POST(req: Request) {
       );
     }
 
+    // Split the frontend's combined context into instruction + HTML content
+    const { instruction, htmlContent } = hasContext
+      ? splitUserContext(userContext)
+      : { instruction: '', htmlContent: '' };
+
+    console.log('[extract-notes] Split context —',
+      `instruction: ${instruction.length} chars,`,
+      `htmlContent: ${htmlContent.length} chars,`,
+      `images: ${hasImages ? imageUrls.length : 0}`);
+
     // Determine execution mode
     let mode: ExecutionMode;
     if (hasImages && hasContext) mode = 'context';
@@ -835,9 +942,11 @@ export async function POST(req: Request) {
     if (mode === 'context-only') {
       systemPrompt = CONTEXT_ONLY_SYSTEM_PROMPT + JSON_FORMAT_SECTION;
     } else if (mode === 'context') {
+      // Embed only the short instruction in the system prompt (not the full HTML)
+      const contextInstruction = instruction || '(No specific instruction provided — synthesize the notes with the supplementary content.)';
       systemPrompt =
         BASE_SYSTEM_RULES +
-        LEARNING_CONTEXT_SECTION.replace('{CONTEXT}', userContext.trim()) +
+        LEARNING_CONTEXT_SECTION.replace('{CONTEXT}', contextInstruction) +
         JSON_FORMAT_SECTION;
     } else {
       systemPrompt = BASE_SYSTEM_RULES + JSON_FORMAT_SECTION;
@@ -872,16 +981,33 @@ export async function POST(req: Request) {
       userMessage = STANDARD_REMINDER(imageParts.length);
     }
 
-    // For context-only mode, inject context directly into user message
-    // since there are no images to send alongside
-    const contentsArray =
-      mode === 'context-only'
-        ? [
-            {
-              text: `${userMessage}\n\n--- LEARNING CONTEXT ---\n${userContext.trim()}\n--- END CONTEXT ---`,
-            },
-          ]
-        : [...imageParts, { text: userMessage }];
+    // Build the contents array sent to the AI model
+    let contentsArray;
+    if (mode === 'context-only') {
+      // Send instruction (if any) + HTML content as the user message
+      const parts: string[] = [userMessage];
+      if (instruction) {
+        parts.push(`\n\n--- DEVELOPER'S INSTRUCTION ---\n${instruction}\n--- END INSTRUCTION ---`);
+      }
+      if (htmlContent) {
+        parts.push(`\n\n--- SELECTED NOTES CONTENT (HTML) ---\n${htmlContent}\n--- END CONTENT ---`);
+      } else if (instruction && !htmlContent) {
+        // No selected content, just a raw instruction/prompt
+        parts.push(`\n\n--- RAW LEARNING CONTEXT ---\n${instruction}\n--- END CONTEXT ---`);
+      }
+      contentsArray = [{ text: parts.join('') }];
+    } else if (mode === 'context') {
+      // Images + context: send images + reminder + HTML content as user message
+      // (instruction is already in the system prompt via LEARNING_CONTEXT_SECTION)
+      const textParts: string[] = [userMessage];
+      if (htmlContent) {
+        textParts.push(`\n\n--- SELECTED NOTES CONTENT (HTML) ---\n${htmlContent}\n--- END CONTENT ---`);
+      }
+      contentsArray = [...imageParts, { text: textParts.join('') }];
+    } else {
+      // Standard mode: images + reminder only
+      contentsArray = [...imageParts, { text: userMessage }];
+    }
 
     // Retry loop with exponential backoff + model escalation
     let jsonContent;

@@ -508,6 +508,28 @@ const NoteBlock = ({
     }
   };
 
+  const handleDoubleClick = () => {
+    let start = localContent.length;
+    let end = localContent.length;
+    
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      start = range.startOffset;
+      end = range.endOffset;
+    }
+    
+    setOriginalContent(localContent);
+    setIsNoteEditing(true);
+    
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(start, end);
+      }
+    }, 0);
+  };
+
   const handleNoteEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -603,7 +625,6 @@ const NoteBlock = ({
               onPaste={handlePaste}
               placeholder={isDragging ? 'Drop file here...' : 'Jot something down...'}
               className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/30 custom-scrollbar"
-              maxRows={10}
             />
           </div>
         </div>
@@ -630,14 +651,10 @@ const NoteBlock = ({
               autoFocus
               placeholder=""
               className="w-full bg-transparent resize-none outline-none text-[14px] leading-relaxed text-foreground/80 placeholder:text-foreground/30 custom-scrollbar"
-              maxRows={15}
             />
           ) : (
             <div 
-              onDoubleClick={() => {
-                setOriginalContent(localContent);
-                setIsNoteEditing(true);
-              }}
+              onDoubleClick={handleDoubleClick}
               className="w-full bg-transparent text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap cursor-text"
               title="Double click to edit"
             >

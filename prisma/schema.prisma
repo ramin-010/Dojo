@@ -43,6 +43,7 @@ model Workspace {
   routineMode    RoutineMode @default(MASTER)
   habits         Habit[]
   quickNotes     QuickNote[]
+  dayDebriefs    DayDebrief[]
 }
 
 // ====================================================================
@@ -452,4 +453,37 @@ model QuickNote {
   updatedAt   DateTime  @updatedAt
 
   @@index([workspaceId, createdAt])
+}
+
+// ====================================================================
+// NEW: DAILY DEBRIEF (AI Mentor Training Data)
+// ====================================================================
+model DayDebrief {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  date            DateTime  // Midnight of the day
+
+  // Layer 1: Auto-Context
+  blocksPlanned   Int       @default(0)
+  blocksCompleted Int       @default(0)
+  blocksSkipped   Int       @default(0)
+  totalFocusedMin Int       @default(0)
+  
+  // Layer 2: Structured Signals
+  energy          Int?      // 1-5 scale
+  focus           Int?      // 1-5 scale
+  mood            Int?      // 1-5 scale
+  tags            String[]  // Fixed vocabulary tags
+  narrative       String?   // Short causal story
+  tomorrowIntent  String?   // Tomorrow's goal
+
+  // Layer 3: Expressive Free-write
+  freeWrite       String?   // Optional long-form reflection
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([workspaceId, date])
+  @@index([workspaceId, date])
 }

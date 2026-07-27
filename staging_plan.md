@@ -1,29 +1,30 @@
-# Staging Plan: Canvas Inline Image Gallery
+# Staging Plan — Day Manager V2
 
-## Goal
-Modify the existing infinite canvas to support pasting images directly inside text blocks, and render multiple images side-by-side using a custom Tiptap Node View (ImageGalleryNode).
+## Final Implementation
 
-## Technical Implementation Details
+### Single File Rewritten
+- **`src/components/dashboard/DayManagerModal.tsx`**: Complete rewrite (386 → ~490 lines)
+- **Zero other files changed** — same `DayManagerModalProps` interface, same `updateDaySchedule()` call
 
-### 1. Fix Global Paste Interception
-- **File:** `src/components/canvas/core/SingleCanvas.tsx`
-- **Action:** Update the global `paste` event listener. If `isInsideEditor` is true, immediately `return` and do not call `e.preventDefault()`. This lets the Tiptap editor handle the paste event natively.
+### Architecture: Recalculation Engine with Pin Waypoints
 
-### 2. Create ImageGalleryNode Extension
-- **File:** `src/components/canvas/extensions/ImageGalleryExtension.tsx`
-- **Action:** Create a Tiptap `Node.create()` extension named `imageGallery`. It will define an `images` attribute (array of strings) and use `ReactNodeViewRenderer` to render the React component.
+The V2 recalculation engine processes **only future blocks** (UPCOMING/ACTIVE) while past blocks (COMPLETED/SKIPPED/PARTIAL) remain frozen. The cascade logic:
 
-### 3. Create ImageGallery React Component
-- **File:** `src/components/canvas/blocks/ImageGalleryNode.tsx`
-- **Action:** Build a React component that receives the `images` array from the Node View wrapper. Render the images using a Tailwind flexbox/grid layout (e.g., 2 columns if 2 images, 3 if 3+).
+```
+let currentMin = dayStartMin;
 
-### 4. Wire Extension into BlockEditor
-- **File:** `src/components/canvas/blocks/BlockEditor.tsx`
-- **Action:** 
-  1. Add `ImageGalleryExtension` to the `useEditor` extensions array.
-  2. Add an `onUploadImage?: (file: File) => Promise<string>` prop.
-  3. In `editorProps.handlePaste`, intercept pasted files. If they are images, immediately insert the `imageGallery` node with a temporary object URL, then call `onUploadImage` in the background and update the node attributes when finished.
+for each future slot:
+  if ACTIVE  → locked startTime, endTime = start + duration, cascade continues from endTime
+  if PINNED  → locked startTime (user anchor), endTime = start + duration, cascade continues from endTime
+  if NORMAL  → startTime = currentMin (cascaded), endTime = start + duration
+```
 
-### 5. Pass onUploadImage from Workspace
-- **File:** `src/app/(protected)/topic/[id]/TopicWorkspace.tsx`
-- **Action:** Pass the `onUploadImage` callback down through `TopicCanvas` -> `SingleCanvas` -> `CanvasBlockLayer` -> `InlineCursor` -> `BlockEditor`. Use the existing Supabase storage utility (e.g. `uploadImage`) to handle the file upload.
+### Key Decisions
+
+1. `isPinned` is local-only — not persisted to DB
+2. Dragging a pinned block unpins it
+3. Past/future split is status-based not time-based
+4. "Resume at" control only shown when no ACTIVE block
+5. Gap rows for ≥5 min gaps; smaller gaps ignored
+6. Overlap detection shows amber "OVERLAP" badge
+7. Footer button is context-dependent: "Delay +30m" vs "Insert 30m Break"

@@ -12,6 +12,7 @@ import ScheduleTimeline from './dashComponents/ScheduleTimeline';
 import RevisionsList from './dashComponents/RevisionsList';
 import TasksSidebar from './dashComponents/TasksSidebar';
 import { WeeklyReviewModal } from '@/components/dashboard/WeeklyReviewModal';
+import { DayDebriefModal } from '@/components/dashboard/DayDebriefModal';
 import { QuickNotesWidget, QuickNoteType } from '@/components/dashboard/QuickNotesWidget';
 import { DEV_WORKSPACE_ID } from '@/lib/constants';
 
@@ -141,6 +142,7 @@ export default function DashboardClient({
   const [tasks, setTasks] = useState(initialTasks);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDayManagerOpen, setIsDayManagerOpen] = useState(false);
+  const [isDayDebriefOpen, setIsDayDebriefOpen] = useState(false);
   const [taskActionMenuId, setTaskActionMenuId] = useState<string | null>(null);
   const [rescheduleTaskTarget, setRescheduleTaskTarget] = useState<any | null>(null);
   const [previewDocument, setPreviewDocument] = useState<PreviewDocument | null>(null);
@@ -258,6 +260,12 @@ export default function DashboardClient({
             </p>
           </div>
           <div className="flex items-center gap-4 mt-1">
+            <button 
+              onClick={() => setIsDayDebriefOpen(true)}
+              className="text-xs font-semibold px-3 py-1.5 bg-accent/10 text-accent hover:bg-accent/20 transition-colors rounded-lg flex items-center gap-1.5 border border-accent/20"
+            >
+              Wrap Up Day
+            </button>
             <div className="flex items-center gap-1.5 text-sm text-foreground/50">
               <Flame className="w-4 h-4 text-orange-400" />
               <span className="font-semibold text-orange-400">{stats.streak}</span>
@@ -353,6 +361,16 @@ export default function DashboardClient({
         onClose={() => setIsDayManagerOpen(false)}
         initialSlots={todaySlots}
       />
+      
+      <DayDebriefModal
+        isOpen={isDayDebriefOpen}
+        onClose={() => setIsDayDebriefOpen(false)}
+        workspaceId={DEV_WORKSPACE_ID}
+        todaySlots={todaySlots}
+        date={startOfToday}
+      />
+
+      <WeeklyReviewModal />
 
       {rescheduleTaskTarget && (
         <RescheduleModal
