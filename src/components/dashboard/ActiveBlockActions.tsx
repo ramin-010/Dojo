@@ -12,6 +12,7 @@ interface ActiveBlockActionsProps {
     startTime: string; // original start
     endTime: string;   // original end
     status: SlotStatus;
+    renderStartMin?: number;
   };
   isLast?: boolean;
   isNextUpcoming?: boolean; // true if this is the very next UPCOMING block
@@ -33,8 +34,15 @@ export function ActiveBlockActions({
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getElapsedMinutes = (): number => {
     const now = new Date();
-    const [sh, sm] = currentSlot.startTime.split(':').map(Number);
-    const startMin = sh * 60 + sm;
+    let startMin: number;
+    
+    if (currentSlot.renderStartMin !== undefined) {
+      startMin = currentSlot.renderStartMin;
+    } else {
+      const [sh, sm] = currentSlot.startTime.split(':').map(Number);
+      startMin = sh * 60 + sm;
+    }
+
     let currentMin = now.getHours() * 60 + now.getMinutes();
     if (currentMin < startMin) currentMin += 24 * 60; // midnight crossover
     return currentMin - startMin;
@@ -99,12 +107,11 @@ export function ActiveBlockActions({
     }
   };
 
-  /** Start Early with remark (or blank for default) */
-  const handleStartEarlySubmit = async () => {
+  /** 1-click Start (early or late) */
+  const handleStart = async () => {
     setIsSubmitting(true);
     try {
-      await startEarly(currentSlot.id, remark.trim() || undefined);
-      handleCancel();
+      await startEarly(currentSlot.id);
     } catch (e) {
       console.error(e);
       setIsSubmitting(false);
@@ -117,22 +124,20 @@ export function ActiveBlockActions({
     setRemark('');
   };
 
-  // ── Inline Remark Input (shared for SKIP, END_EARLY, START_EARLY) ──────────────
-  if (actionMode === 'SKIP' || actionMode === 'END_EARLY' || actionMode === 'START_EARLY') {
+  // ── Inline Remark Input (shared for SKIP, END_EARLY) ──────────────
+  if (actionMode === 'SKIP' || actionMode === 'END_EARLY') {
     const isSkip = actionMode === 'SKIP';
-    const isStartEarly = actionMode === 'START_EARLY';
     
     let placeholder = 'Remark...';
     if (isSkip) placeholder = 'Why skip?';
     else if (actionMode === 'END_EARLY') placeholder = 'Why end early?';
-    else if (isStartEarly) placeholder = 'Optional remark...';
 
-    const submitLabel = isSkip ? 'Skip' : isStartEarly ? 'Start' : 'End Early';
-    const submitFn = isSkip ? handleSkipSubmit : isStartEarly ? handleStartEarlySubmit : handleEndEarlySubmit;
-    const accentColor = isSkip ? 'text-foreground/70' : isStartEarly ? 'text-blue-500' : 'text-orange-500';
+    const submitLabel = isSkip ? 'Skip' : 'End Early';
+    const submitFn = isSkip ? handleSkipSubmit : handleEndEarlySubmit;
+    const accentColor = isSkip ? 'text-foreground/70' : 'text-orange-500';
     
-    // Start Early remark is optional
-    const isSubmitDisabled = isSubmitting || (!isStartEarly && !remark.trim());
+    // SKIP and END_EARLY both require remarks
+    const isSubmitDisabled = isSubmitting || !remark.trim();
 
     return (
       <>
@@ -181,13 +186,13 @@ export function ActiveBlockActions({
           <button
             onClick={() => {
               if (isNextUpcoming) {
-                setActionMode('START_EARLY');
+                handleStart();
               } else if (onManageDay) {
                 onManageDay();
               }
             }}
             disabled={isSubmitting}
-            title={isNextUpcoming ? "Start Early" : "Manage Day"}
+            title={isNextUpcoming ? (getElapsedMinutes() < 0 ? "Start Early" : "Start") : "Manage Day"}
             className="p-1 text-blue-500 hover:bg-blue-500/10 rounded transition-colors"
           >
             <Play className="w-3.5 h-3.5" />

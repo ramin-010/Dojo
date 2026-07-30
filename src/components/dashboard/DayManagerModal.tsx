@@ -452,15 +452,19 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
         return { ...slot, endTime: formatTime(pEnd), sortOrder: past.length + idx };
       }
 
-      // NORMAL — push-only cascade: preserve existing start time unless pushed by previous block's end time
+      // NORMAL — cascade: shrink block if pushed by previous, preserve its intended end time
       const existingStart = parseTime(slot.startTime);
       const newStart = idx === 0 ? currentMin : Math.max(currentMin, existingStart);
-      const newEnd   = newStart + slot.durationMin;
-      currentMin     = newEnd;
+      
+      const intendedEnd = existingStart + slot.durationMin;
+      const newEnd = Math.max(newStart + 5, intendedEnd); // Ensure at least 5 mins
+      
+      currentMin = newEnd;
       return {
         ...slot,
         startTime: formatTime(newStart),
         endTime:   formatTime(newEnd),
+        durationMin: newEnd - newStart,
         sortOrder: past.length + idx,
       };
     });
@@ -643,15 +647,28 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updates: DayManagerSlotUpdate[] = slots.map((s, i) => ({
-        id: s.id,
-        title: s.title,
-        color: s.color,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        sortOrder: i,
-        status: s.status,
-      }));
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+
+      const updates: DayManagerSlotUpdate[] = slots.map((s, i) => {
+        let newStatus = s.status;
+        if (s.status === 'ACTIVE') {
+          const startMin = parseTime(s.startTime);
+          if (startMin > currentMin) {
+            newStatus = 'UPCOMING';
+          }
+        }
+
+        return {
+          id: s.id,
+          title: s.title,
+          color: s.color,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          sortOrder: i,
+          status: newStatus,
+        };
+      });
       await updateDaySchedule(DEV_WORKSPACE_ID, updates);
       onClose();
     } catch (e) {

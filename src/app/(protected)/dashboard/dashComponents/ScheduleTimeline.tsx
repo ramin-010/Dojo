@@ -23,6 +23,12 @@ function toMinutes(time: string): number {
   return h * 60 + m;
 }
 
+function minToStr(m: number): string {
+  const h = Math.floor(m / 60) % 24;
+  const mins = m % 60;
+  return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
 // ────────────────────────────────────────────────────────────────────────────────
 // TYPES
 // ────────────────────────────────────────────────────────────────────────────────
@@ -219,32 +225,28 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
 
       <div className="relative mt-2">
         {/* ── The Bar ──────────────────────────────────────────────────────── */}
-        <div className="relative flex h-[6px] rounded-full overflow-hidden bg-divider">
+        <div className="relative h-[6px] rounded-full overflow-hidden bg-divider">
           {computedSlots.map((block, i) => {
-            const widthPct = toPct(block.renderEndMin) - toPct(block.renderStartMin);
-            const prevEnd = i > 0 ? computedSlots[i - 1].renderEndMin : timelineStart;
-            const gapPct = toPct(block.renderStartMin) - toPct(prevEnd);
-
             if (block.isConsumed) return null; // Invisible
 
-            // SKIPPED visual: transparent with dashed border
-            // Normal / Partial / Active visual
             const isLastBlock = i === computedSlots.length - 1;
             const isSkipped = block.status === 'SKIPPED';
             const opacityClass = isSkipped ? 'opacity-40' : (block.status === 'UPCOMING' ? 'opacity-40' : (block.status === 'ACTIVE' ? 'opacity-100' : 'opacity-60'));
             
+            const startPct = toPct(block.renderStartMin);
+            const widthPct = toPct(block.renderEndMin) - startPct;
+
             return (
-              <div key={block.id} className="contents">
-                {gapPct > 0.5 && <div style={{ width: `${gapPct}%` }} />}
-                <div
-                  className={`h-full transition-all duration-500 ${opacityClass} ${!isLastBlock ? 'border-r-2 border-background' : ''} ${isSkipped ? 'border border-dashed !bg-transparent' : ''}`}
-                  style={{
-                    width: `${Math.max(widthPct, 0)}%`,
-                    backgroundColor: isSkipped ? 'transparent' : block.color,
-                    borderColor: isSkipped ? block.color : undefined,
-                  }}
-                />
-              </div>
+              <div
+                key={block.id}
+                className={`absolute top-0 h-full transition-all duration-500 ${opacityClass} ${!isLastBlock ? 'border-r-2 border-background' : ''} ${isSkipped ? 'border border-dashed !bg-transparent' : ''}`}
+                style={{
+                  left: `${Math.max(0, startPct)}%`,
+                  width: `${Math.max(0, widthPct)}%`,
+                  backgroundColor: isSkipped ? 'transparent' : block.color,
+                  borderColor: isSkipped ? block.color : undefined,
+                }}
+              />
             );
           })}
         </div>
@@ -279,12 +281,8 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
         })()}
 
         {/* ── Labels Below ─────────────────────────────────────────────────── */}
-        <div className="relative flex mt-2.5 min-h-[30px]">
+        <div className="relative mt-2.5 min-h-[30px]">
           {computedSlots.map((block, i) => {
-            const widthPct = toPct(block.renderEndMin) - toPct(block.renderStartMin);
-            const prevEnd = i > 0 ? computedSlots[i - 1].renderEndMin : timelineStart;
-            const gapPct = toPct(block.renderStartMin) - toPct(prevEnd);
-
             if (block.isConsumed) return null;
 
             const isActivelyRunning = block.status === 'ACTIVE';
@@ -304,11 +302,19 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
             const isPassed = adjustedCurrentMin >= block.originalEndMin;
             const showHoverActions = isActivelyRunning || (!isPassed && (isNextUpcoming || block.status === 'UPCOMING'));
 
+            const startPct = toPct(block.renderStartMin);
+            const widthPct = toPct(block.renderEndMin) - startPct;
+
             return (
-              <div key={block.id} className="contents">
-                {gapPct > 0.5 && <div style={{ width: `${gapPct}%` }} />}
-                <div style={{ width: `${Math.max(widthPct, 0)}%` }} className="min-w-0 pr-2 relative group">
-                  <div className="flex items-center gap-1.5" title={`${block.title} (${format12h(block.startTime)} - ${format12h(block.endTime)})`}>
+              <div 
+                key={block.id}
+                style={{ 
+                  left: `${Math.max(0, startPct)}%`,
+                  width: `${Math.max(0, widthPct)}%` 
+                }} 
+                className="absolute top-0 min-w-0 pr-2 group"
+              >
+                <div className="flex items-center gap-1.5" title={`${block.title} (${format12h(minToStr(block.renderStartMin))} - ${format12h(minToStr(block.renderEndMin))})`}>
                     {isActivelyRunning && (
                       <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-accent animate-pulse" />
                     )}
@@ -325,7 +331,7 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
                     block.status === 'ACTIVE' ? 'text-foreground/50' :
                     'text-foreground/20'
                   }`}>
-                    {format12h(block.startTime)}
+                    {format12h(minToStr(block.renderStartMin))}
                   </p>
 
                   {/* Hover actions */}
@@ -338,7 +344,6 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
                     />
                   )}
                 </div>
-              </div>
             );
           })}
 
