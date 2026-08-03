@@ -242,7 +242,7 @@ export default function DashboardClient({
   };
 
   return (
-    <div className="p-8 pb-24 max-w-[1100px]  mx-auto w-full min-h-full flex flex-col">
+    <div className="p-8 pb-24 max-w-[1200px]  mx-auto w-full min-h-full flex flex-col">
       <TriageInterceptor
         unverifiedBlocks={unverifiedBlocks}
         onComplete={() => router.refresh()}
@@ -302,9 +302,9 @@ export default function DashboardClient({
       />
 
       {/* ── Main Content: 2-column layout ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_500px] gap-8 items-start">
 
-        {/* ── Left Column: Revisions & Quick Notes ───────────────────────────────────────── */}
+        {/* ── Left Column: Revisions → Tasks / Inbox / Progress ──────────────── */}
         <div className="flex flex-col gap-16 min-w-0">
           <RevisionsList
             incompleteOverdueRevisions={incompleteOverdueRevisions}
@@ -318,34 +318,36 @@ export default function DashboardClient({
             setPreviewDocument={setPreviewDocument}
             setRescheduleTaskTarget={setRescheduleTaskTarget}
           />
+          <TasksSidebar
+            tasksToShow={tasksToShow}
+            tasksTitle={tasksTitle}
+            hasTasks={hasTasks}
+            overdueTasks={overdueTasks}
+            todayTasks={todayTasks}
+            upcomingTasks={upcomingTasks}
+            weeklyGoals={weeklyGoals}
+            monthlyGoals={monthlyGoals}
+            undoneTasks={undoneTasks}
+            filteredInbox={filteredInbox}
+            stats={stats}
+            habits={habits}
+            taskActionMenuId={taskActionMenuId}
+            setTaskActionMenuId={setTaskActionMenuId}
+            expandedTaskIds={expandedTaskIds}
+            toggleTaskExpansion={toggleTaskExpansion}
+            setPreviewDocument={setPreviewDocument}
+            setRescheduleTaskTarget={setRescheduleTaskTarget}
+            toggleTask={toggleTask}
+          />
+        </div>
+
+        {/* ── Right Column: Quick Notes (sticky chat sidebar) ─────────────────── */}
+        <div className="lg:sticky lg:top-8 lg:self-start">
           <QuickNotesWidget 
             initialNotes={quickNotes || []} 
             workspaceId={DEV_WORKSPACE_ID} 
           />
         </div>
-
-        {/* ── Right Column: Tasks / Inbox / Progress ──────────────────────────── */}
-        <TasksSidebar
-          tasksToShow={tasksToShow}
-          tasksTitle={tasksTitle}
-          hasTasks={hasTasks}
-          overdueTasks={overdueTasks}
-          todayTasks={todayTasks}
-          upcomingTasks={upcomingTasks}
-          weeklyGoals={weeklyGoals}
-          monthlyGoals={monthlyGoals}
-          undoneTasks={undoneTasks}
-          filteredInbox={filteredInbox}
-          stats={stats}
-          habits={habits}
-          taskActionMenuId={taskActionMenuId}
-          setTaskActionMenuId={setTaskActionMenuId}
-          expandedTaskIds={expandedTaskIds}
-          toggleTaskExpansion={toggleTaskExpansion}
-          setPreviewDocument={setPreviewDocument}
-          setRescheduleTaskTarget={setRescheduleTaskTarget}
-          toggleTask={toggleTask}
-        />
       </div>
 
       {/* Bottom Spacer */}

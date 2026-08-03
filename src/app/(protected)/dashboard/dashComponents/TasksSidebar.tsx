@@ -128,6 +128,7 @@ export default function TasksSidebar({
 }: TasksSidebarProps) {
   const [isAllTasksModalOpen, setIsAllTasksModalOpen] = useState(false);
   const [activeTaskTab, setActiveTaskTab] = useState<'overdue' | 'today' | 'upcoming'>('today');
+  const [activeMainTab, setActiveMainTab] = useState<'today' | 'weekly' | 'inbox'>('today');
 
   const [isCreatingHabit, setIsCreatingHabit] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
@@ -174,28 +175,54 @@ export default function TasksSidebar({
   return (
     <div className="flex flex-col space-y-8">
 
-      {/* TASKS */}
-      {hasTasks && (
-        <section>
-          <div className="flex justify-between items-center h-8 mb-4">
-            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+      {/* UNIFIED WORKSPACE */}
+      <section className="mb-8">
+        <div className="flex justify-between items-center h-8 mb-4">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setActiveMainTab('today')}
+              className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 transition-colors ${activeMainTab === 'today' ? 'text-foreground' : 'text-foreground/40 hover:text-foreground/70'}`}
+            >
               {tasksTitle}
-              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-foreground/40 border border-divider normal-case tracking-normal font-bold">
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-sm normal-case tracking-normal font-bold border ${activeMainTab === 'today' ? 'bg-foreground/10 text-foreground border-divider/50' : 'bg-transparent text-foreground/40 border-transparent'}`}>
                 {tasksToShow.length}
               </span>
-            </h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsAllTasksModalOpen(true)}
-                className="flex items-center gap-1.5 text-xs text-foreground/40 hover:text-accent font-medium transition-colors"
-              >
-                All <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
+            </button>
+            
+            <button 
+              onClick={() => setActiveMainTab('weekly')}
+              className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 transition-colors ${activeMainTab === 'weekly' ? 'text-foreground' : 'text-foreground/40 hover:text-foreground/70'}`}
+            >
+              Weekly
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-sm normal-case tracking-normal font-bold border ${activeMainTab === 'weekly' ? 'bg-foreground/10 text-foreground border-divider/50' : 'bg-transparent text-foreground/40 border-transparent'}`}>
+                {weeklyGoals.length}
+              </span>
+            </button>
 
-          <div className="flex flex-col gap-2">
-            {tasksToShow.map(task => (
+            <button 
+              onClick={() => setActiveMainTab('inbox')}
+              className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 transition-colors ${activeMainTab === 'inbox' ? 'text-foreground' : 'text-foreground/40 hover:text-foreground/70'}`}
+            >
+              Inbox
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-sm normal-case tracking-normal font-bold border ${activeMainTab === 'inbox' ? 'bg-foreground/10 text-foreground border-divider/50' : 'bg-transparent text-foreground/40 border-transparent'}`}>
+                {filteredInbox.length}
+              </span>
+            </button>
+          </div>
+          
+          {activeMainTab === 'today' && (
+            <button
+              onClick={() => setIsAllTasksModalOpen(true)}
+              className="flex items-center gap-1 text-[10px] text-foreground/40 hover:text-foreground/70 font-bold uppercase tracking-wider transition-colors"
+            >
+              All <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {activeMainTab === 'today' && (
+            tasksToShow.length > 0 ? tasksToShow.map(task => (
               <div
                 key={task.id}
                 onClick={() => toggleTaskExpansion(task.id)}
@@ -213,14 +240,14 @@ export default function TasksSidebar({
                   circleColorClass="text-foreground/30"
                   hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
                   sizeClass="w-4 h-4"
-                        onDelete={async () => {
-                          if (confirm('Delete this capture?')) {
-                            const res = await deleteCapture(task.id);
-                            if (res.success) toast.success('Capture deleted');
-                            else toast.error(res.error || 'Failed to delete');
-                          }
-                        }}
-                      />
+                  onDelete={async () => {
+                    if (confirm('Delete this capture?')) {
+                      const res = await deleteCapture(task.id);
+                      if (res.success) toast.success('Capture deleted');
+                      else toast.error(res.error || 'Failed to delete');
+                    }
+                  }}
+                />
                 <div className="flex-1 min-w-0">
                   <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
                     {task.title}
@@ -267,24 +294,16 @@ export default function TasksSidebar({
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            )) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-foreground/40 border border-dashed border-divider rounded-xl">
+                <CheckCircle2 className="w-8 h-8 mb-3 opacity-20" />
+                <p className="text-sm">All caught up!</p>
+              </div>
+            )
+          )}
 
-      {/* WEEKLY GOALS */}
-      {weeklyGoals.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center h-8 mb-4">
-            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
-              Weekly Goals
-              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-blue-500/10 text-blue-400 border border-blue-500/20 normal-case tracking-normal font-bold">
-                {weeklyGoals.length}
-              </span>
-            </h2>
-          </div>
-          <div className="flex flex-col gap-2">
-            {weeklyGoals.map(task => (
+          {activeMainTab === 'weekly' && (
+            weeklyGoals.length > 0 ? weeklyGoals.map(task => (
               <div
                 key={task.id}
                 onClick={() => toggleTaskExpansion(task.id)}
@@ -302,14 +321,14 @@ export default function TasksSidebar({
                   circleColorClass="text-foreground/30"
                   hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
                   sizeClass="w-4 h-4"
-                        onDelete={async () => {
-                          if (confirm('Delete this capture?')) {
-                            const res = await deleteCapture(task.id);
-                            if (res.success) toast.success('Capture deleted');
-                            else toast.error(res.error || 'Failed to delete');
-                          }
-                        }}
-                      />
+                  onDelete={async () => {
+                    if (confirm('Delete this capture?')) {
+                      const res = await deleteCapture(task.id);
+                      if (res.success) toast.success('Capture deleted');
+                      else toast.error(res.error || 'Failed to delete');
+                    }
+                  }}
+                />
                 <div className="flex-1 min-w-0">
                   <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
                     {task.title}
@@ -324,81 +343,16 @@ export default function TasksSidebar({
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* MONTHLY GOALS */}
-      {monthlyGoals.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center h-8 mb-4">
-            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
-              Monthly Goals
-              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-400 border border-purple-500/20 normal-case tracking-normal font-bold">
-                {monthlyGoals.length}
-              </span>
-            </h2>
-          </div>
-          <div className="flex flex-col gap-2">
-            {monthlyGoals.map(task => (
-              <div
-                key={task.id}
-                onClick={() => toggleTaskExpansion(task.id)}
-                className={`group bg-sidebar border border-divider rounded-lg px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer ${
-                  task.isDone ? 'opacity-50' : 'hover:bg-hover'
-                }`}
-              >
-                <TaskActionMenu
-                  task={task}
-                  isOpen={taskActionMenuId === task.id}
-                  onToggle={() => toggleTask(task.id)}
-                  onReschedule={() => { setRescheduleTaskTarget(task); setTaskActionMenuId(null); }}
-                  onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(task.id); }}
-                  onClose={() => setTaskActionMenuId(null)}
-                  circleColorClass="text-foreground/30"
-                  hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
-                  sizeClass="w-4 h-4"
-                        onDelete={async () => {
-                          if (confirm('Delete this capture?')) {
-                            const res = await deleteCapture(task.id);
-                            if (res.success) toast.success('Capture deleted');
-                            else toast.error(res.error || 'Failed to delete');
-                          }
-                        }}
-                      />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
-                    {task.title}
-                  </p>
-                  {task.description && (
-                    <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-foreground/20' : 'text-foreground/50'}`}>
-                      {task.description}
-                    </p>
-                  )}
-                  {task.attachments && task.attachments.length > 0 && (
-                    <AttachmentThumbnails attachments={task.attachments} fallbackTitle={task.title} dimmed={task.isDone} onPreview={setPreviewDocument} />
-                  )}
-                </div>
+            )) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-foreground/40 border border-dashed border-divider rounded-xl">
+                <Target className="w-8 h-8 mb-3 opacity-20" />
+                <p className="text-sm">No weekly goals set.</p>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            )
+          )}
 
-      {/* INBOX */}
-      {filteredInbox.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center h-8 mb-4">
-            <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">
-              Inbox
-            </h2>
-            <button className="flex items-center gap-1.5 text-xs text-foreground/40 hover:text-accent font-medium transition-colors">
-              All <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {filteredInbox.slice(0, 5).map(item => (
+          {activeMainTab === 'inbox' && (
+            filteredInbox.length > 0 ? filteredInbox.slice(0, 5).map(item => (
               <div
                 key={item.id}
                 className="group bg-sidebar border border-divider rounded-lg px-4 py-3 hover:bg-hover transition-colors cursor-pointer"
@@ -452,102 +406,15 @@ export default function TasksSidebar({
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* HABITS (Temporarily Disabled) */}
-      {false && (
-      <section>
-        <div className="flex justify-between items-center h-8 mb-4">
-          <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
-            Daily Habits
-          </h2>
-          <button
-            onClick={() => setIsCreatingHabit(true)}
-            className="flex items-center gap-1 p-1 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-
-        {isCreatingHabit && (
-          <div className="mb-4 bg-sidebar border border-divider/60 rounded-xl p-3 flex flex-col gap-3 shadow-inner">
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={newHabitIcon}
-                onChange={e => setNewHabitIcon(e.target.value)}
-                placeholder="🔥"
-                className="w-10 bg-background border border-divider/60 rounded-lg px-2 py-1.5 text-center text-sm focus:outline-none focus:border-accent/50"
-                maxLength={2}
-              />
-              <input 
-                type="text" 
-                value={newHabitName}
-                onChange={e => setNewHabitName(e.target.value)}
-                placeholder="Habit Name..."
-                className="flex-1 bg-background border border-divider/60 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent/50"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => setIsCreatingHabit(false)}
-                className="px-3 py-1.5 text-xs font-medium text-foreground/50 hover:text-foreground"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleCreateHabit}
-                disabled={isSavingHabit || !newHabitName.trim()}
-                className="px-4 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-[#026EC1] disabled:opacity-50"
-              >
-                {isSavingHabit ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Create'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          {habits.map(habit => {
-            const isLoggedToday = (() => {
-              if (!habit.lastCompletedAt) return false;
-              const last = new Date(habit.lastCompletedAt);
-              const today = new Date();
-              return last.getDate() === today.getDate() && last.getMonth() === today.getMonth() && last.getFullYear() === today.getFullYear();
-            })();
-
-            return (
-              <div key={habit.id} className="bg-sidebar border border-divider rounded-xl p-4 flex flex-col justify-between group relative overflow-hidden">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5 text-2xl font-bold text-foreground/90">
-                      <span className="text-2xl">{habit.icon || '🔥'}</span> {habit.currentStreak}
-                    </div>
-                    <span className="text-[10px] text-foreground/50 mt-1 font-medium">{habit.name}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleLogHabit(habit.id)}
-                  disabled={isLoggedToday || loggingHabitId === habit.id}
-                  className={`w-full py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    isLoggedToday 
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                      : 'bg-background border border-divider hover:bg-hover text-foreground/70'
-                  }`}
-                >
-                  {loggingHabitId === habit.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (
-                    isLoggedToday ? <CheckCircle2 className="w-3.5 h-3.5" /> : 'Check In'
-                  )}
-                  {isLoggedToday ? 'Logged' : ''}
-                </button>
+            )) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-foreground/40 border border-dashed border-divider rounded-xl">
+                <Inbox className="w-8 h-8 mb-3 opacity-20" />
+                <p className="text-sm">Inbox is empty.</p>
               </div>
-            );
-          })}
+            )
+          )}
         </div>
       </section>
-      )}
 
       {/* PROGRESS */}
       <section>

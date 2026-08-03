@@ -123,3 +123,25 @@ export async function deleteQuickNote(id: string) {
   }
   revalidatePath('/dashboard');
 }
+
+export async function toggleQuickNotePin(id: string) {
+  const note = await prisma.quickNote.findUnique({ where: { id } });
+  if (!note) return null;
+
+  const updated = await prisma.quickNote.update({
+    where: { id },
+    data: { isPinned: !note.isPinned },
+  });
+
+  await triggerQuickNoteSync(updated.workspaceId, 'note:updated', {
+    id: updated.id,
+    content: updated.content,
+    createdAt: updated.createdAt.toISOString(),
+    workspaceId: updated.workspaceId,
+    attachments: updated.attachments,
+    isPinned: updated.isPinned,
+  });
+
+  revalidatePath('/dashboard');
+  return updated;
+}

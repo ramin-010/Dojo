@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
-import { format, isToday } from 'date-fns';
+import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
-import { upsertQuickNote, createQuickNoteWithAttachments, deleteQuickNote } from '@/app/actions/quick-note.actions';
+import { upsertQuickNote, createQuickNoteWithAttachments, deleteQuickNote, toggleQuickNotePin } from '@/app/actions/quick-note.actions';
 import { uploadToCloud } from '@/lib/utils/upload';
 import { useQuickNoteSync, QuickNoteSyncPayload } from '@/lib/pusher-client';
-import { Plus, FileText, Download, Copy, Check, Loader2, Paperclip, Image as ImageIcon, X, Maximize2, Trash2 } from 'lucide-react';
+import { Plus, FileText, Download, Copy, Check, Loader2, Paperclip, Image as ImageIcon, X, Maximize2, Trash2, Pin, PinOff, Search, Code, Link, ChevronDown, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export type QuickNoteType = {
@@ -17,6 +17,7 @@ export type QuickNoteType = {
   workspaceId: string;
   isOptimistic?: boolean;
   attachments?: DraftAttachment[] | null;
+  isPinned?: boolean;
 };
 
 export type DraftAttachment = {
@@ -406,7 +407,12 @@ const NoteBlock = ({
   draftAttachments,
   onClearDraft,
   onRenameDraft,
-  onDelete
+  onDelete,
+  onTogglePin,
+  isSearchMode,
+  searchQuery,
+  onSearchQueryChange,
+  onToggleSearch
 }: {
   note: QuickNoteType;
   workspaceId: string;
@@ -420,6 +426,11 @@ const NoteBlock = ({
   onClearDraft?: (index: number) => void;
   onRenameDraft?: (index: number, newName: string) => void;
   onDelete?: (id: string, noteSnapshot: QuickNoteType) => void;
+  onTogglePin?: (id: string) => void;
+  isSearchMode?: boolean;
+  searchQuery?: string;
+  onSearchQueryChange?: (q: string) => void;
+  onToggleSearch?: () => void;
 }) => {
   const [localContent, setLocalContent] = useState(note.content);
   const [isDragging, setIsDragging] = useState(false);
@@ -450,10 +461,11 @@ const NoteBlock = ({
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       
-      if (isSubmitting) return;
+      if (isSubmitting || isSearchMode) return;
 
       // Only save if there's text or attachments
       if (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) {
@@ -531,6 +543,7 @@ const NoteBlock = ({
   };
 
   const handleNoteEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleNoteEditSave();
@@ -584,14 +597,25 @@ const NoteBlock = ({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <button
-            onClick={() => !isUploading && fileInputRef.current?.click()}
-            disabled={isUploading}
-            className={`mt-[2px] transition-colors ${isUploading ? 'text-blue-400 cursor-not-allowed' : 'text-foreground/30 hover:text-foreground/60'}`}
-            title="Attach file"
-          >
-            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-1.5 mt-[2px]">
+            <button
+              onClick={onToggleSearch}
+              className={`p-1.5 rounded-md transition-colors ${isSearchMode ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30' : 'text-foreground/30 hover:text-foreground/60 hover:bg-white/5'}`}
+              title={isSearchMode ? "Exit search" : "Search notes"}
+            >
+              <Search className="w-4 h-4" />
+            </button>
+            {!isSearchMode && (
+              <button
+                onClick={() => !isUploading && fileInputRef.current?.click()}
+                disabled={isUploading}
+                className={`p-1.5 rounded-md transition-colors ${isUploading ? 'text-blue-400 cursor-not-allowed' : 'text-foreground/30 hover:text-foreground/60 hover:bg-white/5'}`}
+                title="Attach file"
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -603,29 +627,45 @@ const NoteBlock = ({
               e.target.value = '';
             }}
           />
-          <div className="flex-1 min-w-0">
-            {draftAttachments && draftAttachments.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-2">
-                {draftAttachments.map((draft, idx) => (
-                  <DraftAttachmentItem
-                    key={idx}
-                    draft={draft}
-                    idx={idx}
-                    onRenameDraft={onRenameDraft}
-                    onClearDraft={onClearDraft}
-                  />
-                ))}
-              </div>
+          <div className="flex-1 min-w-0 flex items-center relative">
+            <div className="w-full">
+              {draftAttachments && draftAttachments.length > 0 && !isSearchMode && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {draftAttachments.map((draft, idx) => (
+                    <DraftAttachmentItem
+                      key={idx}
+                      draft={draft}
+                      idx={idx}
+                      onRenameDraft={onRenameDraft}
+                      onClearDraft={onClearDraft}
+                    />
+                  ))}
+                </div>
+              )}
+              <TextareaAutosize
+                ref={textareaRef}
+                value={isSearchMode ? searchQuery : localContent}
+                onChange={(e) => {
+                  if (isSearchMode) {
+                    onSearchQueryChange?.(e.target.value);
+                  } else {
+                    handleChange(e);
+                  }
+                }}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                placeholder={isSearchMode ? 'Search notes...' : (isDragging ? 'Drop file here...' : 'Jot something down...')}
+                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/30 custom-scrollbar mt-1.5"
+              />
+            </div>
+            {isSearchMode && searchQuery && (
+              <button
+                onClick={() => onSearchQueryChange?.('')}
+                className="absolute right-0 top-2 p-1 text-foreground/30 hover:text-foreground/60 bg-background/50 rounded-full"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
-            <TextareaAutosize
-              ref={textareaRef}
-              value={localContent}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              placeholder={isDragging ? 'Drop file here...' : 'Jot something down...'}
-              className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/30 custom-scrollbar"
-            />
           </div>
         </div>
       </div>
@@ -633,65 +673,94 @@ const NoteBlock = ({
   }
 
   return (
-    <div className="group flex items-start gap-4 w-full relative animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="flex flex-col items-end pt-0.5 w-16 shrink-0 border-r border-white/5 pr-4 pb-6">
-        <span className="text-[10px] font-medium text-foreground/40 select-none">
+    <div className="group flex items-start gap-2 w-full relative animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="flex flex-col items-end w-14 shrink-0 pr-2 pb-6 mt-[-4px]">
+        <span className="text-[10px] leading-none font-medium text-foreground/40 select-none">
           {format(new Date(note.createdAt), 'h:mm a')}
         </span>
       </div>
-      <div className="flex-1 min-w-0 pb-6">
-        {note.content && (
-          isNoteEditing ? (
-            <TextareaAutosize
-              ref={textareaRef}
-              value={localContent}
-              onChange={handleChange}
-              onKeyDown={handleNoteEditKeyDown}
-              onBlur={handleNoteEditSave}
-              autoFocus
-              placeholder=""
-              className="w-full bg-transparent resize-none outline-none text-[14px] leading-relaxed text-foreground/80 placeholder:text-foreground/30 custom-scrollbar"
-            />
-          ) : (
-            <div 
-              onDoubleClick={handleDoubleClick}
-              className="w-full bg-transparent text-[14px] leading-relaxed text-foreground/80 whitespace-pre-wrap cursor-text"
-              title="Double click to edit"
-            >
-              {localContent}
+      <div className="flex-1 min-w-0 pb-6 pl-2">
+        <div className={`relative inline-flex flex-col rounded-2xl rounded-tl-none px-4 py-3 min-w-[60px] max-w-full ${isNoteEditing ? 'w-full' : ''} ${note.isPinned ? 'bg-white/[0.05] ring-1 ring-white/10' : 'bg-[#202C33]'}`}>
+          {/* WhatsApp style curved tail */}
+          <svg className={`absolute top-0 -left-[10px] w-[10px] h-[16px] ${note.isPinned ? 'text-[#252B30]' : 'text-[#202C33]'}`} viewBox="0 0 10 16" fill="currentColor">
+            <path d="M10 0H0C5 0 10 5 10 16V0Z" />
+          </svg>
+          
+          {note.isPinned && (
+            <div className="flex items-center gap-1 mb-1.5 -mt-0.5">
+              <Pin className="w-2.5 h-2.5 text-foreground/40" />
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-foreground/40">Pinned</span>
             </div>
-          )
-        )}
-        <AttachmentView note={note} />
+          )}
+          
+          {note.content && (
+            isNoteEditing ? (
+              <TextareaAutosize
+                ref={textareaRef}
+                value={localContent}
+                onChange={handleChange}
+                onKeyDown={handleNoteEditKeyDown}
+                onBlur={handleNoteEditSave}
+                autoFocus
+                className="w-full bg-transparent resize-none outline-none text-[14px] leading-relaxed text-white/90 placeholder:text-white/40 !overflow-hidden"
+              />
+            ) : (
+              <div 
+                onDoubleClick={handleDoubleClick}
+                className="w-full bg-transparent text-[14px] leading-relaxed text-white/90 whitespace-pre-wrap cursor-text"
+                title="Double click to edit"
+              >
+                {localContent}
+              </div>
+            )
+          )}
+          <AttachmentView note={note} />
+        </div>
       </div>
 
-      {isConfirmingDelete ? (
-        <div className="absolute -top-1 right-0 flex items-center gap-1 p-1 bg-[#1A1A1A] border border-red-500/20 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-right-2 z-10">
-          <span className="text-[11px] text-red-400/80 font-medium px-2 select-none">Delete?</span>
-          <button 
-            onClick={confirmDelete}
-            className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
-            title="Yes, delete"
-          >
-            <Check className="w-3.5 h-3.5" />
-          </button>
-          <button 
-            onClick={() => setIsConfirmingDelete(false)}
-            className="p-1 hover:bg-white/10 text-foreground/50 hover:text-foreground rounded transition-colors"
-            title="Cancel"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setIsConfirmingDelete(true)}
-          className="absolute top-0 right-0 p-2 rounded-md hover:bg-red-500/10 text-foreground/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
-          title="Delete note"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
+      {/* Action buttons */}
+      <div className="absolute top-0 right-0 flex items-center gap-0.5">
+        {isConfirmingDelete ? (
+          <div className="flex items-center gap-1 p-1 bg-[#1A1A1A] border border-red-500/20 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-right-2 z-10">
+            <span className="text-[11px] text-red-400/80 font-medium px-2 select-none">Delete?</span>
+            <button 
+              onClick={confirmDelete}
+              className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+              title="Yes, delete"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={() => setIsConfirmingDelete(false)}
+              className="p-1 hover:bg-white/10 text-foreground/50 hover:text-foreground rounded transition-colors"
+              title="Cancel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={() => onTogglePin?.(note.id)}
+              className={`p-2 rounded-md transition-all ${
+                note.isPinned 
+                  ? 'text-blue-400 hover:bg-blue-500/10 opacity-100' 
+                  : 'hover:bg-white/10 text-foreground/30 hover:text-foreground/60 opacity-0 group-hover:opacity-100'
+              }`}
+              title={note.isPinned ? 'Unpin note' : 'Pin note'}
+            >
+              {note.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              onClick={() => setIsConfirmingDelete(true)}
+              className="p-2 rounded-md hover:bg-red-500/10 text-foreground/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
+              title="Delete note"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -706,6 +775,9 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
   const [uploadingFiles, setUploadingFiles] = useState<{ id: string; fileName: string }[]>([]);
   const [draftAttachments, setDraftAttachments] = useState<DraftAttachment[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // ── Pusher real-time sync ──────────────────────────────────────────────────
   useQuickNoteSync(workspaceId, {
@@ -743,15 +815,35 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
   const composerNote = sortedNotes.find(n => n.isOptimistic && n.content.trim() === '' && !hasAttachments(n)) || sortedNotes[0];
   const historyNotes = sortedNotes.filter(n => n.id !== composerNote?.id && (n.content.trim() !== '' || hasAttachments(n)));
 
-  // Group history notes by day
-  const groupedNotes = historyNotes.reduce((acc, note) => {
-    const date = new Date(note.createdAt);
-    const key = format(date, 'MMM d, yyyy');
+  // ── Pinned notes ────────────────────────────────────────────────────────────
+  const pinnedNotes = useMemo(() => historyNotes.filter(n => n.isPinned), [historyNotes]);
 
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(note);
-    return acc;
-  }, {} as Record<string, QuickNoteType[]>);
+  // ── Filtering logic ─────────────────────────────────────────────────────────
+  const filteredNotes = useMemo(() => {
+    let filtered = historyNotes;
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(n => n.content.toLowerCase().includes(q));
+    }
+
+    return filtered;
+  }, [historyNotes, searchQuery]);
+
+  // ── Group by Date ─────────────────────────────────────────────────────────
+  const groupedNotes = useMemo(() => {
+    return filteredNotes.reduce((acc, note) => {
+      const date = new Date(note.createdAt);
+      const key = format(date, 'MMM d, yyyy');
+
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(note);
+      return acc;
+    }, {} as Record<string, QuickNoteType[]>);
+  }, [filteredNotes]);
+
+
 
   const handleUpdate = (id: string, content: string, attachments?: DraftAttachment[]) => {
     setNotes(prev => prev.map(n => n.id === id ? { ...n, content, isOptimistic: true, ...(attachments ? { attachments } : {}) } : n));
@@ -766,6 +858,18 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
       console.error('Failed to delete note, restoring:', err);
       // Rollback: re-add the note
       setNotes(prev => [...prev, noteSnapshot]);
+    }
+  };
+
+  const handleTogglePin = async (id: string) => {
+    // Optimistic update
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
+    try {
+      await toggleQuickNotePin(id);
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
+      // Rollback
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
     }
   };
 
@@ -828,8 +932,11 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+
   return (
-    <div className="flex flex-col w-full h-full max-h-[600px]">
+    <div className="flex flex-col w-full h-[calc(100vh-2rem)] pb-4">
+      {/* ── Composer ─────────────────────────────────────────────────────────── */}
       {composerNote && (
         <div className="shrink-0 z-10 pt-1">
           <NoteBlock
@@ -845,20 +952,65 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
             draftAttachments={draftAttachments}
             onClearDraft={(idx) => setDraftAttachments(prev => prev.filter((_, i) => i !== idx))}
             onRenameDraft={(idx, newName) => setDraftAttachments(prev => prev.map((att, i) => i === idx ? { ...att, fileName: newName } : att))}
+            isSearchMode={isSearchOpen}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onToggleSearch={() => {
+              setIsSearchOpen(!isSearchOpen);
+              if (isSearchOpen) setSearchQuery('');
+            }}
           />
         </div>
       )}
 
+
+      {/* ── Scrollable Feed ──────────────────────────────────────────────────── */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto custom-scrollbar relative scroll-smooth pr-2"
+        className="flex-1 overflow-y-auto custom-scrollbar relative scroll-smooth pr-2 pt-0"
       >
-        {Object.entries(groupedNotes).map(([dayLabel, dayNotes], groupIdx) => {
+        {/* ── Pinned Shelf ─────────────────────────────────────────────────────── */}
+        {pinnedNotes.length > 0 && (
+          <div className="shrink-0 mb-4 flex flex-col gap-1">
+            {pinnedNotes.map(note => (
+              <div
+                key={`pinned-${note.id}`}
+                className="group/pin flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all cursor-pointer animate-in fade-in zoom-in-95 duration-200"
+                onClick={() => {
+                  // Scroll to the note in the feed
+                  const el = document.getElementById(`note-${note.id}`);
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+              >
+                <Pin className="w-2.5 h-2.5 text-foreground/40 shrink-0" />
+                <span className="text-[12px] text-foreground/70 truncate flex-1">
+                  {note.content.split('\n')[0].substring(0, 60) || 'Attachment'}
+                  {note.content.split('\n')[0].length > 60 ? '...' : ''}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleTogglePin(note.id); }}
+                  className="p-1 rounded hover:bg-white/10 text-foreground/30 hover:text-foreground/60 opacity-0 group-hover/pin:opacity-100 transition-all shrink-0"
+                  title="Unpin"
+                >
+                  <PinOff className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {Object.keys(groupedNotes).length === 0 && searchQuery && (
+          <div className="flex flex-col items-center justify-center py-12 text-foreground/30">
+            <Search className="w-6 h-6 mb-2" />
+            <span className="text-[13px]">No notes match your search</span>
+          </div>
+        )}
+
+        {Object.entries(groupedNotes).map(([dayLabel, dayNotes]) => {
           const isGroupToday = isToday(new Date(dayNotes[0].createdAt));
           return (
             <div key={dayLabel} className="mb-6">
               {!isGroupToday && (
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-4 mb-8">
                   <span className="text-[10px] font-semibold tracking-widest uppercase text-foreground/30">
                     {dayLabel}
                   </span>
@@ -867,23 +1019,25 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
               )}
               
               <div className="flex flex-col items-start w-full">
-              {dayNotes.map((note) => (
-                <NoteBlock
-                  key={note.id}
-                  note={note}
-                  workspaceId={workspaceId}
-                  isFirst={false}
-                  onUpdate={handleUpdate}
-                  onEnterPress={handleEnterPress}
-                  onFileUpload={handleFileUpload}
-                  shouldFocus={focusId === note.id}
-                  onDelete={handleDelete}
-                />
-              ))}
+                {dayNotes.map((note) => (
+                  <div key={note.id} id={`note-${note.id}`} className="w-full">
+                    <NoteBlock
+                      note={note}
+                      workspaceId={workspaceId}
+                      isFirst={false}
+                      onUpdate={handleUpdate}
+                      onEnterPress={handleEnterPress}
+                      onFileUpload={handleFileUpload}
+                      shouldFocus={focusId === note.id}
+                      onDelete={handleDelete}
+                      onTogglePin={handleTogglePin}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
     </div>
   );

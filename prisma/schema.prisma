@@ -445,6 +445,7 @@ model QuickNote {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   content     String
+  isPinned    Boolean   @default(false)
 
   // Attachments stored as JSON array: [{url, publicId, fileName, fileType}, ...]
   attachments Json?

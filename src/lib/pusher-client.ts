@@ -24,6 +24,7 @@ export type QuickNoteSyncPayload = {
   createdAt: string;
   workspaceId: string;
   attachments?: any[] | null;
+  isPinned?: boolean;
 };
 
 /**
