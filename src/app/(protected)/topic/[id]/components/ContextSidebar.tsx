@@ -106,7 +106,7 @@ export function ContextSidebar({
                   className={`pb-3 text-[13px] font-medium transition-colors relative ${
                     activeTab === tab
                       ? 'text-foreground'
-                      : 'text-muted-foreground hover:text-foreground/80'
+                      : 'text-muted hover:text-foreground/80'
                   }`}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -119,7 +119,7 @@ export function ContextSidebar({
             
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground transition-colors pb-3"
+              className="text-muted hover:text-foreground transition-colors pb-3"
               title="Close Panel"
             >
               <X className="w-[18px] h-[18px]" />

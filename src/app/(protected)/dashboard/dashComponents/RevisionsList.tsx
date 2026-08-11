@@ -64,7 +64,7 @@ function AttachmentThumbnails({
               <img src={att.url} alt="Attachment" className={`w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity ${dimmed ? 'opacity-40' : ''}`} />
             ) : (
               <div className={`flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors ${dimmed ? 'opacity-40' : ''}`}>
-                <Paperclip className="w-3 h-3 text-foreground/50" />
+                <Paperclip className="w-3 h-3 text-muted" />
               </div>
             )}
           </button>
@@ -113,7 +113,7 @@ export default function RevisionsList({
   return (
     <section>
       <div className="flex justify-between items-center h-8 mb-4">
-        <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+        <h2 className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-2">
           Revisions Due
           <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-accent/10 text-accent border border-accent/20 normal-case tracking-normal font-bold">
             {totalDue}
@@ -150,7 +150,7 @@ export default function RevisionsList({
                         onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
                         onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
                         onClose={() => setTaskActionMenuId(null)}
-                        circleColorClass="text-foreground/30"
+                        circleColorClass="text-muted"
                         hoverColorClass="group-hover/btn:text-accent group-hover:text-accent"
                         sizeClass="w-5 h-5"
                         labels={{ complete: "Complete", reschedule: "Reschedule" }}
@@ -161,25 +161,25 @@ export default function RevisionsList({
                         <span className="font-medium">{rev.topicTitle}</span>
                         {rev.tags[0] && (
                           <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-                            <span className="text-[10px] text-foreground/40 font-medium">
+                            <span className="text-[10px] text-muted font-medium">
                               #{rev.tags[0].replace('#', '')}
                             </span>
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                      <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
                         {rev.subjectName}
-                        <span className="text-foreground/20 mx-0.5">•</span>
+                        <span className="text-muted mx-0.5">•</span>
                         {rev.isQuickNote ? (
                           <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
                         ) : (
                           <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
                         )}
-                        <span className="text-foreground/20 mx-0.5">•</span>
+                        <span className="text-muted mx-0.5">•</span>
                         Cycle {rev.cycleNumber} of 4
                       </p>
                       {rev.isQuickNote && rev.description && (
-                        <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
+                        <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-muted`}>
                           {rev.description}
                         </p>
                       )}
@@ -188,7 +188,7 @@ export default function RevisionsList({
                       )}
                     </div>
                   </div>
-                  <span className="text-sm text-foreground/40 font-medium shrink-0">{getCycleName(rev.intervalDays)}</span>
+                  <span className="text-sm text-muted font-medium shrink-0">{getCycleName(rev.intervalDays)}</span>
                 </div>
               ))
             ))}
@@ -205,7 +205,7 @@ export default function RevisionsList({
             
             <button
               onClick={() => setIsOverdueCollapsed(!isOverdueCollapsed)}
-              className={`absolute -left-6 p-0.5 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors z-10 ${Object.keys(groupedIncompleteTodayRevisions).length > 0 ? 'top-[18px]' : 'top-4'}`}
+              className={`absolute -left-6 p-0.5 text-muted hover:text-foreground hover:bg-hover rounded-md transition-colors z-10 ${Object.keys(groupedIncompleteTodayRevisions).length > 0 ? 'top-[18px]' : 'top-4'}`}
               title={isOverdueCollapsed ? "Show overdue" : "Hide overdue"}
             >
               {isOverdueCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -216,7 +216,7 @@ export default function RevisionsList({
                 className="group bg-sidebar/50 border border-divider border-dashed rounded-lg p-3 transition-colors flex items-center justify-center cursor-pointer hover:bg-hover mt-1"
                 onClick={() => setIsOverdueCollapsed(false)}
               >
-                <span className="text-xs font-medium text-foreground/50">
+                <span className="text-xs font-medium text-muted">
                   {incompleteOverdueRevisions.length} overdue {incompleteOverdueRevisions.length === 1 ? 'item' : 'items'} hidden
                 </span>
               </div>
@@ -257,25 +257,25 @@ export default function RevisionsList({
                           <span className="font-medium text-foreground">{rev.topicTitle}</span>
                           {rev.tags[0] && (
                             <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-                              <span className="text-[10px] text-foreground/40 font-medium">
+                              <span className="text-[10px] text-muted font-medium">
                                 #{rev.tags[0].replace('#', '')}
                               </span>
                             </div>
                           )}
                         </div>
-                        <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                        <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
                           {rev.subjectName}
-                          <span className="text-foreground/20 mx-0.5">•</span>
+                          <span className="text-muted mx-0.5">•</span>
                           {rev.isQuickNote ? (
                             <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
                           ) : (
                             <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
                           )}
-                          <span className="text-foreground/20 mx-0.5">•</span>
+                          <span className="text-muted mx-0.5">•</span>
                           Cycle {rev.cycleNumber} of 4
                         </p>
                         {rev.isQuickNote && rev.description && (
-                          <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
+                          <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-muted`}>
                             {rev.description}
                           </p>
                         )}
@@ -329,28 +329,28 @@ export default function RevisionsList({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground line-through text-foreground/50">{rev.topicTitle}</span>
+                      <span className="font-medium text-foreground line-through text-muted">{rev.topicTitle}</span>
                       {rev.tags[0] && (
                         <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2 opacity-50">
-                          <span className="text-[10px] text-foreground/40 font-medium">
+                          <span className="text-[10px] text-muted font-medium">
                             #{rev.tags[0].replace('#', '')}
                           </span>
                         </div>
                       )}
                     </div>
-                    <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                    <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
                       {rev.subjectName}
-                      <span className="text-foreground/20 mx-0.5">•</span>
+                      <span className="text-muted mx-0.5">•</span>
                       {rev.isQuickNote ? (
                         <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
                       ) : (
                         <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
                       )}
-                      <span className="text-foreground/20 mx-0.5">•</span>
+                      <span className="text-muted mx-0.5">•</span>
                       Cycle {rev.cycleNumber} of 4
                     </p>
                     {rev.isQuickNote && rev.description && (
-                      <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/20`}>
+                      <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-muted`}>
                         {rev.description}
                       </p>
                     )}
@@ -367,7 +367,7 @@ export default function RevisionsList({
           <div className="bg-sidebar border border-divider rounded-lg p-8 flex flex-col items-center justify-center text-center">
             <CheckCircle2 className="w-8 h-8 text-emerald-500/50 mb-2" />
             <p className="font-medium text-foreground/80">You&apos;re all caught up!</p>
-            <p className="text-sm text-foreground/40 mt-1">No revisions due today.</p>
+            <p className="text-sm text-muted mt-1">No revisions due today.</p>
           </div>
         )}
       </div>

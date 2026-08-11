@@ -55,19 +55,19 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
               Knowledge Hub
             </h1>
-            <p className="text-foreground/50 text-sm mt-1">
+            <p className="text-muted text-sm mt-1">
               Explore your tags and cross-subject connections
             </p>
           </div>
           
           <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
             <input 
               type="text"
               placeholder="Search tags or content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-sidebar border border-divider rounded-lg pl-9 pr-4 py-2 text-sm text-foreground focus:outline-none focus:border-foreground/30 transition-colors placeholder:text-foreground/30"
+              className="w-full bg-sidebar border border-divider rounded-lg pl-9 pr-4 py-2 text-sm text-foreground focus:outline-none focus:border-foreground/30 transition-colors placeholder:text-muted"
             />
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
         {/* Section A: Tag Explorer */}
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <Hash className="w-4 h-4 text-foreground/40" />
+            <Hash className="w-4 h-4 text-muted" />
             <h2 className="text-sm font-semibold text-foreground/80">Tag Explorer</h2>
           </div>
           
@@ -87,7 +87,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
             {visibleTags.length > 0 ? visibleTags.map(tag => {
               const isSelected = selectedTag === tag.name;
               
-              let bgClass = "bg-sidebar hover:bg-hover border-divider/40 text-foreground/70";
+              let bgClass = "bg-sidebar hover:bg-hover border-divider/40 text-muted";
               let dotColor = "bg-foreground/20";
               
               if (tag.type !== 'normal' && tag.color) {
@@ -118,7 +118,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
                 </button>
               );
             }) : (
-              <p className="text-sm text-foreground/40 italic">No tags found.</p>
+              <p className="text-sm text-muted italic">No tags found.</p>
             )}
           </div>
         </section>
@@ -131,7 +131,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <span className="text-lg font-bold text-foreground">
-                <span className="text-foreground/40 font-normal mr-1">Items tagged</span>
+                <span className="text-muted font-normal mr-1">Items tagged</span>
                 #{selectedTag}
               </span>
             </div>
@@ -143,7 +143,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
                 className={`pb-1 text-[13px] font-semibold transition-all relative ${
                   activeTab === 'topics'
                     ? 'text-foreground'
-                    : 'text-foreground/40 hover:text-foreground/70'
+                    : 'text-muted hover:text-muted'
                 }`}
               >
                 Topics ({filteredTopics.length})
@@ -156,7 +156,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
                 className={`pb-1 text-[13px] font-semibold transition-all relative ${
                   activeTab === 'notes'
                     ? 'text-foreground'
-                    : 'text-foreground/40 hover:text-foreground/70'
+                    : 'text-muted hover:text-muted'
                 }`}
               >
                 Quick Notes ({filteredNotes.length})
@@ -182,13 +182,13 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
                         <span className="font-medium">{topic.title}</span>
                         {topic.tags.map(t => (
                           <div key={t} className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-                            <span className="text-[10px] text-foreground/40 font-medium">#{t}</span>
+                            <span className="text-[10px] text-muted font-medium">#{t}</span>
                           </div>
                         ))}
                       </div>
-                      <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                      <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
                         {topic.subject}
-                        <span className="text-foreground/20 mx-0.5">•</span>
+                        <span className="text-muted mx-0.5">•</span>
                         <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
                       </p>
                     </div>
@@ -211,18 +211,18 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
                         <span className="font-medium text-foreground/90">Quick Note</span>
                         {note.tags.map(t => (
                           <div key={t} className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-                            <span className="text-[10px] text-foreground/40 font-medium">#{t}</span>
+                            <span className="text-[10px] text-muted font-medium">#{t}</span>
                           </div>
                         ))}
                       </div>
-                      <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+                      <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
                         {note.subject}
-                        <span className="text-foreground/20 mx-0.5">•</span>
+                        <span className="text-muted mx-0.5">•</span>
                         <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
                       </p>
                     </div>
                     
-                    <p className="text-[13px] text-foreground/70 leading-relaxed whitespace-pre-wrap mt-1">
+                    <p className="text-[13px] text-muted leading-relaxed whitespace-pre-wrap mt-1">
                       {note.snippet}
                     </p>
                   </div>
@@ -243,9 +243,9 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
 function EmptyState({ type, tag }: { type: 'topics' | 'notes', tag: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center bg-sidebar/30 border border-dashed border-divider rounded-xl">
-      {type === 'topics' ? <FileText className="w-8 h-8 text-foreground/20 mb-3" /> : <Zap className="w-8 h-8 text-foreground/20 mb-3" />}
-      <p className="font-semibold text-foreground/70">No {type} found</p>
-      <p className="text-sm text-foreground/40 mt-1">You haven't tagged any {type} with #{tag} yet.</p>
+      {type === 'topics' ? <FileText className="w-8 h-8 text-muted mb-3" /> : <Zap className="w-8 h-8 text-muted mb-3" />}
+      <p className="font-semibold text-muted">No {type} found</p>
+      <p className="text-sm text-muted mt-1">You haven't tagged any {type} with #{tag} yet.</p>
     </div>
   );
 }

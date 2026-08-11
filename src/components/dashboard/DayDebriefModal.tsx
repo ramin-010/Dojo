@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Battery, Target, Smile, ChevronDown, ChevronUp, Loader2, Save, BrainCircuit } from 'lucide-react';
-import { saveDebrief, getDebriefForDate, SaveDebriefInput } from '@/app/actions/debrief.actions';
+import { X, Battery, Target, Smile, ChevronDown, ChevronUp, Loader2, Save, BrainCircuit, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { saveDebrief, getDebriefForDate, SaveDebriefInput, SlotLogInput } from '@/app/actions/debrief.actions';
 import { ScheduleSlotProp } from '@/app/(protected)/dashboard/DashboardClient';
 import { toast } from 'sonner';
+import { SlotStatus } from '@prisma/client';
 
 const DEFAULT_TAGS = [
   'Slept Well',
@@ -39,34 +40,65 @@ export function DayDebriefModal({
   const [isSaving, setIsSaving] = useState(false);
   const [showFreeWrite, setShowFreeWrite] = useState(false);
 
-  // Auto-Stats (Layer 1)
+  // New: Schedule Review State
+  const [slotLogs, setSlotLogs] = useState<Record<string, SlotLogInput>>({});
+
+  // Initialize slotLogs when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const initialLogs: Record<string, SlotLogInput> = {};
+      todaySlots.forEach(s => {
+        initialLogs[s.id] = {
+          slotId: s.id,
+          sourceBlockId: s.sourceBlockId,
+          // Default to COMPLETED if they haven't explicitly set a status
+          status: (s.status === 'UPCOMING' || s.status === 'ACTIVE') ? 'COMPLETED' : (s.status as SlotStatus),
+          remark: s.remark || '',
+          minutesDone: s.minutesDone || null,
+          actualStartTime: s.actualStartTime,
+          actualEndTime: s.actualEndTime,
+        };
+      });
+      setSlotLogs(initialLogs);
+    }
+  }, [isOpen, todaySlots]);
+
+  // Auto-Stats (Layer 1) - Now reactive to slotLogs
   const stats = useMemo(() => {
-    const future = todaySlots.filter(s => s.status !== 'COMPLETED' && s.status !== 'SKIPPED' && s.status !== 'PARTIAL');
-    const completed = todaySlots.filter(s => s.status === 'COMPLETED' || s.status === 'PARTIAL');
-    const skipped = todaySlots.filter(s => s.status === 'SKIPPED');
+    const logsArray = Object.values(slotLogs);
+    
+    const planned = todaySlots.length;
+    const completed = logsArray.filter(l => l.status === 'COMPLETED' || l.status === 'PARTIAL').length;
+    const skipped = logsArray.filter(l => l.status === 'SKIPPED').length;
     
     let totalMin = 0;
-    completed.forEach(s => {
-      if (s.minutesDone) totalMin += s.minutesDone;
-      else {
-        // Fallback: calculate from start/end
-        const [sh, sm] = (s.actualStartTime || s.startTime).split(':').map(Number);
-        const [eh, em] = (s.actualEndTime || s.endTime).split(':').map(Number);
-        let dur = (eh * 60 + em) - (sh * 60 + sm);
-        if (dur < 0) dur += 24 * 60;
-        totalMin += dur;
+    logsArray.forEach(log => {
+      if (log.status === 'COMPLETED' || log.status === 'PARTIAL') {
+        if (log.minutesDone) {
+          totalMin += log.minutesDone;
+        } else {
+          // Fallback: calculate from start/end
+          const slot = todaySlots.find(s => s.id === log.slotId);
+          if (slot) {
+            const [sh, sm] = (log.actualStartTime || slot.startTime).split(':').map(Number);
+            const [eh, em] = (log.actualEndTime || slot.endTime).split(':').map(Number);
+            let dur = (eh * 60 + em) - (sh * 60 + sm);
+            if (dur < 0) dur += 24 * 60;
+            totalMin += dur;
+          }
+        }
       }
     });
 
     return {
-      planned: todaySlots.length,
-      completed: completed.length,
-      skipped: skipped.length,
-      remaining: future.length,
+      planned,
+      completed,
+      skipped,
+      remaining: planned - completed - skipped,
       focusedMin: totalMin,
       focusedHrs: (totalMin / 60).toFixed(1)
     };
-  }, [todaySlots]);
+  }, [slotLogs, todaySlots]);
 
   // Form State (Layer 2 & 3)
   const [energy, setEnergy] = useState<number | null>(null);
@@ -77,7 +109,7 @@ export function DayDebriefModal({
   const [tomorrowIntent, setTomorrowIntent] = useState('');
   const [freeWrite, setFreeWrite] = useState('');
 
-  // Fetch existing
+  // Fetch existing debrief
   useEffect(() => {
     if (!isOpen) return;
     
@@ -111,6 +143,20 @@ export function DayDebriefModal({
     );
   };
 
+  const handleSlotStatusChange = (slotId: string, status: SlotStatus) => {
+    setSlotLogs(prev => ({
+      ...prev,
+      [slotId]: { ...prev[slotId], status }
+    }));
+  };
+
+  const handleSlotRemarkChange = (slotId: string, remark: string) => {
+    setSlotLogs(prev => ({
+      ...prev,
+      [slotId]: { ...prev[slotId], remark }
+    }));
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     
@@ -128,6 +174,7 @@ export function DayDebriefModal({
       narrative: narrative.trim() || null,
       tomorrowIntent: tomorrowIntent.trim() || null,
       freeWrite: freeWrite.trim() || null,
+      slotLogs: Object.values(slotLogs),
     };
 
     const res = await saveDebrief(input);
@@ -160,7 +207,7 @@ export function DayDebriefModal({
                 Daily Debrief — AI Context
               </h2>
               <p className="text-[13px] text-foreground/50 mt-1">
-                Help your AI mentor understand the "why" behind today's numbers.
+                Log your blocks and help your AI mentor understand the "why".
               </p>
             </div>
             <button
@@ -179,9 +226,67 @@ export function DayDebriefModal({
               </div>
             ) : (
               <>
+                {/* Layer 0: Schedule Review */}
+                <section>
+                  <h3 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-3">Schedule Review</h3>
+                  {todaySlots.length === 0 ? (
+                    <div className="bg-background border border-divider/40 rounded-xl p-4 text-center">
+                      <p className="text-sm text-foreground/50">No blocks scheduled for today.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {todaySlots.map((slot) => {
+                        const log = slotLogs[slot.id];
+                        if (!log) return null;
+
+                        return (
+                          <div key={slot.id} className="bg-background border border-divider/40 rounded-xl p-3 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: slot.color }} />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-semibold text-foreground truncate">{slot.title}</h4>
+                                <div className="flex items-center gap-1.5 text-xs text-foreground/50 mt-0.5">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{slot.startTime} - {slot.endTime}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3 sm:pl-4 border-t sm:border-t-0 sm:border-l border-divider/40 pt-3 sm:pt-0 shrink-0">
+                              <input
+                                type="text"
+                                placeholder="Add a note..."
+                                value={log.remark || ''}
+                                onChange={(e) => handleSlotRemarkChange(slot.id, e.target.value)}
+                                className="bg-sidebar border border-divider/50 rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-accent w-[140px]"
+                              />
+                              <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50">
+                                <button
+                                  onClick={() => handleSlotStatusChange(slot.id, 'COMPLETED')}
+                                  className={`p-1.5 rounded-md transition-colors ${log.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+                                  title="Completed"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleSlotStatusChange(slot.id, 'SKIPPED')}
+                                  className={`p-1.5 rounded-md transition-colors ${log.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+                                  title="Skipped"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+
                 {/* Layer 1: Auto-Context (Read Only) */}
                 <section>
-                  <h3 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-3">Auto-Context</h3>
+                  <h3 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-3">Today's Stats</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-background border border-divider/40 rounded-xl p-3">
                       <span className="block text-xl font-bold text-foreground">{stats.completed}/{stats.planned}</span>

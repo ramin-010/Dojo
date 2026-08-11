@@ -32,7 +32,7 @@ export function ContextPillNode({ node, updateAttributes, selected }: any) {
         className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 mx-1 rounded-md text-[12px] font-mono cursor-pointer transition-colors select-none ${
           selected
             ? 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/30'
-            : 'bg-muted/40 text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+            : 'bg-muted/40 text-muted hover:bg-muted/80 hover:text-foreground'
         }`}
         onClick={() => setIsModalOpen(true)}
       >

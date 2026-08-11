@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, CheckCircle2, SkipForward, AlertCircle, Clock } from 'lucide-react';
-import { completeSlot, skipSlot } from '@/app/actions/schedule-slot.actions';
+import { triageSlot } from '@/app/actions/schedule-slot.actions';
 import { SlotStatus } from '@prisma/client';
 
 export interface UnverifiedBlock {
@@ -45,11 +45,7 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
     setIsSubmitting(prev => ({ ...prev, [id]: true }));
 
     try {
-      if (status === 'SKIPPED') {
-        await skipSlot(id, remark.trim() || 'Skipped via Triage');
-      } else {
-        await completeSlot(id, remark.trim() || 'Completed via Triage', undefined);
-      }
+      await triageSlot(id, status === 'SKIPPED' ? 'SKIPPED' : 'COMPLETED', remark.trim() || (status === 'SKIPPED' ? 'Skipped via Triage' : 'Completed via Triage'));
 
       const isLast = blocks.length === 1 && blocks[0].slot.id === id;
       
@@ -73,11 +69,7 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
       for (const block of blocks) {
         const id = block.slot.id;
         const remark = remarks[id] || '';
-        if (status === 'SKIPPED') {
-          await skipSlot(id, remark.trim() || 'Skipped via Triage');
-        } else {
-          await completeSlot(id, remark.trim() || 'Completed via Triage', undefined);
-        }
+        await triageSlot(id, status === 'SKIPPED' ? 'SKIPPED' : 'COMPLETED', remark.trim() || (status === 'SKIPPED' ? 'Skipped via Triage' : 'Completed via Triage'));
       }
       setBlocks([]);
       onComplete();
@@ -105,14 +97,14 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
              </div>
              <div>
                 <h2 className="text-base font-bold text-foreground">Action Required</h2>
-                <p className="text-xs text-foreground/50">
+                <p className="text-xs text-muted">
                   {blocks.length} unresolved {blocks.length === 1 ? 'block' : 'blocks'} from the past
                 </p>
              </div>
           </div>
           <button 
             onClick={handleDismiss}
-            className="p-1.5 text-foreground/30 hover:text-foreground hover:bg-hover rounded-full transition-colors"
+            className="p-1.5 text-muted hover:text-foreground hover:bg-hover rounded-full transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -130,25 +122,22 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
               <div key={item.slot.id} className="flex flex-col gap-3 p-4 bg-background/50 rounded-xl border border-divider/50 relative overflow-hidden group shrink-0">
                 {isProcessing && (
                   <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                    <span className="text-xs font-medium text-foreground/60 animate-pulse">Processing...</span>
+                    <span className="text-xs font-medium text-muted animate-pulse">Processing...</span>
                   </div>
                 )}
                 
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-sidebar rounded text-foreground/50 border border-divider">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-sidebar rounded text-muted border border-divider">
                         {formattedDate}
                       </span>
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground/50">
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
                         <Clock className="w-3 h-3 opacity-70" />
                         <span>{format12h(item.slot.startTime)} - {format12h(item.slot.endTime)}</span>
                       </div>
                     </div>
-                    <div 
-                      className="text-base font-bold truncate"
-                      style={{ color: item.slot.color }}
-                    >
+                    <div className="text-base font-bold truncate text-foreground">
                       {item.slot.title}
                     </div>
                   </div>
@@ -157,7 +146,7 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
                     <button
                       onClick={() => handleVerify(item.slot.id, 'SKIPPED')}
                       disabled={isProcessing}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-foreground/60 hover:bg-hover hover:text-foreground transition-colors disabled:opacity-50 font-medium text-xs border border-divider/50"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-colors disabled:opacity-50 font-medium text-xs border border-divider/50"
                     >
                       <SkipForward className="w-3.5 h-3.5" />
                       Skip
@@ -179,7 +168,7 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
                     placeholder="Add a remark (e.g. 'Was in deep work flow' or 'Slept in')..."
                     value={remarks[item.slot.id] || ''}
                     onChange={(e) => setRemarks(prev => ({ ...prev, [item.slot.id]: e.target.value }))}
-                    className="w-full bg-sidebar border border-divider/50 hover:border-divider px-3 py-2 text-xs rounded-lg focus:outline-none focus:border-accent transition-colors placeholder:text-foreground/30"
+                    className="w-full bg-sidebar border border-divider/50 hover:border-divider px-3 py-2 text-xs rounded-lg focus:outline-none focus:border-accent transition-colors placeholder:text-muted"
                     disabled={isProcessing}
                   />
                 </div>
@@ -194,7 +183,7 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
             <button
               onClick={() => handleBulkVerify('SKIPPED')}
               disabled={isBulkSubmitting}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-foreground/60 hover:bg-hover hover:text-foreground transition-colors disabled:opacity-50 font-semibold text-sm border border-divider/50 bg-background"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-muted hover:bg-hover hover:text-foreground transition-colors disabled:opacity-50 font-semibold text-sm border border-divider/50 bg-background"
             >
               <SkipForward className="w-4 h-4" />
               Skip All Remaining

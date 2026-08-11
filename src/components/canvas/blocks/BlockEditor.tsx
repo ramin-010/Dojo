@@ -44,6 +44,7 @@ interface BlockEditorProps {
   onMentionClick?: (id: string) => void;
   onResourceAdd?: (data: { text: string; type: 'url' | 'text' }) => void;
   onUploadImage?: (file: File) => Promise<string>;
+  onUploadFile?: (file: File) => Promise<void>;
   // onDelete?: () => void; // Unused in linear editor
   topicId?: string;
   subjectId?: string;
@@ -61,6 +62,7 @@ export function BlockEditor({
   onMentionClick,
   onResourceAdd,
   onUploadImage,
+  onUploadFile,
   topicId,
   subjectId
 }: BlockEditorProps) {
@@ -222,6 +224,20 @@ export function BlockEditor({
       },
       handlePaste: (view, event) => {
         const files = Array.from(event.clipboardData?.files || []);
+        
+        // Handle Non-image files
+        const nonImageFiles = files.filter(f => !f.type.startsWith('image/'));
+        if (nonImageFiles.length > 0 && onUploadFile) {
+           event.preventDefault();
+           nonImageFiles.forEach(file => {
+               onUploadFile(file).catch(() => {});
+           });
+           // If they ONLY pasted files (no text/images), we stop default behavior
+           if (files.length === nonImageFiles.length) {
+              return true;
+           }
+        }
+
         const imageFiles = files.filter(f => f.type.startsWith('image/'));
         if (imageFiles.length === 0) return false;
 

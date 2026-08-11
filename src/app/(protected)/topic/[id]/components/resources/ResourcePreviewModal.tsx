@@ -86,7 +86,7 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
         <div className="w-full max-w-5xl h-full bg-background rounded-2xl ring-1 ring-white/10 shadow-2xl overflow-y-auto p-6 sm:p-12 custom-scrollbar">
           <div className="max-w-3xl mx-auto">
             {isLoading ? (
-              <div className="flex items-center justify-center py-32 text-muted-foreground animate-pulse">Loading document...</div>
+              <div className="flex items-center justify-center py-32 text-muted animate-pulse">Loading document...</div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-32 text-red-400">
                 <FileText className="w-12 h-12 mb-4 opacity-50" />

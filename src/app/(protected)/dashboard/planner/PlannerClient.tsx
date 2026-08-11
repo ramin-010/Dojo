@@ -28,7 +28,7 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Planner</h1>
-            <p className="text-foreground/50 text-sm mt-1">
+            <p className="text-muted text-sm mt-1">
               Organize your weekly routine and upcoming tasks
             </p>
           </div>
@@ -40,7 +40,7 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
               <Plane className="w-4 h-4" />
               Vacation Mode
             </button>
-            <button className="p-2 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors">
+            <button className="p-2 text-muted hover:text-foreground hover:bg-hover rounded-md transition-colors">
               <MoreHorizontal className="w-5 h-5" />
             </button>
           </div>
@@ -53,7 +53,7 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
             className={`pb-3 text-[13px] font-semibold transition-all relative ${
               activeTab === 'timetable'
                 ? 'text-foreground'
-                : 'text-foreground/40 hover:text-foreground/70'
+                : 'text-muted hover:text-muted'
             }`}
           >
             Weekly Timetable
@@ -66,7 +66,7 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
             className={`pb-3 text-[13px] font-semibold transition-all relative ${
               activeTab === 'calendar'
                 ? 'text-foreground'
-                : 'text-foreground/40 hover:text-foreground/70'
+                : 'text-muted hover:text-muted'
             }`}
           >
             Tasks & Calendar

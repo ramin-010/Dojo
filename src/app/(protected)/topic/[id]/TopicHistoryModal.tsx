@@ -45,79 +45,79 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
           className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" 
           onClick={onClose}
         >
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="bg-[#1a1a1a] border border-white/5 shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Left Column */}
-            <div className="w-full md:w-[280px] p-6 flex flex-col border-r border-white/5 shrink-0">
-              
-              <div className="flex flex-col gap-3 mb-6">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30">Overview</h3>
-                  <button 
-                    onClick={onClose} 
-                    className="p-1 text-white/40 hover:text-white transition-colors -mt-1 -mr-1"
-                  >
-                    <X className="w-4 h-4 stroke-[1.5]" />
-                  </button>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-card border border-border shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Left Column */}
+              <div className="w-full md:w-[280px] p-6 flex flex-col border-r border-border shrink-0">
+                
+                <div className="flex flex-col gap-3 mb-6">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-[10px] tracking-widest uppercase font-semibold text-muted">Overview</h3>
+                    <button 
+                      onClick={onClose} 
+                      className="p-1 text-muted hover:text-foreground transition-colors -mt-1 -mr-1"
+                    >
+                      <X className="w-4 h-4 stroke-[1.5]" />
+                    </button>
                 </div>
                 
-                <div className="flex flex-col gap-1">
-                  <div className="text-[12px] text-white/40 flex items-center gap-2 font-medium">
-                    <Clock className="w-4 h-4 stroke-[1.5]" /> Created
+                  <div className="flex flex-col gap-1">
+                    <div className="text-[12px] text-muted flex items-center gap-2 font-medium">
+                      <Clock className="w-4 h-4 stroke-[1.5]" /> Created
+                    </div>
+                    <div className="text-[13px] text-foreground/90 font-medium ml-6">
+                      {new Date(topic.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </div>
                   </div>
-                  <div className="text-[13px] text-white/90 font-medium ml-6">
-                    {new Date(topic.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+
+                  <div className="flex flex-col gap-0.5 mt-0.5">
+                    <div className="text-[12px] text-muted flex items-center gap-2 font-medium">
+                      <Flag className="w-4 h-4 stroke-[1.5]" /> Status
+                    </div>
+                    <div className="text-[13px] text-foreground font-medium ml-6">
+                      {topic.revisions.length > 0 ? 'Active' : 'Inactive'}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-0.5 mt-0.5">
+                    <div className="text-[12px] text-muted flex items-center gap-2 font-medium">
+                      <Calendar className="w-4 h-4 stroke-[1.5]" /> Schedule Started
+                    </div>
+                    <div className="text-[13px] text-foreground/90 font-medium ml-6">
+                      {(() => {
+                        if (topic.revisions.length === 0) return 'Not started';
+                        const startStr = topic.revisions[0].createdAt || topic.createdAt;
+                        const d = startStr ? new Date(startStr) : null;
+                        return d && !isNaN(d.getTime())
+                          ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+                          : 'Not started';
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-0.5 mt-0.5">
+                    <div className="text-[12px] text-muted flex items-center gap-2 font-medium">
+                      <LayoutGrid className="w-4 h-4 stroke-[1.5]" /> Total Cycles
+                    </div>
+                    <div className="text-[13px] text-foreground font-medium ml-6">
+                      {topic.revisions.length}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-0.5 mt-0.5">
-                  <div className="text-[12px] text-white/40 flex items-center gap-2 font-medium">
-                    <Flag className="w-4 h-4 stroke-[1.5]" /> Status
-                  </div>
-                  <div className="text-[13px] text-white font-medium ml-6">
-                    {topic.revisions.length > 0 ? 'Active' : 'Inactive'}
-                  </div>
-                </div>
+                <div className="w-full h-px bg-border mb-5" />
 
-                <div className="flex flex-col gap-0.5 mt-0.5">
-                  <div className="text-[12px] text-white/40 flex items-center gap-2 font-medium">
-                    <Calendar className="w-4 h-4 stroke-[1.5]" /> Schedule Started
-                  </div>
-                  <div className="text-[13px] text-white/90 font-medium ml-6">
-                    {(() => {
-                      if (topic.revisions.length === 0) return 'Not started';
-                      const startStr = topic.revisions[0].createdAt || topic.createdAt;
-                      const d = startStr ? new Date(startStr) : null;
-                      return d && !isNaN(d.getTime())
-                        ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-                        : 'Not started';
-                    })()}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-0.5 mt-0.5">
-                  <div className="text-[12px] text-white/40 flex items-center gap-2 font-medium">
-                    <LayoutGrid className="w-4 h-4 stroke-[1.5]" /> Total Cycles
-                  </div>
-                  <div className="text-[13px] text-white font-medium ml-6">
-                    {topic.revisions.length}
-                  </div>
-                </div>
-              </div>
-
-              <div className="w-full h-px bg-white/5 mb-5" />
-
-              {nextRevision && (
-                <div className="flex flex-col gap-3 mb-6">
-                  <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30">Next Revision</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[17px] font-medium text-white/90">
+                {nextRevision && (
+                  <div className="flex flex-col gap-3 mb-6">
+                    <h3 className="text-[10px] tracking-widest uppercase font-semibold text-muted">Next Revision</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[17px] font-medium text-foreground/90">
                       {new Date(nextRevision.scheduledFor).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                     {(() => {
@@ -131,26 +131,23 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 mt-auto">
-                <div className="flex items-center gap-2 text-white/90 text-[12px] font-medium">
-                  <Info className="w-4 h-4 text-white/50 stroke-[1.5]" /> About Cycles
+                <div className="flex flex-col gap-2 mt-auto">
+                  <div className="flex items-center gap-2 text-foreground/90 text-[12px] font-medium">
+                    <Info className="w-4 h-4 text-muted stroke-[1.5]" /> About Cycles
+                  </div>
+                  <p className="text-[11px] text-muted leading-relaxed pl-6">
+                    Each cycle represents a complete revision of this topic. The next revision is scheduled based on your spaced repetition settings.
+                  </p>
                 </div>
-                <p className="text-[11px] text-white/30 leading-relaxed pl-6">
-                  Each cycle represents a complete revision of this topic. The next revision is scheduled based on your spaced repetition settings.
-                </p>
+
               </div>
 
-            </div>
-
             {/* Right Column */}
-            <div className="flex-1 p-6 bg-[#121212] overflow-y-auto custom-scrollbar relative max-h-[75vh]">
-              {/* <div className="text-white/30 mb-6 ml-2">
-                <GitBranch className="w-5 h-5 transform -rotate-90 stroke-[1.5]" />
-              </div> */}
-              <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30 mb-8 pl-2">Revision Timeline</h3>
+            <div className="flex-1 p-6 bg-background overflow-y-auto custom-scrollbar relative max-h-[75vh]">
+              <h3 className="text-[10px] tracking-widest uppercase font-semibold text-muted mb-8 pl-2">Revision Timeline</h3>
               
               {topic.revisions.length === 0 ? (
-                <div className="text-sm text-white/40 italic mt-4 pl-2">No revisions started yet.</div>
+                <div className="text-sm text-muted italic mt-4 pl-2">No revisions started yet.</div>
               ) : (
                 <div className="flex flex-col relative pl-2 pb-6">
                   {topic.revisions.map((rev, idx) => {
@@ -163,7 +160,7 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
                         
                         {/* Dynamic Progress Line (Connects to next node) */}
                         {idx < topic.revisions.length - 1 && (
-                          <div className="absolute left-[9px] top-[24px] bottom-[-40px] w-[2px] bg-[#2a2a2a] z-0">
+                          <div className="absolute left-[9px] top-[24px] bottom-[-40px] w-[2px] bg-border z-0">
                             <div 
                               className="w-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)] transition-all duration-1000 rounded-b-full" 
                               style={{ height: `${(() => {
@@ -186,7 +183,7 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
                         )}
                         
                         {/* Icon Container */}
-                        <div className="relative shrink-0 w-[20px] h-[20px] rounded-full flex items-center justify-center bg-[#161616] z-10 mt-0.5">
+                        <div className="relative shrink-0 w-[20px] h-[20px] rounded-full flex items-center justify-center bg-card z-10 mt-0.5">
                           {isCompleted && (
                             <div className="w-[20px] h-[20px] rounded-full bg-blue-500 flex items-center justify-center">
                               <Check className="w-[12px] h-[12px] text-white stroke-[2.5]" />
@@ -198,7 +195,7 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
                             </div>
                           )}
                           {isUpcoming && (
-                            <div className="w-[20px] h-[20px] rounded-full border-[2px] border-white/20" />
+                            <div className="w-[20px] h-[20px] rounded-full border-[2px] border-border" />
                           )}
                         </div>
 
@@ -212,18 +209,18 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
                           {/* Title & Badge Row */}
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex flex-col">
-                              <span className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                                Cycle {rev.cycleNumber} {isUpcoming && <span className="text-white/40 text-[12px] font-normal">({rev.intervalDays} days)</span>}
+                              <span className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                                Cycle {rev.cycleNumber} {isUpcoming && <span className="text-muted text-[12px] font-normal">({rev.intervalDays} days)</span>}
                               </span>
                             </div>
                             
                             {isCompleted && (
-                              <span className="bg-[#1e293b] text-blue-400 text-[10px] font-semibold px-2 py-0.5 rounded shrink-0">
+                              <span className="bg-blue-500/10 text-blue-500 text-[10px] font-semibold px-2 py-0.5 rounded shrink-0">
                                 Completed
                               </span>
                             )}
                             {isUpcoming && (
-                              <span className="bg-white/5 text-white/40 text-[10px] font-semibold px-2 py-0.5 rounded shrink-0">
+                              <span className="bg-foreground/5 text-muted text-[10px] font-semibold px-2 py-0.5 rounded shrink-0">
                                 Upcoming
                               </span>
                             )}
@@ -231,14 +228,14 @@ export function TopicHistoryModal({ isOpen, onClose, topic }: TopicHistoryModalP
 
                           {/* Dates Container */}
                           <div className="flex flex-col gap-1.5 mt-2">
-                            <span className="text-[12px] text-white/50 flex items-center gap-2">
-                              <Calendar className="w-3 h-3 text-white/30" /> 
+                            <span className="text-[12px] text-muted flex items-center gap-2">
+                              <Calendar className="w-3 h-3 text-muted/70" /> 
                               Scheduled: {new Date(rev.scheduledFor).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
                             
                             {isCompleted && rev.completedAt && (
-                              <span className="text-[12px] text-white/50 flex items-center gap-2">
-                                <CheckCircle2 className="w-3 h-3 text-white/30" />
+                              <span className="text-[12px] text-muted flex items-center gap-2">
+                                <CheckCircle2 className="w-3 h-3 text-muted/70" />
                                 Completed: {new Date(rev.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                                 
                                 {/* Early/Late Indicator */}

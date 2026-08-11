@@ -7,6 +7,7 @@ import { canvasOfflineStorage } from '@/lib/storage/canvasOfflineStorage';
 import { uploadToCloud } from '@/lib/utils/upload';
 import { v4 as uuidv4 } from 'uuid';
 import { debounce } from 'lodash';
+import { toast } from 'sonner';
 import { useAppStore } from '@/store/useAppStore';
 
 interface TopicEditorProps {
@@ -166,6 +167,28 @@ export function TopicEditor({
     return cloudUrl;
   }, [topicId, subjectId, title]);
 
+  // 5. File Uploading
+  const handleUploadFile = useCallback(async (file: File) => {
+    const toastId = toast.loading(`Uploading ${file.name}...`);
+    try {
+      const result = await uploadToCloud(
+        file,
+        uuidv4(), // generate unique ID
+        topicId,
+        subjectId || 'unassigned'
+      );
+      
+      if (result.resource && onResourceAdded) {
+         onResourceAdded(result.resource);
+         toast.success('File saved to resources', { id: toastId });
+      } else {
+         toast.success('File uploaded', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to upload file', { id: toastId });
+    }
+  }, [topicId, subjectId, onResourceAdded]);
+
   if (!isLoaded) return null;
 
   return (
@@ -189,6 +212,7 @@ export function TopicEditor({
         onMentionClick={onMentionClick}
         onResourceAdd={onResourceAdded}
         onUploadImage={handleUploadImage}
+        onUploadFile={handleUploadFile}
         topicId={topicId}
         subjectId={subjectId}
       />

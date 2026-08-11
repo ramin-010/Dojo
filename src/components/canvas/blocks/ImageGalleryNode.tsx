@@ -108,7 +108,7 @@ export function ImageGalleryNodeView({ node, updateAttributes, deleteNode, selec
           >
             {image.uploading ? (
               <div className="w-full h-full flex items-center justify-center min-h-[120px]">
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <div className="flex flex-col items-center gap-2 text-muted">
                   <Loader2 className="w-6 h-6 animate-spin" />
                   <span className="text-xs">Uploading...</span>
                 </div>

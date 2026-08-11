@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ActiveBlockActions } from '@/components/dashboard/ActiveBlockActions';
-import { markSlotActive } from '@/app/actions/schedule-slot.actions';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Settings2 } from 'lucide-react';
 import type { ScheduleSlotProp } from '../DashboardClient';
+import { updateDaySchedule } from '@/app/actions/schedule-slot.actions';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -24,8 +24,11 @@ function toMinutes(time: string): number {
 }
 
 function minToStr(m: number): string {
-  const h = Math.floor(m / 60) % 24;
-  const mins = m % 60;
+  let mnorm = m;
+  while (mnorm < 0) mnorm += 24 * 60;
+  while (mnorm >= 24 * 60) mnorm -= 24 * 60;
+  const h = Math.floor(mnorm / 60);
+  const mins = mnorm % 60;
   return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
@@ -34,13 +37,10 @@ function minToStr(m: number): string {
 // ────────────────────────────────────────────────────────────────────────────────
 
 interface ComputedSlot extends ScheduleSlotProp {
-  originalStartMin: number;
-  originalEndMin: number;
-  originalDuration: number;
-  renderStartMin: number;
-  renderEndMin: number;
-  shadowMarkMin?: number; // Where the "quota" marker goes
-  isConsumed: boolean;    // Fully eaten by flow state
+  startMin: number;
+  endMin: number;
+  duration: number;
+  isCurrentlyActive: boolean;
 }
 
 interface ScheduleTimelineProps {
@@ -54,12 +54,13 @@ interface ScheduleTimelineProps {
 
 export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTimelineProps) {
   const router = useRouter();
+  
+  // Real-time current minutes
   const [currentMinutes, setCurrentMinutes] = useState(() => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
   });
 
-  // Tick the clock every 30 seconds for live updates
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -68,35 +69,44 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-activation effect
+  // Compute base slots from props
+  const baseSlots: ComputedSlot[] = todaySlots.map(slot => {
+    const startMin = toMinutes(slot.startTime);
+    let endMin = toMinutes(slot.endTime);
+    if (endMin <= startMin) endMin += 24 * 60; // midnight crossover
+
+    const isCurrentlyActive = currentMinutes >= startMin && currentMinutes < endMin;
+
+    return {
+      ...slot,
+      startMin,
+      endMin,
+      duration: endMin - startMin,
+      isCurrentlyActive,
+    };
+  }).sort((a, b) => a.sortOrder - b.sortOrder);
+
+  // Dragging State
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [optimisticSlots, setOptimisticSlots] = useState<ComputedSlot[]>(baseSlots);
+  
+  // Sync when props change, UNLESS dragging
+  const [dragState, setDragState] = useState<{
+    id: string;
+    mode: 'move' | 'resize-left' | 'resize-right';
+    startX: number;
+    initialStartMin: number;
+    initialEndMin: number;
+  } | null>(null);
+
   useEffect(() => {
-    if (todaySlots.length === 0) return;
-
-    const hasActive = todaySlots.some(s => s.status === 'ACTIVE');
-    if (hasActive) return;
-
-    // Find if we should activate an UPCOMING slot
-    for (const slot of todaySlots) {
-      if (slot.status === 'UPCOMING') {
-        const startMin = toMinutes(slot.startTime);
-        let endMin = toMinutes(slot.endTime);
-        if (endMin <= startMin) endMin += 24 * 60;
-
-        let adjustedCurrentMin = currentMinutes;
-        const timelineStartBase = toMinutes(todaySlots[0].startTime);
-        if (adjustedCurrentMin < timelineStartBase && endMin > 24 * 60) {
-          adjustedCurrentMin += 24 * 60;
-        }
-
-        if (adjustedCurrentMin >= startMin && adjustedCurrentMin < endMin) {
-          markSlotActive(slot.id).catch(console.error);
-          break;
-        }
-      }
+    if (!dragState) {
+      setOptimisticSlots(baseSlots);
     }
-  }, [currentMinutes, todaySlots]);
+  }, [todaySlots, currentMinutes, dragState]); // Intentionally omitting baseSlots to avoid deep compare loops, todaySlots is fine
 
-  if (todaySlots.length === 0) {
+  // ── Compute Render Bounds based on Optimistic State ───────────────────────
+  if (optimisticSlots.length === 0) {
     return (
       <section className="mb-8 mt-2">
         <div className="relative">
@@ -108,171 +118,246 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
     );
   }
 
-  // ── Step 1: Build computed blocks with original times ──────────────────────
-  const computedSlots: ComputedSlot[] = todaySlots.map(slot => {
-    const startMin = toMinutes(slot.startTime);
-    let endMin = toMinutes(slot.endTime);
-    if (endMin <= startMin) endMin += 24 * 60; // midnight crossover
+  const allStarts = optimisticSlots.map(b => b.startMin);
+  const allEnds = optimisticSlots.map(b => b.endMin);
 
-    return {
-      ...slot,
-      originalStartMin: startMin,
-      originalEndMin: endMin,
-      originalDuration: endMin - startMin,
-      renderStartMin: startMin,
-      renderEndMin: endMin,
-      isConsumed: false,
-    };
-  });
+  let timelineStart = Math.min(...allStarts);
+  let timelineEnd = Math.max(...allEnds);
 
-  // Ensure they are sorted by sortOrder
-  computedSlots.sort((a, b) => a.sortOrder - b.sortOrder);
+  // Give a little buffer on edges for easier dragging
+  timelineStart -= 30; // 30 min buffer
+  timelineEnd += 30;
 
-  // ── Step 2: Apply cascade shrink if a block is ACTIVE ─────────────────────
-  let adjustedCurrentMin = currentMinutes;
-  const timelineStartBase = computedSlots[0].originalStartMin;
-  if (adjustedCurrentMin < timelineStartBase && computedSlots[computedSlots.length - 1].originalEndMin > 24 * 60) {
-    adjustedCurrentMin += 24 * 60;
-  }
-
-  const activeIdx = computedSlots.findIndex(s => s.status === 'ACTIVE');
-
-  if (activeIdx >= 0) {
-    const activeSlot = computedSlots[activeIdx];
-    // The active block stretches to the current time (if past its end)
-    const extendedEnd = Math.max(activeSlot.originalEndMin, adjustedCurrentMin);
-    computedSlots[activeIdx].renderEndMin = extendedEnd;
-
-    // Cascade: shrink or consume all subsequent UPCOMING blocks
-    let cascadeEdge = extendedEnd;
-    for (let i = activeIdx + 1; i < computedSlots.length; i++) {
-      const b = computedSlots[i];
-      if (b.status !== 'UPCOMING') continue; // Only UPCOMING blocks can be eaten
-
-      if (cascadeEdge >= b.originalEndMin) {
-        // Fully consumed visually
-        b.isConsumed = true;
-        b.renderStartMin = b.originalEndMin; // zero width
-        b.renderEndMin = b.originalEndMin;
-      } else if (cascadeEdge > b.originalStartMin) {
-        // Partially shrunk — add shadow mark if > 15 min eaten
-        const eatenMin = cascadeEdge - b.originalStartMin;
-        b.renderStartMin = cascadeEdge;
-        b.renderEndMin = b.originalEndMin;
-        
-        // Shadow mark
-        if (eatenMin > 15) {
-          const mark = b.originalStartMin + b.originalDuration;
-          if (adjustedCurrentMin < mark) {
-            b.shadowMarkMin = mark;
-          }
-        }
-      } else {
-        // Not affected
-        break;
-      }
-      cascadeEdge = b.originalEndMin;
-    }
-  }
-
-  // ── Step 3: Apply partial block shrinking ─────────────────────────────────
-  computedSlots.forEach(b => {
-    if (b.status === 'PARTIAL' && b.minutesDone !== null && b.minutesDone !== undefined && b.minutesDone > 0) {
-      b.renderEndMin = b.renderStartMin + b.minutesDone;
-    } else if ((b.status === 'COMPLETED' || b.status === 'SKIPPED') && b.actualEndTime) {
-      const actualEndMin = toMinutes(b.actualEndTime);
-      if (actualEndMin < b.originalEndMin && actualEndMin >= b.originalStartMin) {
-        b.renderEndMin = actualEndMin;
-      }
-    }
-  });
-
-  // ── Step 4: Compute render bounds ─────────────────────────────────────────
-  const allRenderStarts = computedSlots.map(b => b.renderStartMin);
-  const allRenderEnds = computedSlots.map(b => b.renderEndMin);
-  // Also include shadow marks in the timeline range
-  const shadowEnds = computedSlots.filter(b => b.shadowMarkMin).map(b => b.shadowMarkMin!);
-
-  const timelineStart = Math.min(...allRenderStarts);
-  let timelineEnd = Math.max(...allRenderEnds, ...shadowEnds);
-
-  // Ensure timeline includes current time if active
-  if (activeIdx >= 0) {
-    timelineEnd = Math.max(timelineEnd, adjustedCurrentMin + 10);
+  if (currentMinutes >= timelineStart && currentMinutes < timelineEnd) {
+    timelineEnd = Math.max(timelineEnd, currentMinutes + 30);
   }
 
   const totalMinutes = timelineEnd - timelineStart;
-  if (totalMinutes <= 0) return null;
-
   const toPct = (min: number) => ((min - timelineStart) / totalMinutes) * 100;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Drag Handlers ─────────────────────────────────────────────────────────
 
-  // Last block info for end label
-  const lastBlock = computedSlots[computedSlots.length - 1];
-  const lastBlockDuration = lastBlock.renderEndMin - lastBlock.renderStartMin;
-  const showEndLabel = lastBlockDuration > 90;
+  const handlePointerDown = (e: React.PointerEvent, id: string, mode: 'move' | 'resize-left' | 'resize-right') => {
+    if (e.button !== 0) return; // Only left click
+    e.stopPropagation();
+    e.preventDefault();
+
+    const slot = optimisticSlots.find(s => s.id === id);
+    if (!slot) return;
+
+    setDragState({
+      id,
+      mode,
+      startX: e.clientX,
+      initialStartMin: slot.startMin,
+      initialEndMin: slot.endMin,
+    });
+  };
+
+  useEffect(() => {
+    if (!dragState) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!containerRef.current) return;
+      
+      const width = containerRef.current.getBoundingClientRect().width;
+      const deltaX = e.clientX - dragState.startX;
+      const deltaRatio = deltaX / width;
+      const deltaMinutesRaw = deltaRatio * totalMinutes;
+      
+      // Snap to 5-minute intervals for that "butter" crisp feel
+      const deltaMinutes = Math.round(deltaMinutesRaw / 5) * 5;
+
+      // Start with a fresh copy of baseSlots for deterministic cascading
+      const newSlots = [...baseSlots];
+      const draggedIdx = newSlots.findIndex(s => s.id === dragState.id);
+      if (draggedIdx === -1) return;
+      
+      const draggedSlot = { ...newSlots[draggedIdx] };
+
+      let newStart = dragState.initialStartMin;
+      let newEnd = dragState.initialEndMin;
+
+      if (dragState.mode === 'move') {
+        newStart += deltaMinutes;
+        newEnd += deltaMinutes;
+      } else if (dragState.mode === 'resize-left') {
+        newStart += deltaMinutes;
+      } else if (dragState.mode === 'resize-right') {
+        newEnd += deltaMinutes;
+      }
+
+      // Constraints
+      if (newEnd <= newStart) {
+        if (dragState.mode === 'resize-left') newStart = newEnd - 5;
+        else if (dragState.mode === 'resize-right') newEnd = newStart + 5;
+      }
+
+      // Prevent dragging outside 24h absolute bounds (keep sanity)
+      const dayStart = 0;
+      const dayEnd = 24 * 60 * 2; // Allow up to 48h for next-day overflow
+
+      newStart = Math.max(dayStart, Math.min(newStart, dayEnd - 5));
+      newEnd = Math.max(newStart + 5, Math.min(newEnd, dayEnd));
+
+      draggedSlot.startMin = newStart;
+      draggedSlot.endMin = newEnd;
+      draggedSlot.duration = newEnd - newStart;
+      draggedSlot.startTime = minToStr(newStart);
+      draggedSlot.endTime = minToStr(newEnd);
+
+      newSlots[draggedIdx] = draggedSlot;
+
+      // --- CASCADING LOGIC ---
+      // Cascade RIGHT (pushing blocks after this one)
+      for (let i = draggedIdx + 1; i < newSlots.length; i++) {
+        const prevSlot = newSlots[i - 1];
+        const currSlot = { ...newSlots[i] };
+        
+        // If previous block pushed into current block's start time
+        if (prevSlot.endMin > currSlot.startMin) {
+          const overlap = prevSlot.endMin - currSlot.startMin;
+          currSlot.startMin += overlap;
+          currSlot.endMin += overlap;
+          currSlot.startTime = minToStr(currSlot.startMin);
+          currSlot.endTime = minToStr(currSlot.endMin);
+          newSlots[i] = currSlot;
+        }
+      }
+
+      // Cascade LEFT (pushing blocks before this one)
+      for (let i = draggedIdx - 1; i >= 0; i--) {
+        const nextSlot = newSlots[i + 1];
+        const currSlot = { ...newSlots[i] };
+
+        // If next block pushed backwards into current block's end time
+        if (nextSlot.startMin < currSlot.endMin) {
+          const overlap = currSlot.endMin - nextSlot.startMin;
+          currSlot.startMin -= overlap;
+          currSlot.endMin -= overlap;
+          
+          currSlot.startTime = minToStr(currSlot.startMin);
+          currSlot.endTime = minToStr(currSlot.endMin);
+          newSlots[i] = currSlot;
+        }
+      }
+
+      setOptimisticSlots(newSlots);
+    };
+
+    const handlePointerUp = async () => {
+      // Save changes to DB
+      const currentOptSlots = [...optimisticSlots]; // Capture current state
+      setDragState(null); // Stop dragging
+
+      // Did it actually move?
+      const draggedSlot = currentOptSlots.find(s => s.id === dragState.id);
+      if (!draggedSlot || 
+          (draggedSlot.startMin === dragState.initialStartMin && 
+           draggedSlot.endMin === dragState.initialEndMin)) {
+        return; // Nothing changed, don't hit API
+      }
+
+      try {
+        const updates = currentOptSlots.map(s => ({
+          id: s.id,
+          startTime: minToStr(s.startMin),
+          endTime: minToStr(s.endMin),
+          title: s.title,
+          color: s.color,
+          sortOrder: s.sortOrder
+        }));
+        await updateDaySchedule(updates);
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to save timeline changes');
+        setOptimisticSlots(baseSlots); // Revert on failure
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [dragState, totalMinutes, optimisticSlots, baseSlots]);
+
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  
+  const lastBlock = optimisticSlots[optimisticSlots.length - 1];
+  const showEndLabel = lastBlock && lastBlock.duration > 60;
+  const anyBlockCurrentlyActive = optimisticSlots.some(s => s.isCurrentlyActive);
 
   return (
-    <section className="mb-8 mt-4 relative">
+    <section className="mb-12 mt-4 relative">
       <button 
         onClick={onManageDay} 
-        className="absolute -top-5 right-0 p-1 text-foreground/20 hover:text-foreground/70 transition-colors outline-none z-10"
+        className="absolute -top-6 right-0 p-1 text-muted hover:text-muted transition-colors outline-none z-20"
         title="Manage Day"
       >
-        <Settings2 className="w-3.5 h-3.5" />
+        <Settings2 className="w-4 h-4" />
       </button>
 
-      <div className="relative mt-2">
-        {/* ── The Bar ──────────────────────────────────────────────────────── */}
-        <div className="relative h-[6px] rounded-full overflow-hidden bg-divider">
-          {computedSlots.map((block, i) => {
-            if (block.isConsumed) return null; // Invisible
+      <div className="relative mt-2" ref={containerRef}>
+        
+        {/* ── Background Bar (Track) ── */}
+        <div className="absolute top-0 w-full h-[8px] rounded-full bg-divider/50 pointer-events-none" />
 
-            const isLastBlock = i === computedSlots.length - 1;
+        {/* ── The Draggable Blocks ── */}
+        <div className="relative h-[8px] rounded-full w-full">
+          {optimisticSlots.map((block, i) => {
             const isSkipped = block.status === 'SKIPPED';
-            const opacityClass = isSkipped ? 'opacity-40' : (block.status === 'UPCOMING' ? 'opacity-40' : (block.status === 'ACTIVE' ? 'opacity-100' : 'opacity-60'));
+            const opacityClass = isSkipped ? 'opacity-40' : (block.isCurrentlyActive ? 'opacity-100' : 'opacity-80');
+            const isDraggingThis = dragState?.id === block.id;
             
-            const startPct = toPct(block.renderStartMin);
-            const widthPct = toPct(block.renderEndMin) - startPct;
+            const startPct = toPct(block.startMin);
+            const widthPct = toPct(block.endMin) - startPct;
 
             return (
               <div
                 key={block.id}
-                className={`absolute top-0 h-full transition-all duration-500 ${opacityClass} ${!isLastBlock ? 'border-r-2 border-background' : ''} ${isSkipped ? 'border border-dashed !bg-transparent' : ''}`}
+                className={`absolute top-0 h-full ${!dragState ? 'transition-all duration-300' : ''} ${opacityClass} group hover:opacity-100 z-10 ${isDraggingThis ? '!opacity-100 shadow-[0_0_15px_rgba(255,255,255,0.2)] z-30' : ''}`}
                 style={{
                   left: `${Math.max(0, startPct)}%`,
                   width: `${Math.max(0, widthPct)}%`,
-                  backgroundColor: isSkipped ? 'transparent' : block.color,
-                  borderColor: isSkipped ? block.color : undefined,
                 }}
-              />
+              >
+                {/* Visual Fill */}
+                <div 
+                  className={`w-full h-full rounded-full cursor-grab active:cursor-grabbing transition-colors ${isSkipped ? 'border border-dashed border-accent/50 !bg-transparent' : 'bg-accent'}`}
+                  onPointerDown={(e) => handlePointerDown(e, block.id, 'move')}
+                />
+
+                {/* Left Resize Handle */}
+                <div 
+                  className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-6 cursor-ew-resize opacity-0 group-hover:opacity-100 flex items-center justify-center z-20"
+                  onPointerDown={(e) => handlePointerDown(e, block.id, 'resize-left')}
+                >
+                  <div className="w-1 h-3 rounded-full bg-white shadow-sm" />
+                </div>
+
+                {/* Right Resize Handle */}
+                <div 
+                  className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-6 cursor-ew-resize opacity-0 group-hover:opacity-100 flex items-center justify-center z-20"
+                  onPointerDown={(e) => handlePointerDown(e, block.id, 'resize-right')}
+                >
+                  <div className="w-1 h-3 rounded-full bg-white shadow-sm" />
+                </div>
+              </div>
             );
           })}
         </div>
 
-        {/* ── Shadow Marks (quota indicators) ──────────────────────────────── */}
-        {computedSlots.filter(b => b.shadowMarkMin && !b.isConsumed).map(block => {
-          const pct = toPct(block.shadowMarkMin!);
-          if (pct < 0 || pct > 100) return null;
-          return (
-            <div
-              key={`shadow-${block.id}`}
-              className="absolute top-[-2px] h-[10px] w-[2px] rounded-full opacity-30"
-              style={{ left: `${pct}%`, backgroundColor: block.color }}
-              title={`${block.title} original quota ends here`}
-            />
-          );
-        })}
-
         {/* ── Current Time Indicator ───────────────────────────────────────── */}
         {(() => {
-          const pct = Math.max(0, Math.min(100, toPct(adjustedCurrentMin)));
-          const isCurrentlyActive = activeIdx >= 0;
+          const pct = Math.max(0, Math.min(100, toPct(currentMinutes)));
           return (
-            <div className="absolute top-[-4px] z-10" style={{ left: `${pct}%` }}>
+            <div className="absolute top-[-3px] z-20 transition-all duration-1000 pointer-events-none" style={{ left: `${pct}%` }}>
               <div className={`w-[14px] h-[14px] rounded-full border-2 border-background -ml-[7px] ${
-                isCurrentlyActive 
+                anyBlockCurrentlyActive 
                   ? 'bg-accent shadow-[0_0_10px_rgba(0,122,204,0.6)]' 
                   : 'bg-foreground/40'
               }`} />
@@ -281,29 +366,11 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
         })()}
 
         {/* ── Labels Below ─────────────────────────────────────────────────── */}
-        <div className="relative mt-2.5 min-h-[30px]">
-          {computedSlots.map((block, i) => {
-            if (block.isConsumed) return null;
-
-            const isActivelyRunning = block.status === 'ACTIVE';
-            const isLastBlock = i === computedSlots.length - 1;
-
-            // Find if this is the next upcoming block
-            const activeIndex = computedSlots.findIndex(s => s.status === 'ACTIVE');
-            const searchStartIndex = activeIndex >= 0 ? activeIndex + 1 : 0;
-            const firstUpcomingIdx = computedSlots.findIndex((b, idx) => 
-              idx >= searchStartIndex && 
-              b.status === 'UPCOMING' && 
-              !b.isConsumed &&
-              b.originalEndMin > adjustedCurrentMin
-            );
-            const isNextUpcoming = i === firstUpcomingIdx;
-            
-            const isPassed = adjustedCurrentMin >= block.originalEndMin;
-            const showHoverActions = isActivelyRunning || (!isPassed && (isNextUpcoming || block.status === 'UPCOMING'));
-
-            const startPct = toPct(block.renderStartMin);
-            const widthPct = toPct(block.renderEndMin) - startPct;
+        <div className="relative mt-3 min-h-[35px] pointer-events-none">
+          {optimisticSlots.map((block) => {
+            const startPct = toPct(block.startMin);
+            const widthPct = toPct(block.endMin) - startPct;
+            const isDraggingThis = dragState?.id === block.id;
 
             return (
               <div 
@@ -312,37 +379,27 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
                   left: `${Math.max(0, startPct)}%`,
                   width: `${Math.max(0, widthPct)}%` 
                 }} 
-                className="absolute top-0 min-w-0 pr-2 group"
+                className={`absolute top-0 min-w-0 pr-2 ${!dragState ? 'transition-all duration-300' : ''}`}
               >
-                <div className="flex items-center gap-1.5" title={`${block.title} (${format12h(minToStr(block.renderStartMin))} - ${format12h(minToStr(block.renderEndMin))})`}>
-                    {isActivelyRunning && (
+                <div className="flex items-center gap-1.5" title={`${block.title}`}>
+                    {block.isCurrentlyActive && (
                       <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-accent animate-pulse" />
                     )}
-                    <p className={`text-[10px] font-medium truncate cursor-default ${
-                      block.status === 'SKIPPED' ? 'line-through text-foreground/20' :
-                      block.status === 'ACTIVE' ? 'text-foreground/70' :
-                      'text-foreground/30'
+                    <p className={`text-[10px] font-medium truncate ${
+                      block.status === 'SKIPPED' ? 'line-through text-muted' :
+                      (block.isCurrentlyActive || isDraggingThis) ? 'text-foreground/90' :
+                      'text-muted'
                     }`}>
                       {block.title}
                     </p>
                   </div>
-                  <p className={`text-[9px] font-mono mt-px truncate ${
-                    block.status === 'SKIPPED' ? 'text-foreground/15' :
-                    block.status === 'ACTIVE' ? 'text-foreground/50' :
-                    'text-foreground/20'
+                  <p className={`text-[9.5px] font-mono mt-0.5 truncate ${
+                    block.status === 'SKIPPED' ? 'text-muted' :
+                    (block.isCurrentlyActive || isDraggingThis) ? 'text-accent' :
+                    'text-muted'
                   }`}>
-                    {format12h(minToStr(block.renderStartMin))}
+                    {format12h(minToStr(block.startMin))} {isDraggingThis ? `- ${format12h(minToStr(block.endMin))}` : ''}
                   </p>
-
-                  {/* Hover actions */}
-                  {showHoverActions && (
-                    <ActiveBlockActions
-                      currentSlot={block}
-                      isLast={isLastBlock}
-                      isNextUpcoming={isNextUpcoming}
-                      onManageDay={onManageDay}
-                    />
-                  )}
                 </div>
             );
           })}
@@ -351,7 +408,7 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
           {showEndLabel && (
             <div className="absolute right-0 top-0 text-right w-[60px]">
               <p className="text-[10px] font-medium text-transparent select-none">End</p>
-              <p className="text-[9px] font-mono mt-px text-foreground/40">
+              <p className="text-[9px] font-mono mt-px text-muted">
                 {format12h(lastBlock.endTime)}
               </p>
             </div>

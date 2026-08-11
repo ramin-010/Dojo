@@ -75,7 +75,7 @@ export function CanvasHeader({
               value={title || ''}
               onChange={(e) => onTitleChange?.(e.target.value)}
               placeholder="Untitled Document"
-              className={`w-full bg-transparent text-[62px] font-semibold tracking-tight text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-none p-0 leading-tight ${readOnly ? 'pointer-events-none' : ''}`}
+              className={`w-full bg-transparent text-[62px] font-semibold tracking-tight text-foreground placeholder:text-muted/30 focus:outline-none border-none p-0 leading-tight ${readOnly ? 'pointer-events-none' : ''}`}
               readOnly={readOnly}
             />
           </div>

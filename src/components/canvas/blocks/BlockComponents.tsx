@@ -199,7 +199,7 @@ export const BlockContent = React.memo<BlockContentProps>(({
     if (!imgSrc) {
       return (
         <div className="w-full h-full flex items-center justify-center bg-muted/20 rounded-lg">
-          <span className="text-xs text-muted-foreground/50">Loading image...</span>
+          <span className="text-xs text-muted/50">Loading image...</span>
         </div>
       );
     }
@@ -220,7 +220,7 @@ export const BlockContent = React.memo<BlockContentProps>(({
     return (
       <div className="w-full h-full pointer-events-auto flex items-center justify-center bg-muted/20 border border-border">
         {/* Placeholder for EmbedBlock */}
-        <span className="text-muted-foreground">Embed: {content}</span>
+        <span className="text-muted">Embed: {content}</span>
       </div>
     );
   }
@@ -241,7 +241,7 @@ export const BlockContent = React.memo<BlockContentProps>(({
         <div className="w-full h-full flex items-center justify-between bg-background border rounded-lg p-3 shadow-sm animate-pulse">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded bg-muted/50 flex items-center justify-center">
-              <Loader2 className="w-5 h-5 text-muted-foreground/40 animate-spin" />
+              <Loader2 className="w-5 h-5 text-muted/40 animate-spin" />
             </div>
             <div className="flex flex-col gap-1">
               <div className="h-4 w-32 bg-muted/50 rounded" />
@@ -265,7 +265,7 @@ export const BlockContent = React.memo<BlockContentProps>(({
               {fileName || 'Unknown File'}
             </span>
             {fileSize && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted">
                 {(fileSize / 1024 / 1024).toFixed(2)} MB
               </span>
             )}
@@ -275,7 +275,7 @@ export const BlockContent = React.memo<BlockContentProps>(({
           href={url} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="p-2 rounded-md hover:bg-muted text-muted hover:text-foreground transition-colors"
           title="Download File"
           onClick={(e) => e.stopPropagation()}
         >

@@ -32,12 +32,12 @@ export function TagsBar({
 }: TagsBarProps) {
   return (
     /* Absolutely positioned — hovers in the gap above the title without shifting layout */
-    <div className="absolute -top-[26px] left-0 flex items-center gap-2 text-[#a0a0a0] text-xs font-medium z-10">
+    <div className="absolute -top-[26px] left-0 flex items-center gap-2 text-muted text-xs font-medium z-10">
       {/* Empty-state placeholder */}
       {tags.length === 0 && !isAddingTag && (
         <span
           onClick={() => setIsAddingTag(true)}
-          className="px-2 py-1 border border-dashed border-white/10 rounded-md text-[#888888]/60 hover:text-foreground hover:bg-white/5 cursor-pointer transition-colors"
+          className="px-2 py-1 border border-dashed border-border rounded-md text-muted hover:text-foreground hover:bg-foreground/5 cursor-pointer transition-colors"
         >
           Add tags...
         </span>
@@ -51,7 +51,7 @@ export function TagsBar({
             e.stopPropagation();
             await onRemoveTag(tag.id);
           }}
-          className="group relative flex items-center justify-center px-2 py-1 bg-white/5 border border-white/5 rounded-md hover:bg-white/10 hover:border-white/20 text-[#a0a0a0] hover:text-foreground transition-colors overflow-hidden"
+          className="group relative flex items-center justify-center px-2 py-1 bg-foreground/5 border border-border rounded-md hover:bg-foreground/10 hover:border-border/50 text-muted hover:text-foreground transition-colors overflow-hidden"
           title="Click to remove tag"
         >
           <span className="group-hover:opacity-30 transition-opacity duration-300">
@@ -89,15 +89,15 @@ export function TagsBar({
               }
             }}
             autoFocus
-            className="px-2 py-1 bg-white/5 border border-white/10 rounded-md outline-none text-foreground w-32 placeholder:text-[#888888]/50"
+            className="px-2 py-1 bg-background border border-border rounded-md outline-none text-foreground w-32 placeholder:text-muted/50"
             placeholder="tag..."
           />
           {suggestedTags.length > 0 && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e1e1e] border border-white/10 rounded-md shadow-xl overflow-hidden z-50">
+            <div className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-md shadow-xl overflow-hidden z-50">
               {suggestedTags.map((st) => (
                 <div
                   key={st.id}
-                  className="px-3 py-2 text-sm text-[#a0a0a0] hover:bg-white/5 hover:text-foreground cursor-pointer"
+                  className="px-3 py-2 text-sm text-muted hover:bg-foreground/5 hover:text-foreground cursor-pointer"
                   onMouseDown={(e) => {
                     e.preventDefault(); // prevent input blur
                     onCommitTag(st.name);
@@ -112,10 +112,10 @@ export function TagsBar({
       ) : (
         <button
           onClick={() => setIsAddingTag(true)}
-          className="flex items-center justify-center w-[25px] h-[25px] rounded-md border border-[#888888]/50 hover:bg-white/10 text-[#888888] hover:text-foreground transition-colors"
+          className="flex items-center justify-center w-[25px] h-[25px] rounded-md border border-border hover:bg-foreground/10 text-muted hover:text-foreground transition-colors"
           title="Add tag"
         >
-          <Plus className="w-3.5 h-3.5 text-[#888888]/50 hover:text-foreground" />
+          <Plus className="w-3.5 h-3.5 text-muted/50 hover:text-foreground" />
         </button>
       )}
     </div>

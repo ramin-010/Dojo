@@ -55,7 +55,7 @@ function LoginContent() {
           <div className="w-6 h-6 rounded bg-accent" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
-        <p className="text-sm text-muted-foreground mt-1">Enter your password to access your workspace</p>
+        <p className="text-sm text-muted mt-1">Enter your password to access your workspace</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,7 +93,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground selection:bg-indigo-500/30">
-      <Suspense fallback={<div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>}>
+      <Suspense fallback={<div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted" /></div>}>
         <LoginContent />
       </Suspense>
     </div>

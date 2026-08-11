@@ -149,7 +149,7 @@ export function ResourceRow({
             </div>
           </>
         ) : (
-          <ImageIcon className="w-4 h-4 text-muted-foreground" />
+          <ImageIcon className="w-4 h-4 text-muted" />
         )}
       </div>
     );
@@ -334,7 +334,7 @@ export function ResourceRow({
             e.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className="p-1 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 rounded-md"
+          className="p-1 text-muted opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 rounded-md"
         >
           <MoreVertical className="w-4 h-4" />
         </button>

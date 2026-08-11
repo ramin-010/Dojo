@@ -76,7 +76,7 @@ export default function TestScannerPage() {
           <ImageIcon className="text-purple-500" />
           Scanner Pipeline Lab
         </h1>
-        <p className="text-muted-foreground mb-8">Test Sharp image processing parameters to achieve the perfect "Adobe Scan" effect.</p>
+        <p className="text-muted mb-8">Test Sharp image processing parameters to achieve the perfect "Adobe Scan" effect.</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
@@ -100,7 +100,7 @@ export default function TestScannerPage() {
               <div>
                 <label className="flex justify-between text-sm font-medium mb-2">
                   <span>Contrast Multiplier</span>
-                  <span className="text-muted-foreground">{contrastMultiplier}x</span>
+                  <span className="text-muted">{contrastMultiplier}x</span>
                 </label>
                 <input type="range" min="0.5" max="3" step="0.1" value={contrastMultiplier} onChange={e => setContrastMultiplier(parseFloat(e.target.value))} className="w-full accent-purple-500" />
               </div>
@@ -108,7 +108,7 @@ export default function TestScannerPage() {
               <div>
                 <label className="flex justify-between text-sm font-medium mb-2">
                   <span>Brightness Offset</span>
-                  <span className="text-muted-foreground">{brightnessOffset}</span>
+                  <span className="text-muted">{brightnessOffset}</span>
                 </label>
                 <input type="range" min="-128" max="128" step="1" value={brightnessOffset} onChange={e => setBrightnessOffset(parseInt(e.target.value))} className="w-full accent-purple-500" />
               </div>
@@ -116,7 +116,7 @@ export default function TestScannerPage() {
               <div>
                 <label className="flex justify-between text-sm font-medium mb-2">
                   <span>Sharpen Sigma</span>
-                  <span className="text-muted-foreground">{sharpenSigma}</span>
+                  <span className="text-muted">{sharpenSigma}</span>
                 </label>
                 <input type="range" min="0" max="5" step="0.1" value={sharpenSigma} onChange={e => setSharpenSigma(parseFloat(e.target.value))} className="w-full accent-purple-500" />
               </div>
@@ -132,7 +132,7 @@ export default function TestScannerPage() {
                 <div>
                   <label className="flex justify-between text-sm font-medium mb-2">
                     <span>Threshold Level</span>
-                    <span className="text-muted-foreground">{thresholdLevel}</span>
+                    <span className="text-muted">{thresholdLevel}</span>
                   </label>
                   <input type="range" min="1" max="254" step="1" value={thresholdLevel} onChange={e => setThresholdLevel(parseInt(e.target.value))} className="w-full accent-purple-500" />
                 </div>
@@ -141,7 +141,7 @@ export default function TestScannerPage() {
 
             <div className="mt-8 pt-6 border-t border-border">
               <label className="flex items-center justify-center w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg cursor-pointer transition-colors mb-3">
-                <Upload className="w-4 h-4 mr-2 text-muted-foreground" />
+                <Upload className="w-4 h-4 mr-2 text-muted" />
                 <span className="text-sm font-medium">Upload Notes Image</span>
                 <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
               </label>
@@ -172,7 +172,7 @@ export default function TestScannerPage() {
                     alt="Original" 
                   />
                 ) : (
-                  <span className="text-muted-foreground/30 text-sm font-medium">No image uploaded</span>
+                  <span className="text-muted/30 text-sm font-medium">No image uploaded</span>
                 )}
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function TestScannerPage() {
                     alt="Processed" 
                   />
                 ) : (
-                  <span className="text-muted-foreground/30 text-sm font-medium">Click Process to see results</span>
+                  <span className="text-muted/30 text-sm font-medium">Click Process to see results</span>
                 )}
               </div>
             </div>

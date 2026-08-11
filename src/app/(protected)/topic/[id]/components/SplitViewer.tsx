@@ -117,7 +117,7 @@ function ResourcePreview({ data }: { data: any }) {
       <div className="w-full h-full bg-background overflow-y-auto p-6 sm:p-6 sm:pt-12 custom-scrollbar border-t border-divider">
         <div className="max-w-3xl mx-auto">
           {isLoading ? (
-            <div className="flex items-center justify-center py-32 text-muted-foreground animate-pulse">Loading document...</div>
+            <div className="flex items-center justify-center py-32 text-muted animate-pulse">Loading document...</div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-32 text-red-400">
               <FileText className="w-12 h-12 mb-4 opacity-50" />
@@ -164,7 +164,7 @@ export function SplitViewer({ data, onClose }: SplitViewerProps) {
       {/* Floating Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-md  border-border shadow-sm hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all z-50 opacity-50 hover:opacity-100"
+        className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-md  border-border shadow-sm hover:bg-accent rounded-md text-muted hover:text-foreground transition-all z-50 opacity-50 hover:opacity-100"
         title="Close Split View"
       >
         <X className="w-3 h-3" />

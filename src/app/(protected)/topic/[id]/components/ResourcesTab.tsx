@@ -217,7 +217,7 @@ export function ResourcesTab({
             {/* RECENT SECTION */}
         {(selectedCategory === 'All' && recent.length > 0) && (
           <div className="mb-4">
-            {renderSectionHeader(<Clock className="w-3.5 h-3.5 text-muted-foreground" />, 'Recent')}
+            {renderSectionHeader(<Clock className="w-3.5 h-3.5 text-muted" />, 'Recent')}
             <div className="flex flex-col gap-2">
               {recent.map(r => renderItem(r))}
             </div>
@@ -237,7 +237,7 @@ export function ResourcesTab({
         {/* IMAGES SECTION */}
         {(selectedCategory === 'All' || selectedCategory === 'Images') && images.length > 0 && (
           <div className="mb-4">
-            {renderSectionHeader(<ImageIcon className="w-3.5 h-3.5  text-muted-foreground" />, `Images (${images.length})`, images.map(i => i.id))}
+            {renderSectionHeader(<ImageIcon className="w-3.5 h-3.5  text-muted" />, `Images (${images.length})`, images.map(i => i.id))}
             <ImageCarousel 
               images={images.map(img => ({ 
                 ...img, 

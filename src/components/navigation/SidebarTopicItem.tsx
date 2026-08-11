@@ -32,12 +32,12 @@ export function SidebarTopicItem({ topic, isCollapsed }: SidebarTopicItemProps) 
       ref={setNodeRef} 
       style={style} 
       className={`group flex items-center px-1.5 py-[7px] rounded-lg text-[13px] font-medium transition-colors ${
-        isDragging ? 'bg-hover/80 text-foreground' : 'text-muted-foreground/80 hover:bg-hover hover:text-foreground'
+        isDragging ? 'bg-hover/80 text-foreground' : 'text-muted/80 hover:bg-hover hover:text-foreground'
       }`}
     >
       {!isCollapsed && (
         <button
-          className="p-1 -ml-1 mr-1 text-muted-foreground/30 hover:text-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-hover/50"
+          className="p-1 -ml-1 mr-1 text-muted/30 hover:text-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-hover/50"
           {...attributes}
           {...listeners}
         >
@@ -50,7 +50,7 @@ export function SidebarTopicItem({ topic, isCollapsed }: SidebarTopicItemProps) 
         className={`flex items-center gap-2.5 flex-1 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}
         title={isCollapsed ? topic.title : undefined}
       >
-        <FileText className={`w-3.5 h-3.5 shrink-0 transition-colors ${isDragging ? 'text-foreground' : 'text-muted-foreground/70 group-hover:text-foreground/90'}`} />
+        <FileText className={`w-3.5 h-3.5 shrink-0 transition-colors ${isDragging ? 'text-foreground' : 'text-muted/70 group-hover:text-foreground/90'}`} />
         {!isCollapsed && <span className="whitespace-nowrap truncate tracking-tight">{topic.title}</span>}
       </Link>
     </div>

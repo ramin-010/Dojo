@@ -255,7 +255,7 @@ export default function DashboardClient({
             <h1 className="text-3xl font-bold text-foreground">
               {getGreeting()}, {MOCK_USER.name}
             </h1>
-            <p className="text-foreground/50 text-sm mt-1">
+            <p className="text-muted text-sm mt-1">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
@@ -266,19 +266,19 @@ export default function DashboardClient({
             >
               Wrap Up Day
             </button>
-            <div className="flex items-center gap-1.5 text-sm text-foreground/50">
+            <div className="flex items-center gap-1.5 text-sm text-muted">
               <Flame className="w-4 h-4 text-orange-400" />
               <span className="font-semibold text-orange-400">{stats.streak}</span>
               <span>day streak</span>
             </div>
             <div className="h-4 w-px bg-divider" />
-            <div className="flex items-center gap-1.5 text-sm text-foreground/50">
-              <BookOpen className="w-4 h-4 text-foreground/40" />
-              <span className="font-semibold text-foreground/70">{stats.totalTopics}</span>
+            <div className="flex items-center gap-1.5 text-sm text-muted">
+              <BookOpen className="w-4 h-4 text-muted" />
+              <span className="font-semibold text-muted">{stats.totalTopics}</span>
               <span>topics</span>
             </div>
             <div className="h-4 w-px bg-divider" />
-            <div className="flex items-center gap-1.5 text-sm text-foreground/50">
+            <div className="flex items-center gap-1.5 text-sm text-muted">
               <CheckCircle2 className="w-4 h-4 text-emerald-500/70" />
               <span className="font-semibold text-emerald-500/70">{stats.totalRevisionsDone}</span>
               <span>reviews</span>

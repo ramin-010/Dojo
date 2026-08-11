@@ -15,7 +15,7 @@ interface TopicSettingsModalProps {
 
 export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModalProps) {
   const router = useRouter();
-  const { subjects, typography, setTypography } = useAppStore();
+  const { subjects, typography, setTypography, topicTheme, setTopicTheme } = useAppStore();
   
   const [activeTab, setActiveTab] = useState<'configuration' | 'appearance'>('configuration');
   const [selectedSubjectId, setSelectedSubjectId] = useState(topic?.subjectId || '');
@@ -117,18 +117,18 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="bg-[#1a1a1a] border border-white/5 shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
+            className="bg-card border border-border shadow-2xl rounded-xl w-full max-w-3xl flex flex-col md:flex-row md:min-h-[480px] overflow-hidden" 
             onClick={(e) => e.stopPropagation()}
           >
             {/* Left Column */}
-            <div className="w-full md:w-[240px] p-4 flex flex-col border-r border-white/5 shrink-0 bg-[#161616]">
+            <div className="w-full md:w-[240px] p-4 flex flex-col border-r border-border shrink-0 bg-background/50">
               
               <div className="flex flex-col gap-3 mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30 pl-2">Settings</h3>
+                  <h3 className="text-[10px] tracking-widest uppercase font-semibold text-muted pl-2">Settings</h3>
                   <button 
                     onClick={onClose} 
-                    className="p-1 text-white/40 hover:text-white transition-colors -mt-1 -mr-1"
+                    className="p-1 text-muted hover:text-foreground transition-colors -mt-1 -mr-1"
                   >
                     <X className="w-4 h-4 stroke-[1.5]" />
                   </button>
@@ -139,8 +139,8 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                     onClick={() => setActiveTab('configuration')}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
                       activeTab === 'configuration' 
-                        ? 'bg-white/10 text-white' 
-                        : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                        ? 'bg-foreground/10 text-foreground' 
+                        : 'text-muted hover:text-foreground hover:bg-foreground/5'
                     }`}
                   >
                     <Settings className="w-4 h-4 stroke-[1.5]" /> Configuration
@@ -149,8 +149,8 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                     onClick={() => setActiveTab('appearance')}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
                       activeTab === 'appearance' 
-                        ? 'bg-white/10 text-white' 
-                        : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                        ? 'bg-foreground/10 text-foreground' 
+                        : 'text-muted hover:text-foreground hover:bg-foreground/5'
                     }`}
                   >
                     <Palette className="w-4 h-4 stroke-[1.5]" /> Appearance
@@ -160,12 +160,12 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
 
               {activeTab === 'configuration' && (
                 <>
-                  <div className="w-full h-px bg-white/5 mb-5 mt-auto" />
+                  <div className="w-full h-px bg-border mb-5 mt-auto" />
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-white/90 text-[12px] font-medium pl-2">
-                      <AlertCircle className="w-4 h-4 text-white/50 stroke-[1.5]" /> Danger Zone
+                    <div className="flex items-center gap-2 text-foreground text-[12px] font-medium pl-2">
+                      <AlertCircle className="w-4 h-4 text-muted stroke-[1.5]" /> Danger Zone
                     </div>
-                    <p className="text-[11px] text-white/30 leading-relaxed pl-8">
+                    <p className="text-[11px] text-muted leading-relaxed pl-8">
                       Deleted topics cannot be recovered. All associated data will be removed.
                     </p>
                   </div>
@@ -174,21 +174,21 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
             </div>
 
             {/* Right Column */}
-            <div className="flex-1 p-6 bg-[#121212] overflow-y-auto custom-scrollbar relative max-h-[75vh]">
+            <div className="flex-1 p-6 bg-background overflow-y-auto custom-scrollbar relative max-h-[75vh]">
               
               {activeTab === 'configuration' ? (
                 <>
-                  <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30 mb-8 pl-2">Topic Actions</h3>
+                  <h3 className="text-[10px] tracking-widest uppercase font-semibold text-muted mb-8 pl-2">Topic Actions</h3>
                   <div className="flex flex-col gap-4 pl-2">
                     
                     {/* Move to Subject */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-background/50 group hover:border-border/80 transition-colors">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                          <FolderInput className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
+                        <span className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                          <FolderInput className="w-4 h-4 text-muted group-hover:text-foreground/60 transition-colors" />
                           Move to Subject
                         </span>
-                        <span className="text-[12px] text-white/40">
+                        <span className="text-[12px] text-muted">
                           Re-assign this topic to another subject.
                         </span>
                       </div>
@@ -196,7 +196,7 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                         <select 
                           value={selectedSubjectId} 
                           onChange={(e) => setSelectedSubjectId(e.target.value)}
-                          className="bg-black border border-white/10 text-white/80 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-white/20"
+                          className="bg-background border border-border text-foreground/80 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-border/80"
                         >
                           {subjects.map(s => (
                             <option key={s.id} value={s.id}>{s.name}</option>
@@ -205,7 +205,7 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                         <button 
                           onClick={handleMove}
                           disabled={isMoving || selectedSubjectId === topic.subjectId}
-                          className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white/90 text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+                          className="bg-foreground/5 hover:bg-foreground/10 disabled:opacity-50 text-foreground text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
                         >
                           {isMoving ? 'Moving...' : 'Move'}
                         </button>
@@ -213,56 +213,56 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                     </div>
 
                     {/* Export as Markdown */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-background/50 group hover:border-border/80 transition-colors">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
+                        <span className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted group-hover:text-foreground/60 transition-colors" />
                           Export as Markdown
                         </span>
-                        <span className="text-[12px] text-white/40">
+                        <span className="text-[12px] text-muted">
                           Download a pure markdown copy of your notes.
                         </span>
                       </div>
                       <button 
                         onClick={handleExportMarkdown}
-                        className="bg-white/5 hover:bg-white/10 text-white/90 text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+                        className="bg-foreground/5 hover:bg-foreground/10 text-foreground text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
                       >
                         Export
                       </button>
                     </div>
 
                     {/* Duplicate Topic */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-background/50 group hover:border-border/80 transition-colors">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                          <Copy className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
+                        <span className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                          <Copy className="w-4 h-4 text-muted group-hover:text-foreground/60 transition-colors" />
                           Duplicate Topic
                         </span>
-                        <span className="text-[12px] text-white/40">
+                        <span className="text-[12px] text-muted">
                           Create an exact copy in the same subject.
                         </span>
                       </div>
                       <button 
                         onClick={handleDuplicate}
                         disabled={isDuplicating}
-                        className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white/90 text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+                        className="bg-foreground/5 hover:bg-foreground/10 disabled:opacity-50 text-foreground text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
                       >
                         {isDuplicating ? 'Duplicating...' : 'Duplicate'}
                       </button>
                     </div>
 
                     {/* Archive Topic */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 group hover:border-white/10 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-background/50 group hover:border-border/80 transition-colors">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[14px] font-medium text-white/90 flex items-center gap-2">
+                        <span className="text-[14px] font-medium text-foreground flex items-center gap-2">
                           {topic.isArchived ? (
-                            <ArchiveRestore className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
+                            <ArchiveRestore className="w-4 h-4 text-muted group-hover:text-foreground/60 transition-colors" />
                           ) : (
-                            <Archive className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
+                            <Archive className="w-4 h-4 text-muted group-hover:text-foreground/60 transition-colors" />
                           )}
                           {topic.isArchived ? 'Unarchive Topic' : 'Archive Topic'}
                         </span>
-                        <span className="text-[12px] text-white/40">
+                        <span className="text-[12px] text-muted">
                           {topic.isArchived 
                             ? 'Restore this topic back to active view.'
                             : 'Hide from active view without deleting.'}
@@ -271,13 +271,13 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                       <button 
                         onClick={handleToggleArchive}
                         disabled={isArchiving}
-                        className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white/90 text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+                        className="bg-foreground/5 hover:bg-foreground/10 disabled:opacity-50 text-foreground text-[12px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
                       >
                         {isArchiving ? 'Saving...' : (topic.isArchived ? 'Unarchive' : 'Archive')}
                       </button>
                     </div>
 
-                    <div className="w-full h-px bg-white/5 my-2" />
+                    <div className="w-full h-px bg-border my-2" />
 
                     {/* Delete Topic */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-red-500/10 bg-red-500/5 group hover:border-red-500/20 transition-colors">
@@ -294,7 +294,7 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                         {showDeleteConfirm && (
                           <button 
                             onClick={() => setShowDeleteConfirm(false)}
-                            className="bg-white/5 hover:bg-white/10 text-white/80 text-[12px] font-medium px-4 py-2 rounded-lg transition-colors"
+                            className="bg-foreground/5 hover:bg-foreground/10 text-foreground/80 text-[12px] font-medium px-4 py-2 rounded-lg transition-colors"
                           >
                             Cancel
                           </button>
@@ -313,10 +313,10 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-8 pl-2 max-w-xl">
-                    <h3 className="text-[10px] tracking-widest uppercase font-semibold text-white/30">Reading Preferences</h3>
+                    <h3 className="text-[10px] tracking-widest uppercase font-semibold text-muted">Reading Preferences</h3>
                     <button 
                       onClick={() => setTypography({ fontSize: 14, lineHeight: 1.5, headingSpacing: 'standard', layoutWidth: 960, canvasWidth: 890 })}
-                      className="text-[11px] text-white/30 hover:text-white/70 transition-colors flex items-center gap-1.5"
+                      className="text-[11px] text-muted hover:text-foreground transition-colors flex items-center gap-1.5"
                     >
                       <RotateCcw className="w-3 h-3" />
                       Reset
@@ -324,14 +324,49 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                   </div>
                   <div className="flex flex-col gap-8 pl-2 max-w-xl">
                     
+                    {/* Theme Selector */}
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[14px] font-medium text-foreground flex items-center gap-2 mb-1">
+                        <Palette className="w-4 h-4 text-muted" />
+                        Theme
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: 'default', label: 'Default', bg: 'bg-[#191919]', accent: 'bg-[#007acc]' },
+                          { id: 'catppuccin-latte', label: 'Catppuccin', bg: 'bg-[#eff1f5]', accent: 'bg-[#8839ef]' },
+                          { id: 'light', label: 'Light', bg: 'bg-[#f7f5f0]', accent: 'bg-[#3a5a7d]' },
+                          { id: 'sepia', label: 'Sepia', bg: 'bg-[#f4ecd8]', accent: 'bg-[#a8672c]' },
+                          { id: 'gruvbox-light', label: 'Gruvbox', bg: 'bg-[#ebdbb2]', accent: 'bg-[#d65d0e]' },
+                          { id: 'rose-pine-dawn', label: 'Rosé Pine', bg: 'bg-[#faf4ed]', accent: 'bg-[#b4637a]' }
+                        ].map(theme => (
+                          <button
+                            key={theme.id}
+                            onClick={() => setTopicTheme(theme.id)}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                              topicTheme === theme.id 
+                                ? 'border-accent/40 bg-accent/10' 
+                                : 'border-border/50 bg-background/50 hover:bg-foreground/5'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded-full ${theme.bg} ring-2 ring-offset-2 ring-offset-transparent ${
+                              topicTheme === theme.id ? 'ring-accent/50' : 'ring-transparent'
+                            } flex items-center justify-center overflow-hidden relative shadow-sm`}>
+                              <div className={`absolute right-0 bottom-0 w-2 h-2 ${theme.accent}`} />
+                            </div>
+                            <span className="text-[12px] font-medium text-foreground">{theme.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
                     {/* Font Size */}
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                          <Type className="w-4 h-4 text-white/40" />
+                        <label className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                          <Type className="w-4 h-4 text-muted" />
                           Base Font Size
                         </label>
-                        <span className="text-[12px] text-white/40 font-mono">{typography.fontSize}px</span>
+                        <span className="text-[12px] text-muted font-mono">{typography.fontSize}px</span>
                       </div>
                       <input 
                         type="range" 
@@ -340,9 +375,9 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                         step="0.5"
                         value={typography.fontSize}
                         onChange={(e) => setTypography({ fontSize: Number(e.target.value) })}
-                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                        className="w-full h-1.5 bg-foreground/10 rounded-lg appearance-none cursor-pointer accent-foreground"
                       />
-                      <div className="flex justify-between text-[11px] text-white/30 px-1">
+                      <div className="flex justify-between text-[11px] text-muted px-1">
                         <span>A</span>
                         <span className="text-[14px]">A</span>
                       </div>
@@ -351,15 +386,15 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                     {/* Line Height */}
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                          <div className="flex flex-col gap-0.5 items-center justify-center w-4 h-4 text-white/40">
+                        <label className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                          <div className="flex flex-col gap-0.5 items-center justify-center w-4 h-4 text-muted">
                             <div className="w-3 h-px bg-current"></div>
                             <div className="w-3 h-px bg-current"></div>
                             <div className="w-3 h-px bg-current"></div>
                           </div>
                           Line Height
                         </label>
-                        <span className="text-[12px] text-white/40 font-mono">{typography.lineHeight}</span>
+                        <span className="text-[12px] text-muted font-mono">{typography.lineHeight}</span>
                       </div>
                       <input 
                         type="range" 
@@ -368,9 +403,9 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                         step="0.05"
                         value={typography.lineHeight}
                         onChange={(e) => setTypography({ lineHeight: Number(e.target.value) })}
-                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                        className="w-full h-1.5 bg-foreground/10 rounded-lg appearance-none cursor-pointer accent-foreground"
                       />
-                      <div className="flex justify-between text-[11px] text-white/30 px-1">
+                      <div className="flex justify-between text-[11px] text-muted px-1">
                         <span>Tight</span>
                         <span>Relaxed</span>
                       </div>
@@ -378,10 +413,10 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
 
                     {/* Heading Spacing */}
                     <div className="flex flex-col gap-3">
-                      <label className="text-[14px] font-medium text-white/90 flex items-center gap-2 mb-1">
+                      <label className="text-[14px] font-medium text-foreground flex items-center gap-2 mb-1">
                         Heading Spacing
                       </label>
-                      <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
+                      <div className="flex p-1 bg-background rounded-xl border border-border">
                         {[
                           { id: 'compact', label: 'Compact' },
                           { id: 'standard', label: 'Standard' },
@@ -392,15 +427,15 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                             onClick={() => setTypography({ headingSpacing: option.id as any })}
                             className={`flex-1 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
                               typography.headingSpacing === option.id 
-                                ? 'bg-white/10 text-white shadow-sm' 
-                                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                ? 'bg-card text-foreground shadow-sm border border-border/50' 
+                                : 'text-muted hover:text-foreground hover:bg-foreground/5'
                             }`}
                           >
                             {option.label}
                           </button>
                         ))}
                       </div>
-                      <p className="text-[11px] text-white/30 px-1">
+                      <p className="text-[11px] text-muted px-1">
                         Adjusts the margin above headings to visually group paragraphs.
                       </p>
                     </div>
@@ -408,11 +443,11 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                     {/* Workspace Width */}
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[14px] font-medium text-white/90 flex items-center gap-2">
-                          <Columns className="w-4 h-4 text-white/40" />
+                        <label className="text-[14px] font-medium text-foreground flex items-center gap-2">
+                          <Columns className="w-4 h-4 text-muted" />
                           Workspace Width
                         </label>
-                        <span className="text-[12px] text-white/40 font-mono">{typography.layoutWidth ?? 960}px</span>
+                        <span className="text-[12px] text-muted font-mono">{typography.layoutWidth ?? 960}px</span>
                       </div>
                       <input 
                         type="range" 
@@ -425,9 +460,9 @@ export function TopicSettingsModal({ isOpen, onClose, topic }: TopicSettingsModa
                           const newCanvas = newLayout - 70;
                           setTypography({ layoutWidth: newLayout, canvasWidth: newCanvas });
                         }}
-                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                        className="w-full h-1.5 bg-foreground/10 rounded-lg appearance-none cursor-pointer accent-foreground"
                       />
-                      <div className="flex justify-between text-[11px] text-white/30 px-1">
+                      <div className="flex justify-between text-[11px] text-muted px-1">
                         <span>Compact</span>
                         <span>Wide</span>
                       </div>

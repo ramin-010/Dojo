@@ -137,7 +137,7 @@ export function RevisionSidebar() {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.8 }}
         onClick={() => setIsMinimized(false)}
-        className="absolute top-4 left-4 z-[60] p-2 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground transition-colors bg-sidebar border border-border shadow-md"
+        className="absolute top-4 left-4 z-[60] p-2 rounded-md hover:bg-hover text-muted hover:text-foreground transition-colors bg-sidebar border border-border shadow-md"
         title="Open Revision Queue"
       >
         <List className="w-5 h-5" />
@@ -171,7 +171,7 @@ export function RevisionSidebar() {
       <div className="p-3 border-t border-border bg-sidebar flex items-center justify-end">
          <button 
           onClick={endSession}
-          className="flex items-center gap-1.5 p-1.5 px-3 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors text-[10px] uppercase font-bold tracking-wider"
+          className="flex items-center gap-1.5 p-1.5 px-3 rounded-md hover:bg-destructive/10 text-muted hover:text-destructive transition-colors text-[10px] uppercase font-bold tracking-wider"
           title="End Session"
         >
           <PowerOff className="w-3 h-3" /> End

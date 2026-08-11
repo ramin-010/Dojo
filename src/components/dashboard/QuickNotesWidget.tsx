@@ -590,8 +590,8 @@ const NoteBlock = ({
         <div
           className={`flex items-start gap-3 w-full pb-2 transition-all border-b-2 ${
             isDragging
-              ? 'border-blue-500/50 bg-blue-500/5 p-4 rounded-t-xl'
-              : 'border-white/5 focus-within:border-white/20 bg-transparent'
+              ? 'border-accent/50 bg-accent/5 p-4 rounded-t-xl'
+              : 'border-border/50 focus-within:border-accent/40 bg-transparent'
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -600,7 +600,7 @@ const NoteBlock = ({
           <div className="flex items-center gap-1.5 mt-[2px]">
             <button
               onClick={onToggleSearch}
-              className={`p-1.5 rounded-md transition-colors ${isSearchMode ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30' : 'text-foreground/30 hover:text-foreground/60 hover:bg-white/5'}`}
+              className={`p-1.5 rounded-md transition-colors ${isSearchMode ? 'bg-accent/20 text-accent ring-1 ring-accent/30' : 'text-foreground/30 hover:text-foreground/60 hover:bg-hover'}`}
               title={isSearchMode ? "Exit search" : "Search notes"}
             >
               <Search className="w-4 h-4" />
@@ -609,7 +609,7 @@ const NoteBlock = ({
               <button
                 onClick={() => !isUploading && fileInputRef.current?.click()}
                 disabled={isUploading}
-                className={`p-1.5 rounded-md transition-colors ${isUploading ? 'text-blue-400 cursor-not-allowed' : 'text-foreground/30 hover:text-foreground/60 hover:bg-white/5'}`}
+                className={`p-1.5 rounded-md transition-colors ${isUploading ? 'text-accent cursor-not-allowed' : 'text-foreground/30 hover:text-foreground/60 hover:bg-hover'}`}
                 title="Attach file"
               >
                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -680,16 +680,16 @@ const NoteBlock = ({
         </span>
       </div>
       <div className="flex-1 min-w-0 pb-6 pl-2">
-        <div className={`relative inline-flex flex-col rounded-2xl rounded-tl-none px-4 py-3 min-w-[60px] max-w-full ${isNoteEditing ? 'w-full' : ''} ${note.isPinned ? 'bg-white/[0.05] ring-1 ring-white/10' : 'bg-[#202C33]'}`}>
+        <div className={`relative inline-flex flex-col rounded-2xl rounded-tl-none px-4 py-3 min-w-[60px] max-w-full ${isNoteEditing ? 'w-full' : ''} bg-card border border-border shadow-sm`}>
           {/* WhatsApp style curved tail */}
-          <svg className={`absolute top-0 -left-[10px] w-[10px] h-[16px] ${note.isPinned ? 'text-[#252B30]' : 'text-[#202C33]'}`} viewBox="0 0 10 16" fill="currentColor">
+          <svg className={`absolute top-0 -left-[10px] w-[10px] h-[16px] text-card`} viewBox="0 0 10 16" fill="currentColor">
             <path d="M10 0H0C5 0 10 5 10 16V0Z" />
           </svg>
           
           {note.isPinned && (
             <div className="flex items-center gap-1 mb-1.5 -mt-0.5">
-              <Pin className="w-2.5 h-2.5 text-foreground/40" />
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-foreground/40">Pinned</span>
+              <Pin className="w-2.5 h-2.5 text-muted" />
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted">Pinned</span>
             </div>
           )}
           
@@ -702,12 +702,12 @@ const NoteBlock = ({
                 onKeyDown={handleNoteEditKeyDown}
                 onBlur={handleNoteEditSave}
                 autoFocus
-                className="w-full bg-transparent resize-none outline-none text-[14px] leading-relaxed text-white/90 placeholder:text-white/40 !overflow-hidden"
+                className="w-full bg-transparent resize-none outline-none text-[14px] leading-relaxed text-foreground/90 placeholder:text-muted !overflow-hidden"
               />
             ) : (
               <div 
                 onDoubleClick={handleDoubleClick}
-                className="w-full bg-transparent text-[14px] leading-relaxed text-white/90 whitespace-pre-wrap cursor-text"
+                className="w-full bg-transparent text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap cursor-text"
                 title="Double click to edit"
               >
                 {localContent}

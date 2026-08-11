@@ -39,7 +39,7 @@ export default function WeeklyTimetable({ initialBlocks = [], initialRoutineMode
             <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center ${sameForAll ? 'bg-accent' : 'bg-divider'}`}>
               <div className={`w-3 h-3 rounded-full bg-white transition-transform absolute ${sameForAll ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
             </div>
-            <span className={`text-[13px] font-medium transition-colors ${sameForAll ? 'text-foreground' : 'text-foreground/50 group-hover:text-foreground/70'}`}>
+            <span className={`text-[13px] font-medium transition-colors ${sameForAll ? 'text-foreground' : 'text-muted group-hover:text-muted'}`}>
               Same routine every day
             </span>
           </label>
@@ -77,7 +77,7 @@ export default function WeeklyTimetable({ initialBlocks = [], initialRoutineMode
                 <div key={day} className="w-[260px] flex flex-col">
                   {/* Floating Day Header */}
                   <div className="mb-4 pl-1">
-                    <span className="text-[11px] font-bold text-foreground/40 uppercase tracking-widest">{day}</span>
+                    <span className="text-[11px] font-bold text-muted uppercase tracking-widest">{day}</span>
                   </div>
                   
                   {/* Blocks List */}
@@ -89,7 +89,7 @@ export default function WeeklyTimetable({ initialBlocks = [], initialRoutineMode
                     ) : (
                       !addingDay && (
                         <div className="flex items-center justify-center border border-dashed border-divider/40 rounded-xl opacity-50 p-4 text-center">
-                          <p className="text-[11px] font-medium text-foreground/30">No blocks</p>
+                          <p className="text-[11px] font-medium text-muted">No blocks</p>
                         </div>
                       )
                     )}
@@ -130,10 +130,10 @@ function BlockCard({ block }: { block: any }) {
           <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: block.color || '#3b82f6', opacity: 0.8 }} />
           <div>
             <p className="text-[13px] font-semibold text-foreground/90 leading-tight">{block.title}</p>
-            <p className="text-[11px] font-mono text-foreground/40 mt-1">{format12h(block.startTime)} - {format12h(block.endTime)}</p>
+            <p className="text-[11px] font-mono text-muted mt-1">{format12h(block.startTime)} - {format12h(block.endTime)}</p>
           </div>
         </div>
-        <button onClick={handleDelete} className="text-foreground/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-2">
+        <button onClick={handleDelete} className="text-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-2">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -143,7 +143,7 @@ function BlockCard({ block }: { block: any }) {
 
 function AddBlockButton({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full py-2 flex items-center justify-center gap-1.5 rounded-xl border border-transparent hover:border-divider/50 hover:bg-hover/30 text-foreground/30 hover:text-foreground/60 text-[11px] font-semibold transition-all">
+    <button onClick={onClick} className="w-full py-2 flex items-center justify-center gap-1.5 rounded-xl border border-transparent hover:border-divider/50 hover:bg-hover/30 text-muted hover:text-muted text-[11px] font-semibold transition-all">
       <Plus className="w-3.5 h-3.5" />
       Add Block
     </button>
@@ -179,7 +179,7 @@ function AddBlockForm({ dayOfWeek, onCancel }: { dayOfWeek: number | null, onCan
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Block Title..."
-          className="w-full bg-transparent text-[14px] font-semibold text-foreground focus:outline-none placeholder:text-foreground/30"
+          className="w-full bg-transparent text-[14px] font-semibold text-foreground focus:outline-none placeholder:text-muted"
         />
         <div className="flex items-center gap-2">
           <input 
@@ -188,7 +188,7 @@ function AddBlockForm({ dayOfWeek, onCancel }: { dayOfWeek: number | null, onCan
             onChange={(e) => setStart(e.target.value)}
             className="bg-transparent border border-divider/50 rounded-md px-2 py-1.5 text-[12px] font-mono text-foreground/90 focus:outline-none focus:border-accent [&::-webkit-calendar-picker-indicator]:opacity-30 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-60 transition-colors"
           />
-          <span className="text-foreground/30 text-[11px] font-bold">to</span>
+          <span className="text-muted text-[11px] font-bold">to</span>
           <input 
             type="time" 
             value={end}
@@ -197,7 +197,7 @@ function AddBlockForm({ dayOfWeek, onCancel }: { dayOfWeek: number | null, onCan
           />
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-divider/40">
-          <button onClick={onCancel} className="p-1.5 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors">
+          <button onClick={onCancel} className="p-1.5 text-muted hover:text-foreground hover:bg-hover rounded-md transition-colors">
             <X className="w-4 h-4" />
           </button>
           <button 

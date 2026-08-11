@@ -161,10 +161,10 @@ export default function TasksCalendar({
         <div className="flex justify-between items-center mb-8 px-2">
           <h2 className="text-[17px] font-bold text-foreground tracking-tight">{format(currentDate, 'MMMM yyyy')}</h2>
           <div className="flex items-center gap-2">
-            <button onClick={prevMonth} className="p-1 text-foreground/40 hover:text-foreground transition-colors">
+            <button onClick={prevMonth} className="p-1 text-muted hover:text-foreground transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button onClick={nextMonth} className="p-1 text-foreground/40 hover:text-foreground transition-colors">
+            <button onClick={nextMonth} className="p-1 text-muted hover:text-foreground transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -172,7 +172,7 @@ export default function TasksCalendar({
 
         <div className="grid grid-cols-7 mb-4">
           {WEEKDAYS.map(day => (
-            <div key={day} className="text-center text-[10px] font-bold text-foreground/30 uppercase tracking-widest">
+            <div key={day} className="text-center text-[10px] font-bold text-muted uppercase tracking-widest">
               {day}
             </div>
           ))}
@@ -214,7 +214,7 @@ export default function TasksCalendar({
                       ? 'bg-foreground text-background shadow-md' 
                       : isTodayDate
                         ? 'text-accent hover:bg-accent/10'
-                        : 'text-foreground/70 hover:bg-hover hover:text-foreground'}
+                        : 'text-muted hover:bg-hover hover:text-foreground'}
                   `}
                 >
                   {dayNum}
@@ -235,7 +235,7 @@ export default function TasksCalendar({
         <div className="flex justify-between items-end mb-10">
           <div>
             <h3 className="text-2xl font-bold text-foreground tracking-tight">{format(selectedDate, 'EEEE, MMMM d')}</h3>
-            <p className="text-[13px] text-foreground/50 mt-1">{totalUpcoming} upcoming task{totalUpcoming === 1 ? '' : 's'}</p>
+            <p className="text-[13px] text-muted mt-1">{totalUpcoming} upcoming task{totalUpcoming === 1 ? '' : 's'}</p>
           </div>
           {mode === 'default' ? (
             !isSelectedDateInPast && (
@@ -268,8 +268,8 @@ export default function TasksCalendar({
           {/* Scheduled Blocks */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <CalendarIcon className="w-4 h-4 text-foreground/30" />
-              <h4 className="text-[13px] font-semibold text-foreground/70">Scheduled Routine</h4>
+              <CalendarIcon className="w-4 h-4 text-muted" />
+              <h4 className="text-[13px] font-semibold text-muted">Scheduled Routine</h4>
             </div>
             {selectedDayBlocks.length > 0 ? (
               <div className="space-y-3">
@@ -278,12 +278,12 @@ export default function TasksCalendar({
                     <div className="w-2 h-2 rounded-full mt-1.5 opacity-80 flex-shrink-0" style={{ backgroundColor: block.color || '#3b82f6' }} />
                     <div className="flex-1">
                       <p className="text-[14px] font-semibold text-foreground/90 leading-tight">{block.title}</p>
-                      <p className="text-[11px] font-mono text-foreground/40 mt-1">{format12h(block.startTime)} - {format12h(block.endTime)}</p>
+                      <p className="text-[11px] font-mono text-muted mt-1">{format12h(block.startTime)} - {format12h(block.endTime)}</p>
                     </div>
 
                     <button 
                       onClick={(e) => { e.stopPropagation(); setActiveBlockMenuId(activeBlockMenuId === block.id ? null : block.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-foreground/40 hover:text-foreground transition-all rounded-md hover:bg-white/5"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-muted hover:text-foreground transition-all rounded-md hover:bg-white/5"
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -326,15 +326,15 @@ export default function TasksCalendar({
                 ))}
               </div>
             ) : (
-              <div className="text-[13px] text-foreground/40 italic px-2">No routines scheduled for today.</div>
+              <div className="text-[13px] text-muted italic px-2">No routines scheduled for today.</div>
             )}
           </section>
 
           {/* Tasks List */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <ListTodo className="w-4 h-4 text-foreground/30" />
-              <h4 className="text-[13px] font-semibold text-foreground/70">Tasks & Revisions</h4>
+              <ListTodo className="w-4 h-4 text-muted" />
+              <h4 className="text-[13px] font-semibold text-muted">Tasks & Revisions</h4>
             </div>
             <div className="space-y-3">
               
@@ -394,11 +394,11 @@ export default function TasksCalendar({
                       />
                     </div>
                     <div className="flex-1">
-                      <p className={`text-[14px] font-medium leading-tight ${isDone ? 'text-foreground/50 line-through' : 'text-foreground/90'} ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'}`}>
+                      <p className={`text-[14px] font-medium leading-tight ${isDone ? 'text-muted line-through' : 'text-foreground/90'} ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'}`}>
                         {rev.topic?.title || rev.capture?.title || rev.capture?.content?.substring(0, 50) || 'Unknown Revision'}
                       </p>
                       {expandedTaskIds.has(rev.id) && rev.capture?.content && rev.capture.content !== rev.capture.title && (
-                        <p className={`text-[13px] mt-2 whitespace-pre-wrap ${isDone ? 'text-foreground/30' : 'text-foreground/60'}`}>
+                        <p className={`text-[13px] mt-2 whitespace-pre-wrap ${isDone ? 'text-muted' : 'text-muted'}`}>
                           {rev.capture.content}
                         </p>
                       )}
@@ -406,14 +406,14 @@ export default function TasksCalendar({
                         <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-accent/10 text-accent">
                           Spaced Repetition
                         </span>
-                        <span className="text-foreground/20 mx-0.5">•</span>
+                        <span className="text-muted mx-0.5">•</span>
                         {rev.capture ? (
-                          <span className="flex items-center gap-1 text-[11px] text-foreground/40"><Zap className="w-3 h-3" /> Note</span>
+                          <span className="flex items-center gap-1 text-[11px] text-muted"><Zap className="w-3 h-3" /> Note</span>
                         ) : (
-                          <span className="flex items-center gap-1 text-[11px] text-foreground/40"><BookOpen className="w-3 h-3" /> Topic</span>
+                          <span className="flex items-center gap-1 text-[11px] text-muted"><BookOpen className="w-3 h-3" /> Topic</span>
                         )}
-                        <span className="text-foreground/20 mx-0.5">•</span>
-                        <span className="text-[11px] text-foreground/50 text-medium">Cycle {rev.cycleNumber}</span>
+                        <span className="text-muted mx-0.5">•</span>
+                        <span className="text-[11px] text-muted text-medium">Cycle {rev.cycleNumber}</span>
                       </div>
                     </div>
                   </div>
@@ -433,7 +433,7 @@ export default function TasksCalendar({
               ))}
 
               {selectedDayTasks.length === 0 && selectedDayRevisions.length === 0 && !isAddingTask && (
-                <div className="text-[13px] text-foreground/40 italic px-2 py-4">No tasks or revisions due today.</div>
+                <div className="text-[13px] text-muted italic px-2 py-4">No tasks or revisions due today.</div>
               )}
                 </>
               )}
@@ -498,17 +498,17 @@ function TaskItem({
           }}
           onOpen={(e) => { e.stopPropagation(); setActionMenuId(task.id); }}
           onClose={() => setActionMenuId(null)}
-          circleColorClass="text-foreground/30"
-          hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
+          circleColorClass="text-muted"
+          hoverColorClass="group-hover/btn:text-accent group-hover:text-muted"
           sizeClass="w-5 h-5"
         />
       </div>
       <div className="flex-1">
-        <p className={`text-[14px] font-medium leading-tight ${task.isDone ? 'text-foreground/50 line-through' : 'text-foreground/90'} ${isExpanded ? '' : 'line-clamp-2'}`}>
+        <p className={`text-[14px] font-medium leading-tight ${task.isDone ? 'text-muted line-through' : 'text-foreground/90'} ${isExpanded ? '' : 'line-clamp-2'}`}>
           {task.title || task.content?.substring(0, 50) || 'Unknown Task'}
         </p>
         {isExpanded && task.content && task.content !== task.title && (
-          <p className={`text-[13px] mt-2 whitespace-pre-wrap ${task.isDone ? 'text-foreground/30' : 'text-foreground/60'}`}>
+          <p className={`text-[13px] mt-2 whitespace-pre-wrap ${task.isDone ? 'text-muted' : 'text-muted'}`}>
             {task.content}
           </p>
         )}
@@ -518,8 +518,8 @@ function TaskItem({
               Reminder
             </span>
             <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3 text-foreground/30" />
-              <span className="text-[11px] font-mono text-foreground/40">{task.reminderTime}</span>
+              <Clock className="w-3 h-3 text-muted" />
+              <span className="text-[11px] font-mono text-muted">{task.reminderTime}</span>
             </div>
           </div>
         )}
@@ -550,7 +550,7 @@ function AddTaskForm({ selectedDate, onCancel }: { selectedDate: Date, onCancel:
 
   return (
     <div className="bg-sidebar border border-divider rounded-xl p-4 flex items-center gap-3">
-      <div className="mt-0.5 flex-shrink-0 text-foreground/20">
+      <div className="mt-0.5 flex-shrink-0 text-muted">
         <Circle className="w-5 h-5" />
       </div>
       <div className="flex-1 flex items-center gap-3">
@@ -563,10 +563,10 @@ function AddTaskForm({ selectedDate, onCancel }: { selectedDate: Date, onCancel:
             if (e.key === 'Escape') onCancel();
           }}
           placeholder="What needs to be done?"
-          className="w-full bg-transparent text-[14px] font-medium text-foreground focus:outline-none placeholder:text-foreground/30"
+          className="w-full bg-transparent text-[14px] font-medium text-foreground focus:outline-none placeholder:text-muted"
         />
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={onCancel} className="p-1.5 text-foreground/40 hover:text-foreground hover:bg-hover rounded-md transition-colors">
+          <button onClick={onCancel} className="p-1.5 text-muted hover:text-foreground hover:bg-hover rounded-md transition-colors">
             <X className="w-4 h-4" />
           </button>
           <button 

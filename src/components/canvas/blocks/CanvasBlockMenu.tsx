@@ -108,11 +108,11 @@ export function CanvasBlockMenu({ onAddBlock, onAddImage }: CanvasBlockMenuProps
                       onChange={e => setUrlValue(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleUrlSubmit()}
                       autoFocus
-                      className="flex-1 bg-muted text-xs rounded-md px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none"
+                      className="flex-1 bg-muted text-xs rounded-md px-2 py-1.5 text-foreground placeholder:text-muted focus:outline-none"
                     />
                     <button
                       onClick={() => { setShowUrlInput(false); setUrlValue(''); }}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted hover:text-foreground"
                     >
                       <X className="w-3 h-3" />
                     </button>

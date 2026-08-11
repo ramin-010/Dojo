@@ -185,12 +185,12 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-[13px] font-medium text-white/90 truncate mb-1">{displayTitle}</h4>
-          <p className={`text-[12px] text-muted-foreground/70 leading-snug mb-2 whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-3'}`}>{displayContent}</p>
+          <p className={`text-[12px] text-muted/70 leading-snug mb-2 whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-3'}`}>{displayContent}</p>
           <div className="flex items-center gap-2">
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getCategoryColorClass(categoryName)}`}>
               {categoryName}
             </span>
-            <span className="text-[11px] text-muted-foreground/50">
+            <span className="text-[11px] text-muted/50">
               {new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </span>
           </div>
@@ -238,21 +238,21 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
         <div className="flex flex-col items-center gap-1 shrink-0">
           <button 
             onClick={(e) => { e.stopPropagation(); onOpenSplitView?.({ type: 'note', id: note.id, data: note }); }}
-            className="text-muted-foreground/40 hover:text-blue-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-muted/40 hover:text-blue-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
             title="Open in Split View"
           >
             <Columns className="w-3.5 h-3.5" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); handleTogglePin(note.id, note.isPinned); }}
-            className={`p-1 rounded-md transition-opacity ${note.isPinned ? 'text-white/80' : 'text-muted-foreground/40 hover:text-white/80 opacity-0 group-hover:opacity-100'}`}
+            className={`p-1 rounded-md transition-opacity ${note.isPinned ? 'text-white/80' : 'text-muted/40 hover:text-white/80 opacity-0 group-hover:opacity-100'}`}
             title={note.isPinned ? "Unpin note" : "Pin note"}
           >
             <Pin className={`w-3.5 h-3.5 ${note.isPinned ? 'fill-current' : ''}`} />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); setNoteToDelete(note.id); }}
-            className="text-muted-foreground/40 hover:text-red-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-muted/40 hover:text-red-400 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
             title="Delete note"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -276,13 +276,13 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
         {/* Search & Action */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/60" />
             <input 
               type="text" 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search quick notes..." 
-              className="w-full bg-black/20 border border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-[13px] text-white/90 placeholder:text-muted-foreground/50 focus:outline-none focus:border-white/10 transition-colors"
+              className="w-full bg-black/20 border border-white/5 rounded-lg py-1.5 pl-9 pr-3 text-[13px] text-white/90 placeholder:text-muted/50 focus:outline-none focus:border-white/10 transition-colors"
             />
           </div>
           <button 
@@ -302,7 +302,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
                 className={`px-3 py-1 rounded-full border text-[11px] font-medium whitespace-nowrap transition-colors ${
                   activeCategoryId === null 
                     ? 'border-[#2563eb]/30 bg-[#2563eb]/10 text-[#60a5fa]' 
-                    : 'border-white/5 bg-black/20 text-muted-foreground hover:bg-white/5 hover:text-white/80'
+                    : 'border-white/5 bg-black/20 text-muted hover:bg-white/5 hover:text-white/80'
                 }`}
               >
                 All ({quickNotes.length})
@@ -318,7 +318,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
                     className={`px-3 py-1 rounded-full border text-[11px] font-medium whitespace-nowrap transition-colors ${
                       activeCategoryId === cat.id 
                         ? 'border-[#2563eb]/30 bg-[#2563eb]/10 text-[#60a5fa]' 
-                        : 'border-white/5 bg-black/20 text-muted-foreground hover:bg-white/5 hover:text-white/80'
+                        : 'border-white/5 bg-black/20 text-muted hover:bg-white/5 hover:text-white/80'
                     }`}
                   >
                     {cat.name} ({count})
@@ -345,7 +345,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
             {pinnedNotes.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3 px-1">
-                  <Pin className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Pin className="w-3.5 h-3.5 text-muted" />
                   <h3 className="text-[13px] font-semibold text-white/90">Pinned</h3>
                 </div>
                 <div className="space-y-2">
@@ -358,7 +358,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
             {recentNotes.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3 px-1">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Clock className="w-3.5 h-3.5 text-muted" />
                   <h3 className="text-[13px] font-semibold text-white/90">Recent</h3>
                 </div>
                 <div className="space-y-2">
@@ -368,7 +368,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
             )}
 
             {query !== '' && filteredNotes.length === 0 && (
-              <div className="text-center py-8 text-[12px] text-muted-foreground">
+              <div className="text-center py-8 text-[12px] text-muted">
                 No notes match your search.
               </div>
             )}
@@ -399,7 +399,7 @@ export function TopicQuickNotes({ quickNotes, noteCategories, topicId, subjectId
               <div className="flex justify-end gap-3">
                   <button 
                     onClick={() => setNoteToDelete(null)}
-                    className="flex flex-1 items-center justify-center gap-1.5 py-1 text-muted-foreground"
+                    className="flex flex-1 items-center justify-center gap-1.5 py-1 text-muted"
                   >
                   Cancel
                 </button>

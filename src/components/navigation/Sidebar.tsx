@@ -3,7 +3,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, LayoutDashboard, Settings,LogOutIcon, Calendar, Brain, Plus } from 'lucide-react';
+import { 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  LogOutIcon,
+  LayoutDashboard,
+  Calendar,
+  Brain,
+  Palette,
+  X
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
@@ -54,7 +64,7 @@ function NavItem({
       className={`w-full flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13.5px] font-medium transition-all duration-200 group relative outline-none subpixel-antialiased ${
         isActive
           ? 'text-foreground'
-          : 'text-muted-foreground hover:text-foreground hover:bg-hover'
+          : 'text-muted hover:text-foreground hover:bg-hover'
       } ${isCollapsed ? 'justify-center h-10 w-10 mx-auto px-0 opacity-15 hover:opacity-100' : ''}`}
     >
       {isActive && (
@@ -90,11 +100,27 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     isSidebarCollapsed: isCollapsed, setIsSidebarCollapsed, 
     initializeSidebarState,
     initializeTypographyState,
+    initializeTopicThemeState,
     isSplitViewActive,
-    revisionQueue
+    revisionQueue,
+    topicTheme,
+    setTopicTheme
   } = useAppStore();
   const pathname = usePathname();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
+
+  // ── Global Theme Application ──
+  React.useEffect(() => {
+    // Clean up all possible themes first
+    const allThemes = ['default', 'catppuccin-latte', 'light', 'sepia', 'gruvbox-light', 'rose-pine-dawn'];
+    allThemes.forEach(t => document.body.classList.remove(`theme-${t}`));
+    
+    // Apply current theme
+    if (topicTheme && topicTheme !== 'default') {
+      document.body.classList.add(`theme-${topicTheme}`);
+    }
+  }, [topicTheme]);
 
   React.useEffect(() => {
     setSubjects(initialSubjects);
@@ -104,8 +130,9 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     setTimeout(() => {
       initializeSidebarState();
       initializeTypographyState();
+      initializeTopicThemeState();
     }, 1000);
-  }, [initializeSidebarState, initializeTypographyState]);
+  }, [initializeSidebarState, initializeTypographyState, initializeTopicThemeState]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isCollapsed);
@@ -176,7 +203,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
           )}
           <button 
             onClick={toggleSidebar}
-            className={`p-1.5 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground transition-colors shrink-0 ${isCollapsed ? 'mx-auto mt-1' : ''}`}
+            className={`p-1.5 rounded-md hover:bg-hover text-muted hover:text-foreground transition-colors shrink-0 ${isCollapsed ? 'mx-auto mt-1' : ''}`}
           >
             {isCollapsed ? <ChevronRight className="w-[18px] h-[18px]" /> : <ChevronLeft className="w-[18px] h-[18px]" />}
           </button>
@@ -212,10 +239,10 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
           {!isCollapsed && (
             <>
               <div className="flex items-center justify-between px-5 py-1 mb-1 shrink-0">
-                <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">Subjects</span>
+                <span className="text-[11px] font-bold text-muted uppercase tracking-wider">Subjects</span>
                 <button 
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-hover transition-all duration-200"
+                  className="p-1 rounded-md text-muted hover:text-foreground hover:bg-hover transition-all duration-200"
                   title="New Subject"
                 >
                   <Plus className="w-[14px] h-[14px]" />
@@ -241,14 +268,22 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
           )}
         </nav>
 
-        <div className="p-3 shrink-0 flex items-center justify-center">
+        <div className={`p-3 shrink-0 flex items-center justify-center ${!isCollapsed ? 'gap-2' : 'flex-col gap-2'}`}>
+          <button 
+            onClick={() => setIsThemeSettingsOpen(true)}
+            className={`flex items-center justify-center p-2 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-all duration-200 ${!isCollapsed ? 'opacity-50 hover:opacity-100' : 'opacity-20 hover:opacity-100'}`}
+            title="Theme Settings"
+          >
+            <Palette className="w-4 h-4" />
+          </button>
+          
           {!isCollapsed ? (
             <button 
               onClick={async () => {
                 await fetch('/api/auth/logout', { method: 'POST' });
                 window.location.href = '/login';
               }} 
-              className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium"
             >
               <LogOutIcon className="w-4 h-4" />
               <span>Sign out</span>
@@ -259,7 +294,7 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
                 await fetch('/api/auth/logout', { method: 'POST' });
                 window.location.href = '/login';
               }} 
-              className="p-2 rounded-lg text-muted-foreground hover:bg-hover hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
+              className="p-2 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
             >
               <LogOutIcon className="w-4 h-4" />
             </button>
@@ -275,6 +310,68 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
         isOpen={isCreateModalOpen} 
         onClose={() => setIsCreateModalOpen(false)} 
       />
+
+      {/* Global Theme Settings Modal */}
+      <AnimatePresence>
+        {isThemeSettingsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsThemeSettingsOpen(false)}
+              className="absolute inset-0 bg-black/80"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-[16px] font-semibold text-foreground flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-accent" />
+                  App Theme
+                </h2>
+                <button 
+                  onClick={() => setIsThemeSettingsOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-muted hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'default', label: 'Default', bg: 'bg-[#191919]', accent: 'bg-[#007acc]' },
+                  { id: 'catppuccin-latte', label: 'Catppuccin', bg: 'bg-[#eff1f5]', accent: 'bg-[#8839ef]' },
+                  { id: 'light', label: 'Light', bg: 'bg-[#f7f5f0]', accent: 'bg-[#3a5a7d]' },
+                  { id: 'sepia', label: 'Sepia', bg: 'bg-[#f4ecd8]', accent: 'bg-[#a8672c]' },
+                  { id: 'gruvbox-light', label: 'Gruvbox', bg: 'bg-[#ebdbb2]', accent: 'bg-[#d65d0e]' },
+                  { id: 'rose-pine-dawn', label: 'Rosé Pine', bg: 'bg-[#faf4ed]', accent: 'bg-[#b4637a]' }
+                ].map(theme => (
+                  <button
+                    key={theme.id}
+                    onClick={() => setTopicTheme(theme.id)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                      topicTheme === theme.id 
+                        ? 'border-accent/40 bg-accent/10' 
+                        : 'border-border/50 bg-background/50 hover:bg-hover'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full ${theme.bg} ring-2 ring-offset-2 ring-offset-transparent ${
+                      topicTheme === theme.id ? 'ring-accent/50' : 'ring-transparent'
+                    } flex items-center justify-center overflow-hidden relative shadow-sm`}>
+                      <div className={`absolute right-0 bottom-0 w-2 h-2 ${theme.accent}`} />
+                    </div>
+                    <span className="text-[13px] font-medium text-foreground/80">{theme.label}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

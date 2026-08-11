@@ -268,24 +268,24 @@
 //             <h1 className="text-3xl font-bold text-foreground">
 //               {getGreeting()}, {MOCK_USER.name}
 //             </h1>
-//             <p className="text-foreground/50 text-sm mt-1">
+//             <p className="text-muted text-sm mt-1">
 //               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
 //             </p>
 //           </div>
 //           <div className="flex items-center gap-4 mt-1">
-//             <div className="flex items-center gap-1.5 text-sm text-foreground/50">
+//             <div className="flex items-center gap-1.5 text-sm text-muted">
 //               <Flame className="w-4 h-4 text-orange-400" />
 //               <span className="font-semibold text-orange-400">{stats.streak}</span>
 //               <span>day streak</span>
 //             </div>
 //             <div className="h-4 w-px bg-divider" />
-//             <div className="flex items-center gap-1.5 text-sm text-foreground/50">
-//               <BookOpen className="w-4 h-4 text-foreground/40" />
-//               <span className="font-semibold text-foreground/70">{stats.totalTopics}</span>
+//             <div className="flex items-center gap-1.5 text-sm text-muted">
+//               <BookOpen className="w-4 h-4 text-muted" />
+//               <span className="font-semibold text-muted">{stats.totalTopics}</span>
 //               <span>topics</span>
 //             </div>
 //             <div className="h-4 w-px bg-divider" />
-//             <div className="flex items-center gap-1.5 text-sm text-foreground/50">
+//             <div className="flex items-center gap-1.5 text-sm text-muted">
 //               <CheckCircle2 className="w-4 h-4 text-emerald-500/70" />
 //               <span className="font-semibold text-emerald-500/70">{stats.totalRevisionsDone}</span>
 //               <span>reviews</span>
@@ -463,11 +463,11 @@
 //                             {isActivelyRunning && (
 //                               <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse shrink-0" />
 //                             )}
-//                             <p className={`text-[10px] font-medium truncate ${isActive ? 'text-foreground/70' : 'text-foreground/30'}`}>
+//                             <p className={`text-[10px] font-medium truncate ${isActive ? 'text-muted' : 'text-muted'}`}>
 //                               {block.title}
 //                             </p>
 //                           </div>
-//                           <p className={`text-[9px] font-mono mt-px truncate ${isActive ? 'text-foreground/50' : 'text-foreground/20'}`}>
+//                           <p className={`text-[9px] font-mono mt-px truncate ${isActive ? 'text-muted' : 'text-muted'}`}>
 //                             {format12h(block.startTime)}
 //                           </p>
 
@@ -482,7 +482,7 @@
 //                   {showEndLabel && (
 //                     <div className="absolute right-0 top-0 text-right w-[60px]">
 //                       <p className="text-[10px] font-medium text-transparent select-none">End</p>
-//                       <p className="text-[9px] font-mono mt-px text-foreground/40">
+//                       <p className="text-[9px] font-mono mt-px text-muted">
 //                         {format12h(finalEndTime)}
 //                       </p>
 //                     </div>
@@ -501,7 +501,7 @@
 //         {/* ── Left Column ──────────────────────────────────────────────────── */}
 //         <section>
 //           <div className="flex justify-between items-center h-8 mb-4">
-//             <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+//             <h2 className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-2">
 //               Revisions Due
 //               <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-accent/10 text-accent border border-accent/20 normal-case tracking-normal font-bold">
 //                 {totalDue}
@@ -552,26 +552,26 @@
 //                       <span className="font-medium text-foreground">{rev.topicTitle}</span>
 //                       {rev.tags[0] && (
 //                         <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-//                           <span className="text-[10px] text-foreground/40 font-medium">
+//                           <span className="text-[10px] text-muted font-medium">
 //                             #{rev.tags[0].replace('#', '')}
 //                           </span>
 //                         </div>
 //                       )}
 //                     </div>
-//                     <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+//                     <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
 
 //                       {rev.subjectName}
-//                       <span className="text-foreground/20 mx-0.5">•</span>
+//                       <span className="text-muted mx-0.5">•</span>
 //                       {rev.isQuickNote ? (
 //                         <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
 //                       ) : (
 //                         <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
 //                       )}
-//                       <span className="text-foreground/20 mx-0.5">•</span>
+//                       <span className="text-muted mx-0.5">•</span>
 //                       Cycle {rev.cycleNumber} of 4
 //                     </p>
 //                     {rev.isQuickNote && rev.description && (
-//                       <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
+//                       <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-muted`}>
 //                         {rev.description}
 //                       </p>
 //                     )}
@@ -600,7 +600,7 @@
 //                                 <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity" />
 //                               ) : (
 //                                 <div className="flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors">
-//                                   <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                   <Paperclip className="w-3 h-3 text-muted" />
 //                                 </div>
 //                               )}
 //                             </button>
@@ -642,7 +642,7 @@
 //                         onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
 //                         onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
 //                         onClose={() => setTaskActionMenuId(null)}
-//                         circleColorClass="text-foreground/30"
+//                         circleColorClass="text-muted"
 //                         hoverColorClass="group-hover/btn:text-accent group-hover:text-accent"
 //                         sizeClass="w-5 h-5"
 //                         labels={{ complete: "Complete", reschedule: "Reschedule" }}
@@ -653,26 +653,26 @@
 //                         <span className="font-medium">{rev.topicTitle}</span>
 //                         {rev.tags[0] && (
 //                           <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2">
-//                             <span className="text-[10px] text-foreground/40 font-medium">
+//                             <span className="text-[10px] text-muted font-medium">
 //                               #{rev.tags[0].replace('#', '')}
 //                             </span>
 //                           </div>
 //                         )}
 //                       </div>
-//                       <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+//                       <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
 
 //                         {rev.subjectName}
-//                         <span className="text-foreground/20 mx-0.5">•</span>
+//                         <span className="text-muted mx-0.5">•</span>
 //                         {rev.isQuickNote ? (
 //                           <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
 //                         ) : (
 //                           <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
 //                         )}
-//                         <span className="text-foreground/20 mx-0.5">•</span>
+//                         <span className="text-muted mx-0.5">•</span>
 //                         Cycle {rev.cycleNumber} of 4
 //                       </p>
 //                       {rev.isQuickNote && rev.description && (
-//                         <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/50`}>
+//                         <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-muted`}>
 //                           {rev.description}
 //                         </p>
 //                       )}
@@ -701,7 +701,7 @@
 //                                   <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity" />
 //                                 ) : (
 //                                   <div className="flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors">
-//                                     <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                     <Paperclip className="w-3 h-3 text-muted" />
 //                                   </div>
 //                                 )}
 //                               </button>
@@ -711,7 +711,7 @@
 //                       )}
 //                     </div>
 //                   </div>
-//                   <span className="text-sm text-foreground/40 font-medium shrink-0">{getCycleName(rev.intervalDays)}</span>
+//                   <span className="text-sm text-muted font-medium shrink-0">{getCycleName(rev.intervalDays)}</span>
 //                 </div>
 //               ))
 //             ))}
@@ -751,28 +751,28 @@
 //                       </div>
 //                       <div>
 //                         <div className="flex items-center gap-2">
-//                           <span className="font-medium text-foreground line-through text-foreground/50">{rev.topicTitle}</span>
+//                           <span className="font-medium text-foreground line-through text-muted">{rev.topicTitle}</span>
 //                           {rev.tags[0] && (
 //                             <div className="flex items-center gap-1.5 ml-2 border-l border-divider/50 pl-2 opacity-50">
-//                               <span className="text-[10px] text-foreground/40 font-medium">
+//                               <span className="text-[10px] text-muted font-medium">
 //                                 #{rev.tags[0].replace('#', '')}
 //                               </span>
 //                             </div>
 //                           )}
 //                         </div>
-//                         <p className="text-[11px] text-foreground/30 mt-0.5 flex items-center gap-1.5">
+//                         <p className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5">
 //                           {rev.subjectName}
-//                           <span className="text-foreground/20 mx-0.5">•</span>
+//                           <span className="text-muted mx-0.5">•</span>
 //                           {rev.isQuickNote ? (
 //                             <span className="flex items-center gap-1"><Zap className="w-[10px] h-[10px]" /> Note</span>
 //                           ) : (
 //                             <span className="flex items-center gap-1"><BookOpen className="w-[10px] h-[10px]" /> Topic</span>
 //                           )}
-//                           <span className="text-foreground/20 mx-0.5">•</span>
+//                           <span className="text-muted mx-0.5">•</span>
 //                           Cycle {rev.cycleNumber} of 4
 //                         </p>
 //                         {rev.isQuickNote && rev.description && (
-//                           <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-foreground/20`}>
+//                           <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(rev.id) ? '' : 'line-clamp-2'} text-muted`}>
 //                             {rev.description}
 //                           </p>
 //                         )}
@@ -801,7 +801,7 @@
 //                                     <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover rounded-sm border border-divider/50 opacity-40 hover:opacity-80 transition-opacity" />
 //                                   ) : (
 //                                     <div className="flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 opacity-40 hover:bg-hover transition-colors">
-//                                       <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                       <Paperclip className="w-3 h-3 text-muted" />
 //                                     </div>
 //                                   )}
 //                                 </button>
@@ -819,7 +819,7 @@
 //               <div className="bg-sidebar border border-divider rounded-lg p-8 flex flex-col items-center justify-center text-center">
 //                 <CheckCircle2 className="w-8 h-8 text-emerald-500/50 mb-2" />
 //                 <p className="font-medium text-foreground/80">You&apos;re all caught up!</p>
-//                 <p className="text-sm text-foreground/40 mt-1">No revisions due today.</p>
+//                 <p className="text-sm text-muted mt-1">No revisions due today.</p>
 //               </div>
 //             )}
 //           </div>
@@ -832,16 +832,16 @@
 //           {hasTasks && (
 //             <section>
 //             <div className="flex justify-between items-center h-8 mb-4">
-//               <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+//               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-2">
 //                 {tasksTitle}
-//                 <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-foreground/40 border border-divider normal-case tracking-normal font-bold">
+//                 <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-muted border border-divider normal-case tracking-normal font-bold">
 //                   {tasksToShow.length}
 //                 </span>
 //               </h2>
 //               <div className="flex items-center gap-2">
 //                 <button 
 //                   onClick={() => setIsAllTasksModalOpen(true)}
-//                   className="flex items-center gap-1.5 text-xs text-foreground/40 hover:text-accent font-medium transition-colors"
+//                   className="flex items-center gap-1.5 text-xs text-muted hover:text-accent font-medium transition-colors"
 //                 >
 //                   All <ChevronRight className="w-3.5 h-3.5" />
 //                 </button>
@@ -864,16 +864,16 @@
 //                     onReschedule={() => { setRescheduleTaskTarget(task); setTaskActionMenuId(null); }}
 //                     onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(task.id); }}
 //                     onClose={() => setTaskActionMenuId(null)}
-//                     circleColorClass="text-foreground/30"
-//                     hoverColorClass="group-hover/btn:text-accent group-hover:text-foreground/50"
+//                     circleColorClass="text-muted"
+//                     hoverColorClass="group-hover/btn:text-accent group-hover:text-muted"
 //                     sizeClass="w-4 h-4"
 //                   />
 //                     <div className="flex-1 min-w-0">
-//                     <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>
+//                     <p className={`text-[12px] font-medium leading-snug ${task.isDone ? 'line-through text-muted' : 'text-foreground/90'}`}>
 //                       {task.title}
 //                     </p>
 //                     {task.description && (
-//                       <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-foreground/20' : 'text-foreground/50'}`}>
+//                       <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-muted' : 'text-muted'}`}>
 //                         {task.description}
 //                       </p>
 //                     )}
@@ -902,7 +902,7 @@
 //                                 <img src={att.url} alt="Attachment" className={`w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity ${task.isDone ? 'opacity-40' : ''}`} />
 //                               ) : (
 //                                 <div className={`flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors ${task.isDone ? 'opacity-40' : ''}`}>
-//                                   <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                   <Paperclip className="w-3 h-3 text-muted" />
 //                                 </div>
 //                               )}
 //                             </button>
@@ -922,7 +922,7 @@
 //                         </span>
 //                       )}
 //                       {(task.dueDate || task.time) && (
-//                         <span className="text-[10px] text-foreground/40 font-mono">
+//                         <span className="text-[10px] text-muted font-mono">
 //                           {(() => {
 //                             const dateToFormat = task.dueDate || task.time;
 //                             if (!dateToFormat) return null;
@@ -939,7 +939,7 @@
 //                         </span>
 //                       )}
 //                       {task.source && (
-//                         <ExternalLink className="w-3 h-3 text-foreground/20 group-hover:text-accent/50 transition-colors" />
+//                         <ExternalLink className="w-3 h-3 text-muted group-hover:text-accent/50 transition-colors" />
 //                       )}
 //                     </div>
 //                   </div>
@@ -953,10 +953,10 @@
 //           {filteredInbox.length > 0 && (
 //             <section>
 //             <div className="flex justify-between items-center h-8 mb-4">
-//               <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">
+//               <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">
 //                 Inbox
 //               </h2>
-//               <button className="flex items-center gap-1.5 text-xs text-foreground/40 hover:text-accent font-medium transition-colors">
+//               <button className="flex items-center gap-1.5 text-xs text-muted hover:text-accent font-medium transition-colors">
 //                 All <ChevronRight className="w-3.5 h-3.5" />
 //               </button>
 //             </div>
@@ -999,7 +999,7 @@
 //                                   <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity" />
 //                                 ) : (
 //                                   <div className="flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors">
-//                                     <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                     <Paperclip className="w-3 h-3 text-muted" />
 //                                   </div>
 //                                 )}
 //                               </button>
@@ -1009,7 +1009,7 @@
 //                       )}
 //                       <div className="flex flex-wrap gap-1 mt-1.5">
 //                         {item.tags?.map(tag => (
-//                           <span key={tag} className="text-[10px] text-foreground/40 font-medium mr-1.5">
+//                           <span key={tag} className="text-[10px] text-muted font-medium mr-1.5">
 //                             {tag.replace('#', '')}
 //                           </span>
 //                         ))}
@@ -1024,16 +1024,16 @@
 
 //           {/* PROGRESS */}
 //           <section>
-//             <h2 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider h-8 flex items-center mb-4">
+//             <h2 className="text-xs font-semibold text-muted uppercase tracking-wider h-8 flex items-center mb-4">
 //               Progress
 //             </h2>
 //             <div className="bg-sidebar border border-divider rounded-lg p-4 space-y-4">
 //               <div className="flex items-center justify-between">
-//                 <div className="flex items-center gap-2 text-sm text-foreground/60">
+//                 <div className="flex items-center gap-2 text-sm text-muted">
 //                   <Target className="w-4 h-4 text-accent/50" />
 //                   <span>Mastered</span>
 //                 </div>
-//                 <span className="text-sm font-semibold text-foreground/70">{stats.mastered} / {stats.totalTopics}</span>
+//                 <span className="text-sm font-semibold text-muted">{stats.mastered} / {stats.totalTopics}</span>
 //               </div>
 //               <div className="w-full h-1.5 bg-background rounded-full overflow-hidden">
 //                 <div 
@@ -1042,25 +1042,25 @@
 //                 />
 //               </div>
 //               <div className="flex items-center justify-between">
-//                 <div className="flex items-center gap-2 text-sm text-foreground/60">
+//                 <div className="flex items-center gap-2 text-sm text-muted">
 //                   <Zap className="w-4 h-4 text-amber-400/50" />
 //                   <span>In progress</span>
 //                 </div>
-//                 <span className="text-sm font-semibold text-foreground/70">{stats.inProgress}</span>
+//                 <span className="text-sm font-semibold text-muted">{stats.inProgress}</span>
 //               </div>
 //               <div className="flex items-center justify-between">
-//                 <div className="flex items-center gap-2 text-sm text-foreground/60">
+//                 <div className="flex items-center gap-2 text-sm text-muted">
 //                   <Inbox className="w-4 h-4 text-accent/50" />
 //                   <span>Inbox ({filteredInbox.length})</span>
 //                 </div>
-//                 <span className="text-sm font-semibold text-foreground/70"></span>
+//                 <span className="text-sm font-semibold text-muted"></span>
 //               </div>
 //               <div className="flex items-center justify-between">
-//                 <div className="flex items-center gap-2 text-sm text-foreground/60">
-//                   <BookOpen className="w-4 h-4 text-foreground/30" />
+//                 <div className="flex items-center gap-2 text-sm text-muted">
+//                   <BookOpen className="w-4 h-4 text-muted" />
 //                   <span>Not started</span>
 //                 </div>
-//                 <span className="text-sm font-semibold text-foreground/70">{stats.notStarted}</span>
+//                 <span className="text-sm font-semibold text-muted">{stats.notStarted}</span>
 //               </div>
 //             </div>
 //           </section>
@@ -1089,19 +1089,19 @@
 //             {/* Header */}
 //             <div className="flex justify-between items-start px-6 pt-6 pb-4">
 //               <div>
-//                 <p className="text-[11px] font-semibold text-foreground/30 uppercase tracking-widest mb-1">Task Manager</p>
+//                 <p className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-1">Task Manager</p>
 //                 <h2 className="text-[22px] font-bold text-foreground leading-tight">All Tasks</h2>
 //               </div>
 //               <div className="flex items-center gap-3 mt-1">
-//                 <div className="flex items-center gap-4 text-[11px] font-semibold text-foreground/40">
+//                 <div className="flex items-center gap-4 text-[11px] font-semibold text-muted">
 //                   {overdueTasks.length > 0 && (
 //                     <span className="text-red-400">{overdueTasks.length} overdue</span>
 //                   )}
-//                   <span className="text-foreground/30">{undoneTasks.length} total</span>
+//                   <span className="text-muted">{undoneTasks.length} total</span>
 //                 </div>
 //                 <button
 //                   onClick={() => setIsAllTasksModalOpen(false)}
-//                   className="p-1.5 text-foreground/30 hover:text-foreground hover:bg-hover rounded-lg transition-all"
+//                   className="p-1.5 text-muted hover:text-foreground hover:bg-hover rounded-lg transition-all"
 //                 >
 //                   <X className="w-4 h-4" />
 //                 </button>
@@ -1122,13 +1122,13 @@
 //                     className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-[12px] font-semibold transition-all ${
 //                       activeTaskTab === tab.key
 //                         ? tab.activeColor + ' shadow-sm'
-//                         : 'text-foreground/40 hover:text-foreground/70 hover:bg-hover/50'
+//                         : 'text-muted hover:text-muted hover:bg-hover/50'
 //                     }`}
 //                   >
 //                     {activeTaskTab === tab.key && <div className={`w-1.5 h-1.5 rounded-full ${tab.dotColor}`} />}
 //                     {tab.label}
 //                     <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
-//                       activeTaskTab === tab.key ? 'bg-current/10 opacity-80' : 'bg-foreground/8 text-foreground/30'
+//                       activeTaskTab === tab.key ? 'bg-current/10 opacity-80' : 'bg-foreground/8 text-muted'
 //                     }`}>
 //                       {tab.count}
 //                     </span>
@@ -1164,11 +1164,11 @@
 //                       sizeClass="w-[15px] h-[15px]"
 //                     />
 //                     <div className="flex-1 min-w-0">
-//                       <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>{task.title}</p>
+//                       <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-muted' : 'text-foreground/90'}`}>{task.title}</p>
 //                       <div className="flex flex-wrap items-center gap-2 mt-1">
 //                         <p className="text-[11px] text-red-400/70">Overdue</p>
 //                         {task.tags?.map(tag => (
-//                           <span key={tag} className="text-[10px] text-foreground/40 font-medium ml-1">
+//                           <span key={tag} className="text-[10px] text-muted font-medium ml-1">
 //                             {tag.replace('#', '')}
 //                           </span>
 //                         ))}
@@ -1180,8 +1180,8 @@
 //                     <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4">
 //                       <CheckCircle2 className="w-6 h-6 text-emerald-500/60" />
 //                     </div>
-//                     <p className="text-[15px] font-semibold text-foreground/70">All caught up!</p>
-//                     <p className="text-[12px] text-foreground/35 mt-1">No overdue tasks. Great work.</p>
+//                     <p className="text-[15px] font-semibold text-muted">All caught up!</p>
+//                     <p className="text-[12px] text-muted mt-1">No overdue tasks. Great work.</p>
 //                   </div>
 //                 )
 //               )}
@@ -1204,14 +1204,14 @@
 //                       onReschedule={() => { setRescheduleTaskTarget(task); setTaskActionMenuId(null); }}
 //                       onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(task.id); }}
 //                       onClose={() => setTaskActionMenuId(null)}
-//                       circleColorClass="text-foreground/20"
+//                       circleColorClass="text-muted"
 //                       hoverColorClass="group-hover/btn:text-accent group-hover:text-accent"
 //                       sizeClass="w-[15px] h-[15px]"
 //                     />
 //                     <div className="flex-1 min-w-0">
-//                       <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>{task.title}</p>
+//                       <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-muted' : 'text-foreground/90'}`}>{task.title}</p>
 //                       {task.description && (
-//                         <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-foreground/20' : 'text-foreground/50'}`}>
+//                         <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-muted' : 'text-muted'}`}>
 //                           {task.description}
 //                         </p>
 //                       )}
@@ -1240,7 +1240,7 @@
 //                                   <img src={att.url} alt="Attachment" className={`w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity ${task.isDone ? 'opacity-40' : ''}`} />
 //                                 ) : (
 //                                   <div className={`flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors ${task.isDone ? 'opacity-40' : ''}`}>
-//                                     <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                     <Paperclip className="w-3 h-3 text-muted" />
 //                                   </div>
 //                                 )}
 //                               </button>
@@ -1249,9 +1249,9 @@
 //                         </div>
 //                       )}
 //                       <div className="flex flex-wrap items-center gap-2 mt-1">
-//                         {task.time && <p className="text-[11px] text-foreground/35 font-mono">{task.time}</p>}
+//                         {task.time && <p className="text-[11px] text-muted font-mono">{task.time}</p>}
 //                         {task.tags?.map(tag => (
-//                           <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-foreground/30 border border-divider uppercase">
+//                           <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-muted border border-divider uppercase">
 //                             {tag.replace('#', '')}
 //                           </span>
 //                         ))}
@@ -1263,8 +1263,8 @@
 //                     <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
 //                       <CheckCircle2 className="w-6 h-6 text-accent/50" />
 //                     </div>
-//                     <p className="text-[15px] font-semibold text-foreground/70">Nothing due today</p>
-//                     <p className="text-[12px] text-foreground/35 mt-1">Take a breath or plan ahead.</p>
+//                     <p className="text-[15px] font-semibold text-muted">Nothing due today</p>
+//                     <p className="text-[12px] text-muted mt-1">Take a breath or plan ahead.</p>
 //                   </div>
 //                 )
 //               )}
@@ -1287,14 +1287,14 @@
 //                       onReschedule={() => { setRescheduleTaskTarget(task); setTaskActionMenuId(null); }}
 //                       onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(task.id); }}
 //                       onClose={() => setTaskActionMenuId(null)}
-//                       circleColorClass="text-foreground/20"
-//                       hoverColorClass="group-hover/btn:text-foreground/50 group-hover:text-foreground/50"
+//                       circleColorClass="text-muted"
+//                       hoverColorClass="group-hover/btn:text-muted group-hover:text-muted"
 //                       sizeClass="w-[15px] h-[15px]"
 //                     />
 //                     <div className="flex-1 min-w-0">
-//                       <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-foreground/30' : 'text-foreground/90'}`}>{task.title}</p>
+//                       <p className={`text-[13px] font-medium leading-snug ${task.isDone ? 'line-through text-muted' : 'text-foreground/90'}`}>{task.title}</p>
 //                       {task.description && (
-//                         <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-foreground/20' : 'text-foreground/50'}`}>
+//                         <p className={`text-[10px] mt-1 whitespace-pre-wrap ${expandedTaskIds.has(task.id) ? '' : 'line-clamp-2'} ${task.isDone ? 'text-muted' : 'text-muted'}`}>
 //                           {task.description}
 //                         </p>
 //                       )}
@@ -1323,7 +1323,7 @@
 //                                   <img src={att.url} alt="Attachment" className={`w-8 h-8 object-cover rounded-sm border border-divider/50 hover:opacity-80 transition-opacity ${task.isDone ? 'opacity-40' : ''}`} />
 //                                 ) : (
 //                                   <div className={`flex items-center justify-center w-8 h-8 rounded-sm bg-sidebar border border-divider/50 hover:bg-hover transition-colors ${task.isDone ? 'opacity-40' : ''}`}>
-//                                     <Paperclip className="w-3 h-3 text-foreground/50" />
+//                                     <Paperclip className="w-3 h-3 text-muted" />
 //                                   </div>
 //                                 )}
 //                               </button>
@@ -1333,12 +1333,12 @@
 //                       )}
 //                       <div className="flex flex-wrap items-center gap-2 mt-1">
 //                         {task.dueDate && (
-//                           <p className="text-[11px] text-foreground/35">
+//                           <p className="text-[11px] text-muted">
 //                             {new Date(task.dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
 //                           </p>
 //                         )}
 //                         {task.tags?.map(tag => (
-//                           <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-foreground/30 border border-divider uppercase">
+//                           <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-foreground/5 text-muted border border-divider uppercase">
 //                             {tag.replace('#', '')}
 //                           </span>
 //                         ))}
@@ -1348,10 +1348,10 @@
 //                 )) : (
 //                   <div className="flex flex-col items-center justify-center h-full text-center pb-4">
 //                     <div className="w-12 h-12 rounded-2xl bg-foreground/5 flex items-center justify-center mb-4">
-//                       <Calendar className="w-6 h-6 text-foreground/25" />
+//                       <Calendar className="w-6 h-6 text-muted" />
 //                     </div>
-//                     <p className="text-[15px] font-semibold text-foreground/70">Schedule is clear</p>
-//                     <p className="text-[12px] text-foreground/35 mt-1">No tasks planned ahead.</p>
+//                     <p className="text-[15px] font-semibold text-muted">Schedule is clear</p>
+//                     <p className="text-[12px] text-muted mt-1">No tasks planned ahead.</p>
 //                   </div>
 //                 )
 //               )}

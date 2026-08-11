@@ -12,7 +12,7 @@ export default async function KnowledgeHubPage() {
       <div className="p-8 max-w-[1100px] mx-auto w-full h-full flex flex-col items-center justify-center">
         <div className="bg-sidebar/30 border border-dashed border-red-500/30 rounded-xl p-8 text-center">
           <p className="text-red-400 font-semibold mb-2">Failed to load Knowledge Hub</p>
-          <p className="text-sm text-foreground/50">{result.error}</p>
+          <p className="text-sm text-muted">{result.error}</p>
         </div>
       </div>
     );

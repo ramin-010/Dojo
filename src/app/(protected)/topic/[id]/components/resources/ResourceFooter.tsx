@@ -8,7 +8,7 @@ interface ResourceFooterProps {
 export function ResourceFooter({ totalCount }: ResourceFooterProps) {
   return (
     <div className="mt-auto pt-4 border-t border-zinc-800 flex items-center justify-between pb-2">
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="flex items-center gap-2 text-muted">
         <FileText className="w-4 h-4" />
         <span className="text-sm">{totalCount} resources total</span>
       </div>

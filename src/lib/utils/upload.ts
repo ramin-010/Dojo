@@ -38,5 +38,6 @@ export async function uploadToCloud(file: File, imageId?: string, topicId?: stri
         imageId: data.imageId || imageId || '',
         fileName: data.fileName,
         fileType: data.fileType,
+        resource: data.resource,
     };
 }

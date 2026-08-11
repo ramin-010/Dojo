@@ -45,6 +45,10 @@ interface AppState {
 
   revisionQueue: Topic[] | null;
   setRevisionQueue: (queue: Topic[] | null) => void;
+
+  topicTheme: string;
+  setTopicTheme: (theme: string) => void;
+  initializeTopicThemeState: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -141,4 +145,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   revisionQueue: null,
   setRevisionQueue: (queue) => set({ revisionQueue: queue }),
+
+  topicTheme: 'default',
+  setTopicTheme: (theme) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('revise-topic-theme', theme);
+    }
+    set({ topicTheme: theme });
+  },
+  initializeTopicThemeState: () => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('revise-topic-theme');
+      if (stored) {
+        set({ topicTheme: stored });
+      }
+    }
+  }
 }));

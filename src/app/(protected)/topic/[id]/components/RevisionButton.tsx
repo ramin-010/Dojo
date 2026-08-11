@@ -23,15 +23,15 @@ export function RevisionButton({
 
   const colorClass =
     state === 'start'
-      ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 shadow-sm cursor-pointer'
+      ? 'bg-accent/15 hover:bg-accent/25 text-accent border border-accent/30 shadow-sm cursor-pointer'
       : state === 'due'
       ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm cursor-pointer'
       : state === 'early'
-      ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 shadow-sm cursor-pointer'
+      ? 'bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 shadow-sm cursor-pointer'
       : state === 'completed'
-      ? 'bg-white/5 text-[#888888] opacity-50 cursor-not-allowed border border-white/5'
+      ? 'bg-foreground/5 text-muted opacity-50 cursor-not-allowed border border-border'
       : /* wait */
-        'bg-white/5 text-[#888888] cursor-pointer border border-white/10 shadow-sm';
+        'bg-foreground/5 text-muted cursor-pointer border border-border shadow-sm';
 
   const Icon = isPending
     ? () => <Loader2 className="w-3.5 h-3.5 animate-spin" />

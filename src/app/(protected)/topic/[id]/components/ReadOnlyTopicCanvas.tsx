@@ -61,7 +61,7 @@ export function ReadOnlyTopicCanvas({ topicId }: ReadOnlyTopicCanvasProps) {
 
   if (loading) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-background text-muted-foreground">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-background text-muted">
         <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-50" />
         <span className="text-sm font-medium">Loading canvas...</span>
       </div>

@@ -11,7 +11,7 @@ export function ResourceSearchBar({ searchQuery, onSearchChange }: ResourceSearc
     <div className="flex items-center mb-3">
       <div className="relative flex-1">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="h-3.5 w-3.5 text-muted" />
         </div>
         <input
           type="text"

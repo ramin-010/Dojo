@@ -178,7 +178,7 @@ export function TopicLinksTimeline({
       <div className="px-5 mb-6">
         <p className="text-xs text-zinc-400 mb-4 mt-1">All the links attached to this topic.</p>
         <div className="relative flex items-center">
-          <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted-foreground" />
+          <Search className="absolute left-2.5 w-3.5 h-3.5 text-muted" />
           <input
             value={query}
             onChange={e => {
@@ -188,16 +188,16 @@ export function TopicLinksTimeline({
             onFocus={handleFocus}
             onBlur={() => setTimeout(() => setIsOpen(false), 200)}
             placeholder="Search topics to link..."
-            className="w-full bg-black/20 border border-white/5 rounded-md py-1.5 pl-8 pr-3 text-[13px] text-white/90 placeholder:text-muted-foreground/50 focus:outline-none focus:border-white/10 transition-colors"
+            className="w-full bg-black/20 border border-white/5 rounded-md py-1.5 pl-8 pr-3 text-[13px] text-white/90 placeholder:text-muted/50 focus:outline-none focus:border-white/10 transition-colors"
           />
         </div>
         
         {isOpen && (
           <div className="absolute left-5 right-5 mt-1 bg-sidebar border border-divider rounded-md shadow-xl overflow-hidden z-20 max-h-[300px] overflow-y-auto">
             {results.length === 0 && query.length > 0 ? (
-              <div className="px-3 py-2 text-xs text-muted-foreground">No topics found</div>
+              <div className="px-3 py-2 text-xs text-muted">No topics found</div>
             ) : results.length === 0 && query.length === 0 && (!topicCaches[subjectId] || topicCaches[subjectId].length === 0) ? (
-              <div className="px-3 py-2 text-xs text-muted-foreground">Loading topics...</div>
+              <div className="px-3 py-2 text-xs text-muted">Loading topics...</div>
             ) : (
               results.map((item, index) => (
                 <button
@@ -205,12 +205,12 @@ export function TopicLinksTimeline({
                   onClick={() => handleAddMention(item)}
                   className="w-full text-left px-3 py-2 text-[13px] hover:bg-white/5 transition-colors flex items-center gap-2"
                 >
-                  <div className="p-1 rounded bg-white/5 text-muted-foreground">
+                  <div className="p-1 rounded bg-white/5 text-muted">
                     {item.isSubject ? <FolderOpen className="w-3 h-3" /> : <Hash className="w-3 h-3" />}
                   </div>
                   <div className="flex flex-col">
                     <span className="text-white/90 font-medium">{item.title}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    <span className="text-[10px] text-muted uppercase tracking-wider">
                       {typeof item.subject === 'object' && item.subject?.name 
                         ? item.subject.name 
                         : item.subject || (item.isSubject ? 'Subject' : '')}
@@ -226,10 +226,10 @@ export function TopicLinksTimeline({
       {localLinks.outbound.length === 0 && localLinks.inbound.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-12 h-12 rounded-full bg-white/[0.02] border border-white/[0.05] flex items-center justify-center mb-3">
-            <MoreHorizontal className="w-5 h-5 text-muted-foreground/30" />
+            <MoreHorizontal className="w-5 h-5 text-muted/30" />
           </div>
           <p className="text-[13px] font-medium text-foreground/70 tracking-tight">No links yet</p>
-          <p className="text-[11px] text-muted-foreground/50 mt-1 max-w-[200px] leading-relaxed">
+          <p className="text-[11px] text-muted/50 mt-1 max-w-[200px] leading-relaxed">
             Search above or type <span className="font-mono text-blue-400 bg-blue-400/10 px-1 py-0.5 rounded">@</span> in the editor to build connections.
           </p>
         </div>
@@ -242,7 +242,7 @@ export function TopicLinksTimeline({
             <div style={{ position: 'absolute', left: 24, top: 10, bottom: 40, width: 2, background: '#525252', borderRadius: 1 }} />
             
             <div className="pl-[48px] mb-1 py-1">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted/60">
                 Linked To (Outbound)
               </h4>
             </div>
@@ -278,7 +278,7 @@ export function TopicLinksTimeline({
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          className="text-muted-foreground/50 hover:text-blue-400 transition-colors px-1 py-0.5 rounded scale-[0.9]"
+                          className="text-muted/50 hover:text-blue-400 transition-colors px-1 py-0.5 rounded scale-[0.9]"
                           onClick={(e) => { e.stopPropagation(); onOpenSplitView?.({ type: 'topic_link', id: link.topicId, data: link }); }}
                           title="Open in Split View"
                         >
@@ -295,7 +295,7 @@ export function TopicLinksTimeline({
                       </div>
                     </div>
                     
-                    <div className="text-[10px] text-muted-foreground/40 font-medium tracking-wide mt-0.5">
+                    <div className="text-[10px] text-muted/40 font-medium tracking-wide mt-0.5">
                       Tagged {link.taggedAt} <span className="mx-1.5 opacity-30">•</span> Updated {link.updatedAt}
                     </div>
                   </div>
@@ -312,7 +312,7 @@ export function TopicLinksTimeline({
             <div style={{ position: 'absolute', left: 24, top: 10, bottom: 40, width: 2, background: '#525252', borderRadius: 1 }} />
             
             <div className="pl-[48px] mb-1 py-1">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted/60">
                 Referenced By (Inbound)
               </h4>
             </div>
@@ -348,7 +348,7 @@ export function TopicLinksTimeline({
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          className="text-muted-foreground/50 hover:text-blue-400 transition-colors px-1 py-0.5 rounded scale-[0.9]"
+                          className="text-muted/50 hover:text-blue-400 transition-colors px-1 py-0.5 rounded scale-[0.9]"
                           onClick={(e) => { e.stopPropagation(); onOpenSplitView?.({ type: 'topic_link', id: link.topicId, data: link }); }}
                           title="Open in Split View"
                         >
@@ -365,7 +365,7 @@ export function TopicLinksTimeline({
                       </div>
                     </div>
                     
-                    <div className="text-[10px] text-muted-foreground/40 font-medium tracking-wide mt-0.5">
+                    <div className="text-[10px] text-muted/40 font-medium tracking-wide mt-0.5">
                       Tagged {link.taggedAt} <span className="mx-1.5 opacity-30">•</span> Updated {link.updatedAt}
                     </div>
                   </div>

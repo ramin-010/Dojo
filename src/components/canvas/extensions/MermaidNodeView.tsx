@@ -111,7 +111,7 @@ export function MermaidNodeView({ node, updateAttributes }: any) {
               dangerouslySetInnerHTML={{ __html: svgContent }} 
             />
           ) : (
-            <div className="text-muted-foreground text-sm">Empty diagram</div>
+            <div className="text-muted text-sm">Empty diagram</div>
           )}
         </div>
       )}

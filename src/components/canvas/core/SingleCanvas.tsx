@@ -400,7 +400,7 @@ export function SingleCanvas({
 
         {!readOnly && blocks.length === 0 && !h.cursorPos && !h.editingBlockId && (
           <div className="absolute inset-0 flex items-center justify-center cursor-text empty-canvas-placeholder">
-            <p className="text-sm text-muted-foreground/30 font-medium pointer-events-none">
+            <p className="text-sm text-muted/30 font-medium pointer-events-none">
               Click anywhere to start typing, or use the + button
             </p>
           </div>

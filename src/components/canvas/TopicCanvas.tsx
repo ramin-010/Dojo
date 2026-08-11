@@ -257,7 +257,7 @@ const MemoizedTopicCanvas = React.memo(function TopicCanvas({
 
   if (!isLoaded) {
     return <div className="w-full min-h-full min-h-[600px] bg-background relative flex items-center justify-center">
-      <div className="text-muted-foreground animate-pulse">Loading canvas...</div>
+      <div className="text-muted animate-pulse">Loading canvas...</div>
     </div>;
   }
 

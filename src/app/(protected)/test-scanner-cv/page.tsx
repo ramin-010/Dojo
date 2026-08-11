@@ -71,7 +71,7 @@ export default function TestScannerCvPage() {
           <ImageIcon className="text-purple-500" />
           Production Document Scanner (Python Microservice)
         </h1>
-        <p className="text-muted-foreground mb-8">Test the ultimate Claude Pipeline powered by FastAPI + OpenCV Contrib + Scikit-Image.</p>
+        <p className="text-muted mb-8">Test the ultimate Claude Pipeline powered by FastAPI + OpenCV Contrib + Scikit-Image.</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
@@ -110,7 +110,7 @@ export default function TestScannerCvPage() {
               <div>
                 <label className="flex justify-between text-sm font-medium mb-2">
                   <span>Denoise Strength</span>
-                  <span className="text-muted-foreground">{denoiseStrength.toFixed(1)}</span>
+                  <span className="text-muted">{denoiseStrength.toFixed(1)}</span>
                 </label>
                 <input 
                   type="range" min="1.0" max="15.0" step="0.5" 
@@ -118,14 +118,14 @@ export default function TestScannerCvPage() {
                   onChange={e => setDenoiseStrength(parseFloat(e.target.value))} 
                   className="w-full accent-purple-500" 
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Guided filter strength. 5 = light, 7 = medium, 12 = heavy.</p>
+                <p className="text-[10px] text-muted mt-1">Guided filter strength. 5 = light, 7 = medium, 12 = heavy.</p>
               </div>
 
             </div>
 
             <div className="mt-8 pt-6 border-t border-border">
               <label className="flex items-center justify-center w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg cursor-pointer transition-colors mb-3">
-                <Upload className="w-4 h-4 mr-2 text-muted-foreground" />
+                <Upload className="w-4 h-4 mr-2 text-muted" />
                 <span className="text-sm font-medium">Upload Notes Image</span>
                 <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
               </label>
@@ -140,7 +140,7 @@ export default function TestScannerCvPage() {
             </div>
 
             {stats && (
-              <div className="mt-6 pt-4 border-t border-border/50 text-xs text-muted-foreground space-y-1">
+              <div className="mt-6 pt-4 border-t border-border/50 text-xs text-muted space-y-1">
                 <p className="font-semibold text-white mb-2">Performance: {stats.timing.toFixed(0)}ms</p>
                 {Object.entries(stats.stages).map(([stage, time]: any) => (
                   <div key={stage} className="flex justify-between">
@@ -168,7 +168,7 @@ export default function TestScannerCvPage() {
                     alt="Original" 
                   />
                 ) : (
-                  <span className="text-muted-foreground/30 text-sm font-medium">No image uploaded</span>
+                  <span className="text-muted/30 text-sm font-medium">No image uploaded</span>
                 )}
               </div>
             </div>
@@ -186,7 +186,7 @@ export default function TestScannerCvPage() {
                     alt="Processed" 
                   />
                 ) : (
-                  <span className="text-muted-foreground/30 text-sm font-medium">Click Process to see results</span>
+                  <span className="text-muted/30 text-sm font-medium">Click Process to see results</span>
                 )}
               </div>
             </div>

@@ -17,6 +17,7 @@ const upload = upflyUpload({
   fields: {
     "file": {
       output: 'memory',
+       quality: 100,
       cloudStorage: true,
       cloudProvider: "cloudinary",
       cloudConfig: {
@@ -27,6 +28,7 @@ const upload = upflyUpload({
       }
     },
   },
+  
 });
 
 function runMiddleware(

@@ -45,6 +45,7 @@ import { useSplitViewResize } from './hooks/useSplitViewResize';
 export type { SidebarTab };
 
 export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCategories }: TopicWorkspaceProps) {
+  const { topicTheme } = useAppStore();
   // ── Split View State ───────────────────────────────────────────────────────
   const [splitViewData, setSplitViewData] = useState<SplitViewData | null>(null);
   const { isDraggingSplitView, setIsDraggingSplitView } = useSplitViewResize();
@@ -884,7 +885,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
               setIsSidebarOpen(true);
               setSidebarWidth(window.innerWidth / 4);
             }}
-            className="fixed top-6 right-6 p-2 bg-background border border-border shadow-sm hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all z-50 animate-in fade-in zoom-in-95"
+            className="fixed top-6 right-6 p-2 bg-background border border-border shadow-sm hover:bg-accent rounded-md text-muted hover:text-foreground transition-all z-50 animate-in fade-in zoom-in-95"
             title="Open Context Panel"
           >
             <Menu className="w-4 h-4" />
@@ -908,7 +909,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
             <div className="flex items-center justify-between">
               <Link
                 href={`/subject/${topic.subject.id}`}
-                className={`inline-flex p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all duration-300 -ml-1.5 ${
+                className={`inline-flex p-1.5 hover:bg-accent rounded-md text-muted hover:text-foreground transition-all duration-300 -ml-1.5 ${
                   !isScrolled
                     ? 'opacity-100 translate-x-0'
                     : 'opacity-0 -translate-x-2 pointer-events-none'
@@ -922,13 +923,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                 {adjacentTopics?.prev ? (
                   <button 
                     onClick={() => router.push(`/topic/${adjacentTopics.prev?.id}`)}
-                    className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-white/1 hover:text-foreground hover:bg-white/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
+                    className="flex items-center gap-1 text-xs font-medium text-muted bg-foreground/5 hover:text-foreground hover:bg-foreground/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
                   >
                     <ChevronLeft className="w-3.5 h-3.5 " />
-                    <span className="truncate text-[13.5px] text-[#ffffff]/60 hover:text-[#ffffff]/80">{adjacentTopics.prev.title}</span>
+                    <span className="truncate text-[13.5px] text-muted hover:text-foreground">{adjacentTopics.prev.title}</span>
                   </button>
                 ) : (
-                  <button className="flex items-center gap-1 text-[8px] font-medium text-muted-foreground px-2.5 py-1 rounded-md max-w-[150px] opacity-40">
+                  <button className="flex items-center gap-1 text-[8px] font-medium text-muted px-2.5 py-1 rounded-md max-w-[150px] opacity-60">
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span className="truncate text-[13.5px]">First Topic</span>
                   </button>
@@ -940,13 +941,13 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                 {adjacentTopics?.next ? (
                   <button 
                     onClick={() => router.push(`/topic/${adjacentTopics.next?.id}`)}
-                    className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-white/1 hover:bg-white/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
+                    className="flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground bg-foreground/5 hover:bg-foreground/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
                   >
-                    <span className="truncate text-[13.5px] text-[#ffffff]/60 hover:text-[#ffffff]/80">{adjacentTopics.next.title}</span>
+                    <span className="truncate text-[13.5px] text-muted hover:text-foreground">{adjacentTopics.next.title}</span>
                     <ChevronRight className="w-3.5 h-3.5 " />
                   </button>
                 ) : (
-                  <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground px-2.5 py-1 rounded-md max-w-[150px] opacity-40">
+                  <button className="flex items-center gap-1 text-xs font-medium text-muted px-2.5 py-1 rounded-md max-w-[150px] opacity-60">
                     <span className="truncate text-[13.5px]">Last Topic</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
@@ -968,7 +969,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                     }
                   }}
                   disabled={isCreatingTopic}
-                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/10 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground hover:bg-foreground/10 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
                 >
                   {isCreatingTopic ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1006,7 +1007,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   {/* Scroll-revealed back button */}
                   <Link
                     href={`/subject/${topic.subject.id}`}
-                    className={`absolute -left-10 top-[5px] p-1.5 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-all duration-300 z-20 ${
+                    className={`absolute -left-10 top-[5px] p-1.5 hover:bg-accent rounded-md text-muted hover:text-foreground transition-all duration-300 z-20 ${
                       isScrolled
                         ? 'opacity-100 translate-x-0'
                         : 'opacity-0 -translate-x-2 pointer-events-none'
@@ -1089,7 +1090,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   } items-center gap-4 text-[13px] relative`}
                 >
                   <div className="flex flex-wrap items-center gap-4">
-                    <span className="flex items-center gap-1 text-[#888888] text-[11px] pl-1 opacity-70 font-medium">
+                    <span className="flex items-center gap-1 text-muted text-[11px] pl-1 opacity-70 font-medium">
                       {new Date(topic.createdAt).toLocaleString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -1113,7 +1114,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                         {!!isRecallMode && (
                           <button
                             onClick={() => setIsAllExpanded(!isAllExpanded)}
-                            className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                            className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
                           >
                             {isAllExpanded ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             {isAllExpanded ? 'Collapse' : 'Reveal'}
@@ -1122,21 +1123,21 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                         <button
                           onClick={() => setShowAiCommandBar(true)}
                           disabled={isAiImporting}
-                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
+                          className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
                         >
                           <Bot className="w-3.5 h-3.5" />
                           Import AI
                         </button>
                         <button
                           onClick={() => setIsSettingsModalOpen(true)}
-                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                          className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
                         >
                           <Settings className="w-3.5 h-3.5" />
                           Actions
                         </button>
                         <button
                           onClick={() => setIsInfoModalOpen(true)}
-                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                          className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
                         >
                           <Info className="w-3.5 h-3.5" />
                           Info
@@ -1160,7 +1161,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                         <button
                           onClick={() => setIsAllExpanded(!isAllExpanded)}
                           title={isAllExpanded ? "Collapse All Blocks" : "Reveal All Blocks"}
-                          className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                          className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
                         >
                           {isAllExpanded ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           {isAllExpanded ? 'Collapse' : 'Reveal'}
@@ -1169,21 +1170,21 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                       <button
                         onClick={() => setShowAiCommandBar(true)}
                         disabled={isAiImporting}
-                        className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
+                        className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
                       >
                         <Bot className="w-3.5 h-3.5" />
                         Import AI
                       </button>
                       <button
                         onClick={() => setIsInfoModalOpen(true)}
-                        className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                        className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
                       >
                         <Info className="w-3.5 h-3.5" />
                         Info
                       </button>
                       <button
                         onClick={() => setIsSettingsModalOpen(true)}
-                        className="flex items-center gap-1 text-[#888888] hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                        className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
                       >
                         <Settings className="w-3.5 h-3.5" />
                         Actions
@@ -1252,7 +1253,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   <div className="bg-background border-2 border-dashed border-blue-500/50 rounded-2xl p-10 flex flex-col items-center justify-center text-center shadow-2xl animate-in fade-in zoom-in-95 pointer-events-none">
                     <Columns className="w-10 h-10 text-blue-500 mb-4 opacity-80" />
                     <h3 className="text-xl font-bold text-foreground">Drop here for Side-by-Side view</h3>
-                    <p className="text-sm text-muted-foreground mt-2">Open the item next to your canvas</p>
+                    <p className="text-sm text-muted mt-2">Open the item next to your canvas</p>
                   </div>
                 </div>
               )}
