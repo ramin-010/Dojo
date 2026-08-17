@@ -446,6 +446,7 @@ model QuickNote {
 
   content     String
   isPinned    Boolean   @default(false)
+  category    String    @default("PRIMARY")
 
   // Attachments stored as JSON array: [{url, publicId, fileName, fileType}, ...]
   attachments Json?

@@ -743,6 +743,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
           endTime: s.endTime,
           sortOrder: i,
           status: newStatus,
+          remark: s.remark,
         };
       });
       await updateDaySchedule(DEV_WORKSPACE_ID, updates);

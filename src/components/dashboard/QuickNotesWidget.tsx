@@ -415,7 +415,9 @@ const NoteBlock = ({
   isSearchMode,
   searchQuery,
   onSearchQueryChange,
-  onToggleSearch
+  onToggleSearch,
+  activeCategory,
+  composerRightElement
 }: {
   note: QuickNoteType;
   workspaceId: string;
@@ -434,6 +436,8 @@ const NoteBlock = ({
   searchQuery?: string;
   onSearchQueryChange?: (q: string) => void;
   onToggleSearch?: () => void;
+  activeCategory?: 'PRIMARY' | 'TEMPORARY';
+  composerRightElement?: React.ReactNode;
 }) => {
   const [localContent, setLocalContent] = useState(note.content);
   const [isDragging, setIsDragging] = useState(false);
@@ -477,10 +481,11 @@ const NoteBlock = ({
         onUpdate(note.id, localContent, draftAttachments);
 
         try {
+          const categoryToSave = note.category || activeCategory || 'PRIMARY';
           if (draftAttachments && draftAttachments.length > 0) {
-            await createQuickNoteWithAttachments(note.id, workspaceId, localContent, draftAttachments);
+            await createQuickNoteWithAttachments(note.id, workspaceId, localContent, draftAttachments, categoryToSave);
           } else {
-            await upsertQuickNote(note.id, localContent, workspaceId);
+            await upsertQuickNote(note.id, localContent, workspaceId, undefined, categoryToSave);
           }
           setLocalContent('');
           onEnterPress();
@@ -513,7 +518,7 @@ const NoteBlock = ({
     if (localContent !== originalContent) {
       setIsSubmitting(true);
       try {
-        await upsertQuickNote(note.id, localContent, workspaceId);
+        await upsertQuickNote(note.id, localContent, workspaceId, undefined, note.category || activeCategory || 'PRIMARY');
         setOriginalContent(localContent);
       } catch (err) {
         console.error(err);
@@ -669,6 +674,11 @@ const NoteBlock = ({
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
+            {composerRightElement && (
+              <div className="ml-2 shrink-0 self-start mt-[4px]">
+                {composerRightElement}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -781,6 +791,7 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'PRIMARY' | 'TEMPORARY'>('PRIMARY');
 
   // ── Pusher real-time sync ──────────────────────────────────────────────────
   useQuickNoteSync(workspaceId, {
@@ -818,12 +829,15 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
   const composerNote = sortedNotes.find(n => n.isOptimistic && n.content.trim() === '' && !hasAttachments(n)) || sortedNotes[0];
   const historyNotes = sortedNotes.filter(n => n.id !== composerNote?.id && (n.content.trim() !== '' || hasAttachments(n)));
 
-  // ── Pinned notes ────────────────────────────────────────────────────────────
-  const pinnedNotes = useMemo(() => historyNotes.filter(n => n.isPinned), [historyNotes]);
-
   // ── Filtering logic ─────────────────────────────────────────────────────────
   const filteredNotes = useMemo(() => {
     let filtered = historyNotes;
+
+    // Apply Tab filter
+    filtered = filtered.filter(n => {
+      if (activeTab === 'PRIMARY') return !n.category || n.category === 'PRIMARY';
+      return n.category === 'TEMPORARY';
+    });
 
     // Apply search
     if (searchQuery.trim()) {
@@ -832,18 +846,29 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
     }
 
     return filtered;
-  }, [historyNotes, searchQuery]);
+  }, [historyNotes, searchQuery, activeTab]);
+
+  // ── Pinned notes ────────────────────────────────────────────────────────────
+  const pinnedNotes = useMemo(() => filteredNotes.filter(n => n.isPinned), [filteredNotes]);
 
   // ── Group by Date ─────────────────────────────────────────────────────────
   const groupedNotes = useMemo(() => {
-    return filteredNotes.reduce((acc, note) => {
+    const grouped = filteredNotes.reduce((acc, note) => {
       const date = new Date(note.createdAt);
       const key = format(date, 'MMM d, yyyy');
 
       if (!acc[key]) acc[key] = [];
-      acc[key].push(note);
+      if (!note.isPinned) {
+        acc[key].push(note);
+      }
       return acc;
     }, {} as Record<string, QuickNoteType[]>);
+    
+    // Remove empty groups
+    Object.keys(grouped).forEach(k => {
+      if (grouped[k].length === 0) delete grouped[k];
+    });
+    return grouped;
   }, [filteredNotes]);
 
 
@@ -928,7 +953,8 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
         content: '',
         createdAt: new Date(),
         workspaceId,
-        isOptimistic: true
+        isOptimistic: true,
+        category: 'PRIMARY' // will be overwritten on save by activeTab
       };
       setNotes(prev => [newNote, ...prev]);
     }
@@ -962,6 +988,24 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
               setIsSearchOpen(!isSearchOpen);
               if (isSearchOpen) setSearchQuery('');
             }}
+            activeCategory={activeTab}
+            composerRightElement={
+              <div className="flex items-center gap-4 transform scale-[0.8] origin-right">
+                <button 
+                  onClick={() => setActiveTab('PRIMARY')}
+                  className={`text-[10px] font-bold uppercase tracking-wider transition-colors outline-none ${activeTab === 'PRIMARY' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+                >
+                  Vault
+                </button>
+                <div className="w-px h-3 bg-white/10" />
+                <button 
+                  onClick={() => setActiveTab('TEMPORARY')}
+                  className={`text-[10px] font-bold uppercase tracking-wider transition-colors outline-none ${activeTab === 'TEMPORARY' ? 'text-foreground' : 'text-muted hover:text-foreground'}`}
+                >
+                  Scratch
+                </button>
+              </div>
+            }
           />
         </div>
       )}

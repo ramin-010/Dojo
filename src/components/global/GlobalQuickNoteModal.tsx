@@ -454,7 +454,7 @@ export function GlobalQuickNoteModal() {
                         }
                       }}
                       disabled={isGenerating || isSaving}
-                      className="task-title-input w-full bg-transparent placeholder:text-foreground/30 focus:outline-none font-medium relative resize-none overflow-hidden block p-0 m-0 border-none leading-normal text-transparent caret-white z-10 pr-8"
+                      className="task-title-input w-full bg-transparent placeholder:text-foreground/50 focus:outline-none font-medium relative resize-none overflow-hidden block p-0 m-0 border-none leading-normal text-transparent caret-foreground z-10 pr-8"
                     />
                     
                     <InlineTagDropdown
@@ -498,7 +498,7 @@ export function GlobalQuickNoteModal() {
                   minRows={1}
                   maxRows={12}
                   disabled={isGenerating || isSaving}
-                  className="w-full bg-transparent text-[14px] text-foreground/70 placeholder:text-foreground/30 focus:outline-none resize-none disabled:opacity-50 border-none m-0 p-0 leading-relaxed overflow-y-auto custom-scrollbar"
+                  className="w-full bg-transparent text-[14px] text-foreground/90 placeholder:text-foreground/60 focus:outline-none resize-none disabled:opacity-50 border-none m-0 p-0 leading-relaxed overflow-y-auto custom-scrollbar"
                 />
               </div>
 
@@ -511,7 +511,7 @@ export function GlobalQuickNoteModal() {
                     exit={{ opacity: 0, height: 0, marginTop: 0 }}
                     className="px-2"
                   >
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-medium rounded-md border border-indigo-500/20">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-bold rounded-md border border-indigo-500/20">
                       <CalendarClock className="w-3.5 h-3.5" />
                       Set for: {(explicitDate || parsedResult.dueDate)!.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       <button 
@@ -559,7 +559,7 @@ export function GlobalQuickNoteModal() {
                         }}
                       />
                       <button
-                        className={`relative p-1.5 rounded-md transition-colors ${explicitDate || reminder !== 'none' || parsedResult.dueDate ? 'text-indigo-400 bg-indigo-500/10' : 'text-foreground/40 hover:text-foreground hover:bg-hover'}`}
+                        className={`relative p-1.5 rounded-md transition-colors ${explicitDate || reminder !== 'none' || parsedResult.dueDate ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-500/10' : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'}`}
                         title="Pick a date"
                       >
                         <CalendarClock className="w-4 h-4" />
@@ -568,7 +568,7 @@ export function GlobalQuickNoteModal() {
                     
                     <button
                       onClick={() => setAddToSchedule(s => !s)}
-                      className={`p-1.5 rounded-md transition-colors ${addToSchedule ? 'text-green-400 bg-green-500/10' : 'text-foreground/40 hover:text-foreground hover:bg-hover'}`}
+                      className={`p-1.5 rounded-md transition-colors ${addToSchedule ? 'text-green-500 dark:text-green-400 bg-green-500/10' : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'}`}
                       title="Add to Spaced Repetition Schedule"
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -576,7 +576,7 @@ export function GlobalQuickNoteModal() {
 
                     <button
                       onClick={() => setIsPinned(p => !p)}
-                      className={`p-1.5 rounded-md transition-colors ${isPinned ? 'text-amber-400 bg-amber-500/10' : 'text-foreground/40 hover:text-foreground hover:bg-hover'}`}
+                      className={`p-1.5 rounded-md transition-colors ${isPinned ? 'text-amber-500 dark:text-amber-400 bg-amber-500/10' : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'}`}
                       title="Pin to top"
                     >
                       <Pin className="w-4 h-4" />
@@ -596,7 +596,8 @@ export function GlobalQuickNoteModal() {
                     />
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className={`p-1.5 rounded-md transition-colors ${uploadedFiles.length > 0 ? 'text-blue-400 bg-blue-500/10' : 'text-foreground/40 hover:text-foreground hover:bg-hover'}`}
+                      disabled={isUploading}
+                      className={`p-1.5 rounded-md transition-colors ${uploadedFiles.length > 0 ? 'text-blue-500 dark:text-blue-400 bg-blue-500/10' : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'}`}
                       title="Attach file"
                     >
                       <Paperclip className="w-4 h-4" />
@@ -604,22 +605,36 @@ export function GlobalQuickNoteModal() {
                   </div>
                   
                   {/* Explicit Type Toggles */}
-                  <div className="flex items-center  ml-2 p-0.5 rounded-full bg-black/10 dark:bg-white/5 transform scale-[0.8] origin-left">
+                  <div className="flex items-center gap-1 bg-foreground/5 rounded-lg p-0.5 ml-2">
                     <button
-                      onClick={() => setExplicitType('note')}
-                      className={`px-3 py-1 rounded-full scale-[0.9] uppercase tracking-[0.1em] transition-all duration-200 ${explicitType === 'note' ? 'bg-background text-foreground font-bold shadow-[0_1px_3px_rgba(0,0,0,0.1)]' : 'text-foreground/50 hover:text-foreground/90 font-medium'}`}
+                      onClick={() => { setExplicitType('note'); setIsMonthlyGoal(false); }}
+                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
+                        explicitType === 'note' ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      }`}
                     >
                       Note
                     </button>
                     <button
-                      onClick={() => setExplicitType('task')}
-                      className={`px-3 py-1 rounded-full scale-[0.9] uppercase tracking-[0.1em] transition-all duration-200 ${explicitType === 'task' ? 'bg-background text-foreground font-bold shadow-[0_1px_3px_rgba(0,0,0,0.1)]' : 'text-foreground/50 hover:text-foreground/90 font-medium'}`}
+                      onClick={() => { setExplicitType('task'); setIsMonthlyGoal(false); }}
+                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
+                        explicitType === 'task' && !isMonthlyGoal ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      }`}
                     >
                       Task
                     </button>
                     <button
+                      onClick={() => { setExplicitType('task'); setIsMonthlyGoal(true); }}
+                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
+                        isMonthlyGoal ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      }`}
+                    >
+                      Goal
+                    </button>
+                    <button
                       onClick={() => setExplicitType('link')}
-                      className={`px-3 py-1 rounded-full scale-[0.9] uppercase tracking-[0.1em] transition-all duration-200 ${explicitType === 'link' ? 'bg-background text-foreground font-bold shadow-[0_1px_3px_rgba(0,0,0,0.1)]' : 'text-foreground/50 hover:text-foreground/90 font-medium'}`}
+                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
+                        explicitType === 'link' ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      }`}
                     >
                       Resource
                     </button>

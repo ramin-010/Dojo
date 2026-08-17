@@ -59,13 +59,13 @@ export function LevelSelector({ subjects, selectedSubjectId, selectedTopicId, on
       {/* Interactive Breadcrumb Pill */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center h-[26px] bg-[#27272a]/80 hover:bg-[#27272a] border border-white/5 rounded-full px-1.5 transition-all group shadow-sm"
+        className="flex items-center h-[26px] bg-foreground/5 hover:bg-foreground/10 border border-border/50 rounded-full px-1.5 transition-all group shadow-sm"
       >
         {/* Workspace Level (Always visible) */}
         <div 
           onClick={(e) => { e.stopPropagation(); handleSelectWorkspace(); }}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-colors cursor-pointer ${
-            !selectedSubjectId && !selectedTopicId ? 'text-indigo-400 bg-indigo-500/10 font-medium' : 'text-white/50 hover:text-white/90'
+            !selectedSubjectId && !selectedTopicId ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 font-medium' : 'text-foreground/50 hover:text-foreground/90'
           }`}
         >
           <Globe className="w-3 h-3" />
@@ -75,11 +75,11 @@ export function LevelSelector({ subjects, selectedSubjectId, selectedTopicId, on
         {/* Subject Level */}
         {activeSubject && (
           <>
-            <ChevronRight className="w-3 h-3 text-white/20 mx-0.5 shrink-0" />
+            <ChevronRight className="w-3 h-3 text-foreground/20 mx-0.5 shrink-0" />
             <div 
               onClick={(e) => { e.stopPropagation(); handleSelectSubject(activeSubject.id); }}
               className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-colors cursor-pointer ${
-                selectedSubjectId && !selectedTopicId ? 'text-indigo-400 bg-indigo-500/10 font-medium' : 'text-white/50 hover:text-white/90'
+                selectedSubjectId && !selectedTopicId ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 font-medium' : 'text-foreground/50 hover:text-foreground/90'
               }`}
             >
               <Book className="w-3 h-3" />
@@ -91,11 +91,11 @@ export function LevelSelector({ subjects, selectedSubjectId, selectedTopicId, on
         {/* Topic Level */}
         {activeTopic && activeSubject && (
           <>
-            <ChevronRight className="w-3 h-3 text-white/20 mx-0.5 shrink-0" />
+            <ChevronRight className="w-3 h-3 text-foreground/20 mx-0.5 shrink-0" />
             <div 
               onClick={(e) => { e.stopPropagation(); handleSelectTopic(activeSubject.id, activeTopic.id); }}
               className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-colors cursor-pointer ${
-                selectedTopicId ? 'text-indigo-400 bg-indigo-500/10 font-medium' : 'text-white/50 hover:text-white/90'
+                selectedTopicId ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 font-medium' : 'text-foreground/50 hover:text-foreground/90'
               }`}
             >
               <FileText className="w-3 h-3" />
@@ -107,8 +107,8 @@ export function LevelSelector({ subjects, selectedSubjectId, selectedTopicId, on
         {/* Add Button if not at max depth */}
         {!selectedTopicId && (
           <>
-            <div className="w-[1px] h-3.5 bg-white/10 mx-1.5" />
-            <div className="px-1 text-white/40 hover:text-white/90 transition-colors flex items-center opacity-0 group-hover:opacity-100">
+            <div className="w-[1px] h-3.5 bg-foreground/10 mx-1.5" />
+            <div className="px-1 text-foreground/40 hover:text-foreground/90 transition-colors flex items-center opacity-0 group-hover:opacity-100">
               <Plus className="w-3.5 h-3.5" />
             </div>
           </>
@@ -123,9 +123,9 @@ export function LevelSelector({ subjects, selectedSubjectId, selectedTopicId, on
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 mb-2 w-64 max-h-[300px] overflow-y-auto custom-scrollbar bg-[#18181b] border border-[#27272a] rounded-xl shadow-xl flex flex-col p-1 z-[110]"
+            className="absolute bottom-full left-0 mb-2 w-64 max-h-[300px] overflow-y-auto custom-scrollbar bg-sidebar border border-border rounded-xl shadow-xl flex flex-col p-1 z-[110]"
           >
-            <div className="px-2 py-1.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+            <div className="px-2 py-1.5 text-[10px] font-semibold text-foreground/40 uppercase tracking-wider">
               {selectedSubjectId ? 'Change Level or Select Topic' : 'Select Subject'}
             </div>
             
@@ -133,7 +133,7 @@ export function LevelSelector({ subjects, selectedSubjectId, selectedTopicId, on
             <button
               onClick={handleSelectWorkspace}
               className={`flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-left text-[12px] font-medium transition-colors ${
-                !selectedSubjectId ? 'bg-indigo-500/10 text-indigo-300' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                !selectedSubjectId ? 'bg-indigo-500/10 text-indigo-500 dark:text-indigo-300' : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground'
               }`}
             >
               <div className="flex items-center gap-2">

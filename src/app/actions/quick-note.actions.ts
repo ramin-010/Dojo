@@ -30,13 +30,14 @@ export async function upsertQuickNote(
   id: string,
   content: string,
   workspaceId: string,
-  attachments?: AttachmentInput[] | null
+  attachments?: AttachmentInput[] | null,
+  category: 'PRIMARY' | 'TEMPORARY' = 'PRIMARY'
 ) {
   // Never save or sync empty notes
   if (content.trim() === '' && (!attachments || attachments.length === 0)) return null;
 
-  const updateData: Record<string, unknown> = { content };
-  const createData: Record<string, unknown> = { id, content, workspaceId };
+  const updateData: Record<string, unknown> = { content, category };
+  const createData: Record<string, unknown> = { id, content, workspaceId, category };
 
   if (attachments && attachments.length > 0) {
     updateData.attachments = attachments;
@@ -60,6 +61,7 @@ export async function upsertQuickNote(
       createdAt: note.createdAt.toISOString(),
       workspaceId: note.workspaceId,
       attachments: note.attachments,
+      category: note.category,
     }
   );
 
@@ -71,7 +73,8 @@ export async function createQuickNoteWithAttachments(
   id: string,
   workspaceId: string,
   content: string,
-  attachments: AttachmentInput[]
+  attachments: AttachmentInput[],
+  category: 'PRIMARY' | 'TEMPORARY' = 'PRIMARY'
 ) {
   const note = await prisma.quickNote.upsert({
     where: { id },
@@ -80,10 +83,12 @@ export async function createQuickNoteWithAttachments(
       workspaceId,
       content,
       attachments,
+      category,
     },
     update: {
       content,
       attachments,
+      category,
     }
   });
 
@@ -93,6 +98,7 @@ export async function createQuickNoteWithAttachments(
     createdAt: note.createdAt.toISOString(),
     workspaceId: note.workspaceId,
     attachments: note.attachments,
+    category: note.category,
   });
 
   revalidatePath('/dashboard');

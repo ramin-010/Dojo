@@ -194,6 +194,7 @@ export async function updateDaySchedule(workspaceId: string, updates: DayManager
               endTime: update.endTime,
               status: 'UPCOMING',
               sortOrder: update.sortOrder,
+              remark: update.remark,
             },
           });
         } else {
