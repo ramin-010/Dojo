@@ -300,7 +300,45 @@ export async function getUnverifiedBlocks() {
       orderBy: [{ date: 'asc' }, { sortOrder: 'asc' }]
     });
 
-    return unverifiedSlots.map(slot => ({
+    // Auto-heal discrepancy: Check if any of these already have a terminal BlockSessionLog
+    const sourceBlockIds = unverifiedSlots.map(s => s.sourceBlockId).filter(Boolean) as string[];
+    const existingLogs = await prisma.blockSessionLog.findMany({
+      where: {
+        timeBlockId: { in: sourceBlockIds },
+        date: {
+          gte: startRange,
+          lt: todayMidnight
+        }
+      }
+    });
+
+    console.log("AUTO-HEAL DEBUG: unverifiedSlots count =", unverifiedSlots.length);
+    console.log("AUTO-HEAL DEBUG: existingLogs count =", existingLogs.length);
+
+    const trulyUnverified = [];
+    for (const slot of unverifiedSlots) {
+      if (slot.sourceBlockId) {
+        // Find a log with the same block ID and within 24 hours (to account for timezone offsets)
+        const existingLog = existingLogs.find(log => 
+          log.timeBlockId === slot.sourceBlockId &&
+          Math.abs(log.date.getTime() - slot.date.getTime()) <= 24 * 60 * 60 * 1000
+        );
+        
+        console.log("AUTO-HEAL DEBUG: Checking slot", slot.title, "found log:", !!existingLog, "log status:", existingLog?.status);
+        
+        if (existingLog && (existingLog.status === 'COMPLETED' || existingLog.status === 'SKIPPED' || existingLog.status === 'PARTIAL')) {
+          // Auto-heal the database silently
+          await prisma.dailyScheduleSlot.update({
+            where: { id: slot.id },
+            data: { status: existingLog.status as any, remark: existingLog.remark }
+          });
+          continue;
+        }
+      }
+      trulyUnverified.push(slot);
+    }
+
+    return trulyUnverified.map(slot => ({
       slot: {
         id: slot.id,
         title: slot.title,

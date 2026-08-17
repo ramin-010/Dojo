@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   X, GripVertical, Plus, Minus, Clock, Coffee,
-  Lock, Unlock, CheckCircle2, SkipForward,
-  CircleDot, Timer, FastForward,
+  Lock, Unlock, CheckCircle2, SkipForward, XCircle,
+  CircleDot, Timer, FastForward, CircleDashed
 } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -38,6 +38,7 @@ type LocalSlot = {
   sortOrder: number;
   durationMin: number;
   isPinned: boolean;
+  remark?: string | null;
 };
 
 interface DayManagerModalProps {
@@ -51,6 +52,7 @@ interface DayManagerModalProps {
     endTime: string;
     status: SlotStatus;
     sortOrder: number;
+    remark?: string | null;
   }[];
 }
 
@@ -96,28 +98,59 @@ const formatCurrentTime = () => {
 
 // ── Read-only past block ────────────────────────────────────────────────
 
-function PastBlockItem({ slot }: { slot: LocalSlot }) {
-  const icon =
-    slot.status === 'COMPLETED' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50" /> :
-    slot.status === 'SKIPPED'   ? <SkipForward  className="w-3.5 h-3.5 text-foreground/25" /> :
-                                  <CircleDot    className="w-3.5 h-3.5 text-amber-500/50" />;
-
+function PastBlockItem({ slot, onUpdate }: { slot: LocalSlot, onUpdate: (id: string, updates: Partial<LocalSlot>) => void }) {
   return (
-    <div className="flex items-center gap-3 p-2 rounded-xl opacity-40 select-none">
-      <div className="w-6" />
-      <div
-        className="w-2 h-8 rounded-full shrink-0 opacity-50"
-        style={{ backgroundColor: slot.color }}
-      />
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-semibold truncate ${slot.status === 'SKIPPED' ? 'line-through text-foreground/30' : 'text-foreground/50'}`}>
-          {slot.title}
-        </p>
-        <p className="text-[11px] font-mono text-foreground/25">
-          {format12h(slot.startTime)} – {format12h(slot.endTime)}
-        </p>
+    <div className="bg-background border border-divider/40 rounded-xl p-3 flex flex-col gap-3 mb-1">
+      {/* Top row: Info and Actions */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: slot.color }} />
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-semibold text-foreground truncate">{slot.title}</h4>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+              <Clock className="w-3 h-3" />
+              <span>{format12h(slot.startTime)} - {format12h(slot.endTime)}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center shrink-0">
+          <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50">
+            <button
+              onClick={() => onUpdate(slot.id, { status: 'UPCOMING' })}
+              className={`p-1.5 rounded-md transition-colors ${!isPastStatus(slot.status) ? 'bg-accent/10 text-accent' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+              title="Unmarked"
+            >
+              <CircleDashed className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onUpdate(slot.id, { status: 'COMPLETED' })}
+              className={`p-1.5 rounded-md transition-colors ${slot.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+              title="Completed"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onUpdate(slot.id, { status: 'SKIPPED' })}
+              className={`p-1.5 rounded-md transition-colors ${slot.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+              title="Skipped"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
-      {icon}
+      
+      {/* Bottom row: Input */}
+      <div className="pl-5">
+        <input
+          type="text"
+          placeholder="Add a note for this block..."
+          value={slot.remark || ''}
+          onChange={(e) => onUpdate(slot.id, { remark: e.target.value })}
+          className="w-full bg-sidebar border border-divider/50 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-accent transition-colors"
+        />
+      </div>
     </div>
   );
 }
@@ -161,15 +194,15 @@ function GapRow({
   return (
     <button
       onClick={onFill}
-      className="group w-full flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-divider/25 hover:border-accent/30 hover:bg-accent/5 transition-all my-1 outline-none"
+      className="group w-full flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-divider/50 hover:border-accent/30 hover:bg-accent/5 transition-all my-1 outline-none"
     >
       <div className="w-6 flex items-center justify-center">
-        <Plus className="w-3.5 h-3.5 text-foreground/15 group-hover:text-accent transition-colors" />
+        <Plus className="w-3.5 h-3.5 text-muted group-hover:text-accent transition-colors" />
       </div>
-      <span className="text-xs font-medium text-foreground/20 group-hover:text-foreground/50 transition-colors">
+      <span className="text-xs font-medium text-muted group-hover:text-muted transition-colors">
         {label} free
       </span>
-      <span className="text-[10px] font-mono text-foreground/15 group-hover:text-foreground/30 transition-colors">
+      <span className="text-[10px] font-mono text-muted group-hover:text-muted transition-colors">
         {format12h(formatTime(startMin))} – {format12h(formatTime(endMin))}
       </span>
       <span className="ml-auto text-[10px] font-semibold text-transparent group-hover:text-accent transition-colors">
@@ -190,6 +223,17 @@ function SortableItem({
   isActive: boolean;
   hasOverlap: boolean;
 }) {
+  const [localStartTime, setLocalStartTime] = useState(slot.startTime);
+  const [localEndTime, setLocalEndTime] = useState(slot.endTime);
+
+  useEffect(() => {
+    setLocalStartTime(slot.startTime);
+  }, [slot.startTime]);
+
+  useEffect(() => {
+    setLocalEndTime(slot.endTime);
+  }, [slot.endTime]);
+
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -214,18 +258,19 @@ function SortableItem({
       ref={setNodeRef}
       style={style}
       className={[
-        'group flex items-center gap-3 p-2 rounded-xl border mb-1 transition-all',
+        'group flex flex-col p-2 rounded-xl border mb-1 transition-all',
         isDragging  ? 'shadow-xl opacity-90 border-accent/30 bg-hover' : 'border-transparent hover:bg-hover/60',
         isActive    ? 'border-accent/20 bg-accent/5'  : '',
         hasOverlap  ? '!border-amber-500/30 bg-amber-500/5' : '',
       ].join(' ')}
     >
+      <div className="flex items-center gap-3 w-full">
       {/* ── Drag handle / active indicator ── */}
       {!isActive ? (
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab p-1 text-foreground/20 hover:text-foreground/60 outline-none transition-colors"
+          className="cursor-grab p-1 text-muted hover:text-muted outline-none transition-colors"
         >
           <GripVertical className="w-4 h-4" />
         </div>
@@ -249,28 +294,30 @@ function SortableItem({
           value={slot.title}
           onChange={(e) => onUpdate(slot.id, { title: e.target.value })}
           placeholder="Block Title"
-          className={`bg-transparent outline-none w-full text-sm font-semibold transition-colors placeholder:text-foreground/20 focus:text-accent ${isBreak ? 'text-foreground/50' : 'text-foreground/90'}`}
+          className={`bg-transparent outline-none w-full text-sm font-semibold transition-colors placeholder:text-muted focus:text-accent ${isBreak ? 'text-muted' : 'text-foreground/90'}`}
         />
         <div className="flex items-center gap-1.5 flex-wrap">
           <input
             type="time"
-            value={slot.startTime}
-            onChange={(e) => {
-              if (e.target.value) {
+            value={localStartTime}
+            onChange={(e) => setLocalStartTime(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value && e.target.value !== slot.startTime) {
                 onUpdate(slot.id, { startTime: e.target.value, isPinned: true });
               }
             }}
             className={`bg-transparent text-[11px] font-mono outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors ${
-              slot.isPinned ? 'text-amber-400 font-semibold' : 'text-foreground/50 hover:text-foreground'
+              slot.isPinned ? 'text-amber-400 font-semibold' : 'text-muted hover:text-foreground'
             }`}
             title="Click to set start time (automatically pins block)"
           />
-          <span className="text-[11px] font-mono text-foreground/25">–</span>
+          <span className="text-[11px] font-mono text-muted">–</span>
           <input
             type="time"
-            value={slot.endTime}
-            onChange={(e) => {
-              if (e.target.value) {
+            value={localEndTime}
+            onChange={(e) => setLocalEndTime(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value && e.target.value !== slot.endTime) {
                 const startMin = parseTime(slot.startTime);
                 let endMin = parseTime(e.target.value);
                 if (endMin <= startMin) endMin += 24 * 60;
@@ -278,7 +325,7 @@ function SortableItem({
                 onUpdate(slot.id, { durationMin: dur });
               }
             }}
-            className="bg-transparent text-[11px] font-mono text-foreground/50 hover:text-foreground outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors"
+            className="bg-transparent text-[11px] font-mono text-muted hover:text-foreground outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors"
             title="Click to set end time (automatically adjusts duration)"
           />
           {slot.isPinned && (
@@ -303,7 +350,7 @@ function SortableItem({
             className={`p-1.5 rounded-lg transition-colors outline-none ${
               slot.isPinned
                 ? 'text-amber-400 hover:text-amber-300 bg-amber-400/10'
-                : 'text-foreground/20 hover:text-foreground/50 hover:bg-hover'
+                : 'text-muted hover:text-muted hover:bg-hover'
             }`}
             title={slot.isPinned ? 'Unpin (allow cascading)' : 'Pin at this time'}
           >
@@ -315,7 +362,7 @@ function SortableItem({
         <div className="flex items-center bg-background/50 rounded-lg px-1 py-0.5 focus-within:bg-background transition-colors">
           <button
             onClick={() => onUpdate(slot.id, { durationMin: Math.max(5, slot.durationMin - 15) })}
-            className="p-1 hover:text-accent text-foreground/40 transition-colors"
+            className="p-1 hover:text-accent text-muted transition-colors"
           >
             <Minus className="w-3 h-3" />
           </button>
@@ -327,10 +374,10 @@ function SortableItem({
             }
             className="w-8 bg-transparent text-xs font-mono text-center outline-none text-foreground/70 hide-arrows"
           />
-          <span className="text-[10px] font-mono text-foreground/30 pr-0.5">m</span>
+          <span className="text-[10px] font-mono text-muted pr-0.5">m</span>
           <button
             onClick={() => onUpdate(slot.id, { durationMin: slot.durationMin + 15 })}
-            className="p-1 hover:text-accent text-foreground/40 transition-colors"
+            className="p-1 hover:text-accent text-muted transition-colors"
           >
             <Plus className="w-3 h-3" />
           </button>
@@ -338,23 +385,52 @@ function SortableItem({
 
         <div className="w-px h-4 bg-divider/30" />
 
-        {/* Skip */}
-        <button
-          onClick={() => onUpdate(slot.id, { status: 'SKIPPED' })}
-          className="px-2 py-1 rounded-lg hover:bg-hover text-[11px] font-medium text-foreground/40 hover:text-foreground transition-colors outline-none"
-          title="Skip block"
-        >
-          Skip
-        </button>
+        {/* ── Status Toggle ── */}
+        <div className="flex bg-background/50 rounded-lg p-0.5 border border-divider/30">
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'UPCOMING' }); }}
+            className={`p-1 rounded-md transition-colors ${!isPastStatus(slot.status) ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground hover:bg-hover'}`}
+            title="Unmarked"
+          >
+            <CircleDashed className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'COMPLETED' }); }}
+            className={`p-1 rounded-md transition-colors ${slot.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-muted hover:text-foreground hover:bg-hover'}`}
+            title="Completed"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'SKIPPED' }); }}
+            className={`p-1 rounded-md transition-colors ${slot.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-muted hover:text-foreground hover:bg-hover'}`}
+            title="Skipped"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Delete */}
         <button
-          onClick={() => onDelete(slot.id)}
-          className="p-1 rounded-lg hover:bg-red-500/10 text-foreground/20 hover:text-red-400 transition-colors outline-none"
+          onClick={(e) => { e.stopPropagation(); onDelete(slot.id); }}
+          className="p-1 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400 transition-colors outline-none ml-1"
           title="Remove block"
         >
           <X className="w-3.5 h-3.5" />
         </button>
+      </div>
+      </div>
+
+      {/* ── Bottom row: Input ── */}
+      <div className="w-full pl-[2.25rem] pr-2 pt-2">
+        <input
+          type="text"
+          placeholder="Add a note for this block..."
+          value={slot.remark || ''}
+          onChange={(e) => onUpdate(slot.id, { remark: e.target.value })}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="w-full bg-sidebar/50 border border-divider/30 rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-accent/50 transition-colors opacity-50 focus:opacity-100 hover:opacity-100"
+        />
       </div>
     </div>
   );
@@ -689,7 +765,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-background border border-divider/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] relative animate-in fade-in zoom-in-95 duration-200"
+        className="bg-background border border-divider/35 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] relative animate-in fade-in zoom-in-95 duration-200"
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
@@ -697,7 +773,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
           <button
             onClick={onClose}
             disabled={isSaving}
-            className="p-2 rounded-full text-foreground/40 hover:text-foreground hover:bg-hover transition-colors disabled:opacity-50"
+            className="p-2 rounded-full text-muted hover:text-foreground hover:bg-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -708,8 +784,8 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
           <div className="flex items-center gap-3">
             {!hasActiveBlock && hasFutureBlocks && (
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-foreground/40" />
-                <span className="text-sm font-medium text-foreground/60">Resume at</span>
+                <Clock className="w-3.5 h-3.5 text-muted" />
+                <span className="text-sm font-medium text-muted">Resume at</span>
                 <input
                   type="time"
                   value={formatTime(dayStartMin)}
@@ -721,12 +797,12 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
             {hasActiveBlock && (
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                <span className="text-sm font-medium text-foreground/60">In progress</span>
+                <span className="text-sm font-medium text-muted">In progress</span>
               </div>
             )}
           </div>
 
-          <div className="text-sm text-foreground/35 font-medium">
+          <div className="text-sm text-muted font-medium">
             {futureSlots.filter(s => s.status !== 'ACTIVE').length} remaining
             {futureDuration > 0 && (
               <> • {futureHours}h{futureMinutes > 0 ? ` ${futureMinutes}m` : ''}</>
@@ -740,7 +816,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
           {hasPastBlocks && (
             <div className="mb-1">
               {pastSlots.map(slot => (
-                <PastBlockItem key={slot.id} slot={slot} />
+                <PastBlockItem key={slot.id} slot={slot} onUpdate={handleUpdate} />
               ))}
             </div>
           )}
@@ -803,8 +879,8 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
           {/* No future blocks placeholder */}
           {!hasFutureBlocks && hasPastBlocks && (
             <div className="text-center py-8">
-              <p className="text-sm text-foreground/30 font-medium">All blocks completed for today 🎉</p>
-              <p className="text-xs text-foreground/20 mt-1">Add new blocks below if needed</p>
+              <p className="text-sm text-muted font-medium">All blocks completed for today 🎉</p>
+              <p className="text-xs text-muted mt-1">Add new blocks below if needed</p>
             </div>
           )}
 
@@ -817,7 +893,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
                 </span>
                 <button
                   onClick={() => setIsCreating(false)}
-                  className="p-1 rounded-lg hover:bg-hover text-foreground/40 hover:text-foreground transition-colors"
+                  className="p-1 rounded-lg hover:bg-hover text-muted hover:text-foreground transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -829,7 +905,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Block Title (e.g. System Design, Gym, Deep Work...)"
-                className="w-full bg-background border border-divider/20 rounded-lg px-3 py-2 text-sm font-medium text-foreground outline-none focus:border-accent transition-colors mb-3"
+                className="w-full bg-background border border-divider/45 rounded-lg px-3 py-2 text-sm font-medium text-foreground outline-none focus:border-accent transition-colors mb-3"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -842,16 +918,16 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
               {/* Time & Duration Row */}
               <div className="flex items-center gap-4 flex-wrap mb-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-foreground/60">Start:</span>
+                  <span className="text-xs font-medium text-muted">Start:</span>
                   <input
                     type="time"
                     value={newStartTime}
                     onChange={(e) => setNewStartTime(e.target.value)}
-                    className="bg-background border border-divider/20 rounded-lg px-2 py-1 text-xs font-mono text-accent outline-none focus:border-accent cursor-pointer"
+                    className="bg-background border border-divider/45 rounded-lg px-2 py-1 text-xs font-mono text-accent outline-none focus:border-accent cursor-pointer"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-foreground/60">End:</span>
+                  <span className="text-xs font-medium text-muted">End:</span>
                   <input
                     type="time"
                     value={formatTime(parseTime(newStartTime || '09:00') + newDuration)}
@@ -863,24 +939,24 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
                         setNewDuration(Math.max(15, endMin - startMin));
                       }
                     }}
-                    className="bg-background border border-divider/20 rounded-lg px-2 py-1 text-xs font-mono text-foreground outline-none focus:border-accent cursor-pointer"
+                    className="bg-background border border-divider/45 rounded-lg px-2 py-1 text-xs font-mono text-foreground outline-none focus:border-accent cursor-pointer"
                   />
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
-                  <span className="text-xs font-medium text-foreground/60">Duration:</span>
+                  <span className="text-xs font-medium text-muted">Duration:</span>
                   <input
                     type="number"
                     value={newDuration || ''}
                     onChange={(e) => setNewDuration(Math.max(5, parseInt(e.target.value) || 5))}
-                    className="w-14 bg-background border border-divider/20 rounded-lg px-2 py-1 text-xs font-mono text-center outline-none focus:border-accent"
+                    className="w-14 bg-background border border-divider/45 rounded-lg px-2 py-1 text-xs font-mono text-center outline-none focus:border-accent"
                   />
-                  <span className="text-xs font-mono text-foreground/40">m</span>
+                  <span className="text-xs font-mono text-muted">m</span>
                 </div>
               </div>
 
               {/* Quick Preset Buttons */}
               <div className="flex items-center gap-1.5 flex-wrap mb-4">
-                <span className="text-[11px] font-medium text-foreground/40 mr-1">Quick Presets:</span>
+                <span className="text-[11px] font-medium text-muted mr-1">Quick Presets:</span>
                 {[
                   { label: '15m', min: 15 },
                   { label: '30m', min: 30 },
@@ -896,7 +972,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
                     className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border ${
                       newDuration === preset.min
                         ? 'bg-accent text-white border-accent'
-                        : 'bg-background hover:bg-hover text-foreground/60 border-divider/15'
+                        : 'bg-background hover:bg-hover text-muted border-divider/40'
                     }`}
                   >
                     {preset.label}
@@ -908,7 +984,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setIsCreating(false)}
-                  className="px-4 py-1.5 rounded-lg text-xs font-medium text-foreground/60 hover:text-foreground hover:bg-hover transition-colors"
+                  className="px-4 py-1.5 rounded-lg text-xs font-medium text-muted hover:text-foreground hover:bg-hover transition-colors"
                 >
                   Cancel
                 </button>
@@ -935,14 +1011,14 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
                   setNewDuration(60);
                   setIsCreating(true);
                 }}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-divider/40 text-foreground/45 hover:text-foreground hover:border-accent/40 hover:bg-hover transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-divider/65 text-foreground/70 hover:text-foreground hover:border-accent/40 hover:bg-hover transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span className="text-sm font-medium">Add Custom Block</span>
               </button>
               <button
                 onClick={() => handleAddBlock(true)}
-                className="px-5 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-divider/30 text-foreground/35 hover:text-foreground/70 hover:border-foreground/30 hover:bg-hover transition-colors"
+                className="px-5 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-divider/55 text-muted hover:text-foreground/70 hover:border-foreground/30 hover:bg-hover transition-colors"
               >
                 <Coffee className="w-4 h-4" />
                 <span className="text-sm font-medium">15m Break</span>
@@ -952,14 +1028,14 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div className="px-6 py-5 shrink-0 flex items-center justify-between border-t border-divider/10">
+        <div className="px-6 py-5 shrink-0 flex items-center justify-between border-t border-divider/35">
           {/* Left: triage actions */}
           <div className="flex items-center gap-2">
             {hasFutureBlocks && (
               <button
                 onClick={handlePushDelay}
                 disabled={isSaving}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-foreground/50 hover:text-foreground hover:bg-hover transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-muted hover:text-foreground hover:bg-hover transition-colors disabled:opacity-50"
               >
                 <FastForward className="w-3.5 h-3.5" />
                 {hasActiveBlock ? 'Insert 30m Break' : 'Delay +30m'}

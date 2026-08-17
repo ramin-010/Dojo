@@ -9,6 +9,7 @@ import { uploadToCloud } from '@/lib/utils/upload';
 import { useQuickNoteSync, QuickNoteSyncPayload } from '@/lib/pusher-client';
 import { Plus, FileText, Download, Copy, Check, Loader2, Paperclip, Image as ImageIcon, X, Maximize2, Trash2, Pin, PinOff, Search, Code, Link, ChevronDown, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { createPortal } from 'react-dom';
 
 export type QuickNoteType = {
   id: string;
@@ -133,7 +134,7 @@ const SingleAttachment = ({ attachment }: { attachment: DraftAttachment }) => {
           <img
             src={attachment.url}
             alt={attachment.fileName || 'Attachment'}
-            className="w-full h-auto object-cover rounded-lg"
+            className="w-full max-h-[250px] object-cover object-top rounded-lg"
             draggable
           />
           <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover/img:opacity-100">
@@ -161,26 +162,27 @@ const SingleAttachment = ({ attachment }: { attachment: DraftAttachment }) => {
         </div>
       </div>
 
-      {isExpanded && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
+      {isExpanded && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8" style={{ zIndex: 9999 }}>
           <div 
-            className="absolute inset-0 bg-[#0a0a0a]/70"
+            className="absolute inset-0 bg-black/60"
             onClick={() => setIsExpanded(false)}
           />
-          <div className="relative max-w-full max-h-full flex items-center justify-center group/modal">
+          <div className="relative w-full h-full flex items-center justify-center group/modal pointer-events-none">
             <img 
               src={attachment.url} 
               alt={attachment.fileName || 'Expanded image'}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl relative z-10"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl relative z-10 pointer-events-auto"
             />
             <button
               onClick={() => setIsExpanded(false)}
-              className="absolute top-4 right-4 z-20 p-2 bg-black/50 hover:bg-black/80 backdrop-blur-md rounded-full text-white/70 hover:text-white transition-all opacity-0 group-hover/modal:opacity-100"
+              className="absolute top-4 right-4 z-20 p-3 bg-black/50 hover:bg-black/80 backdrop-blur-md rounded-full text-white/70 hover:text-white transition-all opacity-0 group-hover/modal:opacity-100 pointer-events-auto"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       </>
     );
@@ -218,10 +220,10 @@ const SingleAttachment = ({ attachment }: { attachment: DraftAttachment }) => {
         </button>
       </div>
 
-      {isExpanded && (isPdf || isMarkdown) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
+      {isExpanded && (isPdf || isMarkdown) && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8" style={{ zIndex: 9999 }}>
           <div 
-            className="absolute inset-0 bg-[#0a0a0a]/70"
+            className="absolute inset-0 bg-black/60"
             onClick={() => setIsExpanded(false)}
           />
           <div className="relative w-full max-w-4xl h-full max-h-[85vh] bg-[#1a1a1a] rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col z-10">
@@ -277,7 +279,8 @@ const SingleAttachment = ({ attachment }: { attachment: DraftAttachment }) => {
               ) : null}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -975,7 +978,7 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
             {pinnedNotes.map(note => (
               <div
                 key={`pinned-${note.id}`}
-                className="group/pin flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all cursor-pointer animate-in fade-in zoom-in-95 duration-200"
+                className="group/pin flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border shadow-sm hover:border-foreground/20 transition-all cursor-pointer animate-in fade-in zoom-in-95 duration-200"
                 onClick={() => {
                   // Scroll to the note in the feed
                   const el = document.getElementById(`note-${note.id}`);

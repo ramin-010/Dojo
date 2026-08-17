@@ -153,6 +153,7 @@ export type DayManagerSlotUpdate = {
   endTime: string;
   status: SlotStatus;
   sortOrder: number;
+  remark?: string | null;
 };
 
 export async function updateDaySchedule(workspaceId: string, updates: DayManagerSlotUpdate[]) {
@@ -196,7 +197,7 @@ export async function updateDaySchedule(workspaceId: string, updates: DayManager
             },
           });
         } else {
-          await tx.dailyScheduleSlot.update({
+          const updatedSlot = await tx.dailyScheduleSlot.update({
             where: { id: update.id },
             data: {
               title: update.title,
@@ -205,8 +206,32 @@ export async function updateDaySchedule(workspaceId: string, updates: DayManager
               endTime: update.endTime,
               status: update.status,
               sortOrder: update.sortOrder,
+              remark: update.remark,
             },
           });
+
+          // If a slot was manually marked COMPLETED/SKIPPED in the manager, sync the block session log
+          if (updatedSlot.sourceBlockId && (update.status === 'COMPLETED' || update.status === 'SKIPPED' || update.status === 'PARTIAL')) {
+            const blockStatus = update.status === 'SKIPPED' ? 'SKIPPED' : (update.status === 'PARTIAL' ? 'PARTIAL' : 'COMPLETED');
+            await tx.blockSessionLog.upsert({
+              where: {
+                timeBlockId_date: {
+                  timeBlockId: updatedSlot.sourceBlockId,
+                  date: todayMidnight,
+                }
+              },
+              update: {
+                status: blockStatus,
+                remark: update.remark,
+              },
+              create: {
+                timeBlockId: updatedSlot.sourceBlockId,
+                date: todayMidnight,
+                status: blockStatus,
+                remark: update.remark,
+              }
+            });
+          }
         }
       }
     });

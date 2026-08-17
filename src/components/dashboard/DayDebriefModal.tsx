@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Battery, Target, Smile, ChevronDown, ChevronUp, Loader2, Save, BrainCircuit, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { X, Battery, Target, Smile, ChevronDown, ChevronUp, Loader2, Save, BrainCircuit, CheckCircle2, XCircle, Clock, CircleDashed } from 'lucide-react';
 import { saveDebrief, getDebriefForDate, SaveDebriefInput, SlotLogInput } from '@/app/actions/debrief.actions';
 import { ScheduleSlotProp } from '@/app/(protected)/dashboard/DashboardClient';
 import { toast } from 'sonner';
@@ -51,8 +51,8 @@ export function DayDebriefModal({
         initialLogs[s.id] = {
           slotId: s.id,
           sourceBlockId: s.sourceBlockId,
-          // Default to COMPLETED if they haven't explicitly set a status
-          status: (s.status === 'UPCOMING' || s.status === 'ACTIVE') ? 'COMPLETED' : (s.status as SlotStatus),
+          // Keep current status so it remains unmarked if UPCOMING
+          status: s.status as SlotStatus,
           remark: s.remark || '',
           minutesDone: s.minutesDone || null,
           actualStartTime: s.actualStartTime,
@@ -192,7 +192,7 @@ export function DayDebriefModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -206,7 +206,7 @@ export function DayDebriefModal({
                 <BrainCircuit className="w-5 h-5 text-accent" />
                 Daily Debrief — AI Context
               </h2>
-              <p className="text-[13px] text-foreground/50 mt-1">
+              <p className="text-[13px] text-muted-foreground mt-1">
                 Log your blocks and help your AI mentor understand the "why".
               </p>
             </div>
@@ -228,10 +228,10 @@ export function DayDebriefModal({
               <>
                 {/* Layer 0: Schedule Review */}
                 <section>
-                  <h3 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-3">Schedule Review</h3>
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Schedule Review</h3>
                   {todaySlots.length === 0 ? (
                     <div className="bg-background border border-divider/40 rounded-xl p-4 text-center">
-                      <p className="text-sm text-foreground/50">No blocks scheduled for today.</p>
+                      <p className="text-sm text-muted-foreground">No blocks scheduled for today.</p>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
@@ -240,42 +240,56 @@ export function DayDebriefModal({
                         if (!log) return null;
 
                         return (
-                          <div key={slot.id} className="bg-background border border-divider/40 rounded-xl p-3 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: slot.color }} />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-semibold text-foreground truncate">{slot.title}</h4>
-                                <div className="flex items-center gap-1.5 text-xs text-foreground/50 mt-0.5">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{slot.startTime} - {slot.endTime}</span>
+                          <div key={slot.id} className="bg-background border border-divider/40 rounded-xl p-3 flex flex-col gap-3">
+                            {/* Top row: Info and Actions */}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: slot.color }} />
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm font-semibold text-foreground truncate">{slot.title}</h4>
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{slot.startTime} - {slot.endTime}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center shrink-0">
+                                <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50">
+                                  <button
+                                    onClick={() => handleSlotStatusChange(slot.id, 'UPCOMING')}
+                                    className={`p-1.5 rounded-md transition-colors ${log.status !== 'COMPLETED' && log.status !== 'SKIPPED' ? 'bg-accent/10 text-accent' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+                                    title="Unmarked"
+                                  >
+                                    <CircleDashed className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleSlotStatusChange(slot.id, 'COMPLETED')}
+                                    className={`p-1.5 rounded-md transition-colors ${log.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+                                    title="Completed"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleSlotStatusChange(slot.id, 'SKIPPED')}
+                                    className={`p-1.5 rounded-md transition-colors ${log.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
+                                    title="Skipped"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-3 sm:pl-4 border-t sm:border-t-0 sm:border-l border-divider/40 pt-3 sm:pt-0 shrink-0">
+                            {/* Bottom row: Input */}
+                            <div className="pl-5">
                               <input
                                 type="text"
-                                placeholder="Add a note..."
+                                placeholder="Add a note for this block..."
                                 value={log.remark || ''}
                                 onChange={(e) => handleSlotRemarkChange(slot.id, e.target.value)}
-                                className="bg-sidebar border border-divider/50 rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-accent w-[140px]"
+                                className="w-full bg-sidebar border border-divider/50 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-accent transition-colors"
                               />
-                              <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50">
-                                <button
-                                  onClick={() => handleSlotStatusChange(slot.id, 'COMPLETED')}
-                                  className={`p-1.5 rounded-md transition-colors ${log.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
-                                  title="Completed"
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleSlotStatusChange(slot.id, 'SKIPPED')}
-                                  className={`p-1.5 rounded-md transition-colors ${log.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
-                                  title="Skipped"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </div>
                             </div>
                           </div>
                         );
@@ -286,26 +300,26 @@ export function DayDebriefModal({
 
                 {/* Layer 1: Auto-Context (Read Only) */}
                 <section>
-                  <h3 className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-3">Today's Stats</h3>
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Today's Stats</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-background border border-divider/40 rounded-xl p-3">
                       <span className="block text-xl font-bold text-foreground">{stats.completed}/{stats.planned}</span>
-                      <span className="text-[11px] font-medium text-foreground/50 mt-0.5">Blocks Done</span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Blocks Done</span>
                     </div>
                     <div className="bg-background border border-divider/40 rounded-xl p-3">
                       <span className="block text-xl font-bold text-foreground">{stats.focusedHrs}h</span>
-                      <span className="text-[11px] font-medium text-foreground/50 mt-0.5">Focused Time</span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Focused Time</span>
                     </div>
                     <div className="bg-background border border-divider/40 rounded-xl p-3">
                       <span className="block text-xl font-bold text-foreground">{stats.skipped}</span>
-                      <span className="text-[11px] font-medium text-foreground/50 mt-0.5">Skipped</span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Skipped</span>
                     </div>
                   </div>
                 </section>
 
                 {/* Layer 2: Structured Signals */}
                 <section className="flex flex-col gap-6">
-                  <h3 className="text-xs font-bold text-foreground/40 uppercase tracking-wider">Structured Signals</h3>
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Structured Signals</h3>
                   
                   {/* Ratings */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -316,7 +330,7 @@ export function DayDebriefModal({
 
                   {/* Tags */}
                   <div>
-                    <label className="text-xs font-medium text-foreground/60 mb-2 block">Context Tags</label>
+                    <label className="text-xs font-medium text-foreground/80 mb-2 block">Context Tags</label>
                     <div className="flex flex-wrap gap-2">
                       {DEFAULT_TAGS.map(tag => {
                         const isSelected = selectedTags.includes(tag);
@@ -327,7 +341,7 @@ export function DayDebriefModal({
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                               isSelected
                                 ? 'bg-accent/10 border-accent/30 text-accent'
-                                : 'bg-background border-divider/40 text-foreground/60 hover:bg-hover hover:text-foreground'
+                                : 'bg-background border-divider/40 text-foreground/80 hover:bg-hover hover:text-foreground'
                             }`}
                           >
                             {tag}
@@ -339,7 +353,7 @@ export function DayDebriefModal({
 
                   {/* Narrative */}
                   <div>
-                    <label className="text-xs font-medium text-foreground/60 mb-2 block">
+                    <label className="text-xs font-medium text-foreground/80 mb-2 block">
                       What's the story of today? (Causal reasoning)
                     </label>
                     <textarea
@@ -352,7 +366,7 @@ export function DayDebriefModal({
 
                   {/* Intention */}
                   <div>
-                    <label className="text-xs font-medium text-foreground/60 mb-2 block">
+                    <label className="text-xs font-medium text-foreground/80 mb-2 block">
                       What's the one thing you want to nail tomorrow? (Optional)
                     </label>
                     <input
@@ -369,7 +383,7 @@ export function DayDebriefModal({
                 <section className="pt-2 border-t border-divider/30">
                   <button
                     onClick={() => setShowFreeWrite(!showFreeWrite)}
-                    className="flex items-center gap-2 text-xs font-medium text-foreground/40 hover:text-foreground transition-colors"
+                    className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showFreeWrite ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     Want to add more? (Unstructured Free-write)
@@ -399,7 +413,7 @@ export function DayDebriefModal({
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-divider/50 bg-sidebar rounded-b-2xl flex items-center justify-between">
-            <span className="text-[11px] font-medium text-foreground/30">
+            <span className="text-[11px] font-medium text-muted-foreground">
               This data trains your Weekly Mentor Report
             </span>
             <div className="flex gap-2">
@@ -442,7 +456,7 @@ function RatingScale({ label, icon, value, onChange }: { label: string, icon: Re
             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
               value === num 
                 ? 'bg-accent text-white shadow-sm scale-110' 
-                : 'bg-divider/20 text-foreground/40 hover:bg-divider/50 hover:text-foreground'
+                : 'bg-divider/20 text-muted-foreground hover:bg-divider/50 hover:text-foreground'
             }`}
           >
             {num}
