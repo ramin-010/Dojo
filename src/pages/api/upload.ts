@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { upflyUpload } from 'upfly';
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { jwtVerify } from 'jose';
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.NEXTAUTH_SECRET || 'fallback-secret-change-me'
+);
 
 export const config = {
   api: {
@@ -55,6 +59,17 @@ export default async function handler(
   }
 
   try {
+    const token = req.cookies['revise_session'];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    
+    let workspaceId: string;
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      workspaceId = payload.workspaceId as string;
+    } catch {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
     await runMiddleware(req, res, upload);
     
     const files = (req as any).files as Record<string, any[]>;
@@ -87,7 +102,7 @@ export default async function handler(
       if (subjectId) {
         createdResource = await prisma.capture.create({
           data: {
-            workspaceId: DEV_WORKSPACE_ID,
+            workspaceId: workspaceId,
             subjectId,
             topicId,
             type: 'LINK',

@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
-import { DEV_USER_ID, DEV_WORKSPACE_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -15,6 +15,7 @@ cloudinary.config({
 
 /** Create a new topic inside a subject */
 export async function createTopic(subjectId: string, title: string) {
+  const { userId, workspaceId } = await getSession();
   // Get the highest sortOrder to place this topic at the end
   const lastTopic = await prisma.topic.findFirst({
     where: { subjectId },
@@ -36,7 +37,7 @@ export async function createTopic(subjectId: string, title: string) {
   // Log the activity
   await prisma.activityLog.create({
     data: {
-      userId: DEV_USER_ID,
+      userId,
       subjectId,
       topicId: topic.id,
       action: 'CREATED_TOPIC',
@@ -229,6 +230,7 @@ import { extractCloudinaryPublicId } from '@/lib/utils/cloudinary';
 
 /** Delete a topic */
 export async function deleteTopic(topicId: string) {
+  const { userId, workspaceId } = await getSession();
   const topic = await prisma.topic.findUnique({
     where: { id: topicId },
     include: { captures: true },
@@ -319,7 +321,7 @@ export async function deleteTopic(topicId: string) {
   // 6. Log Deletion
   await prisma.activityLog.create({
     data: {
-      userId: DEV_USER_ID,
+      userId,
       subjectId: topic.subjectId,
       action: 'DELETED_TOPIC',
       details: topic.title

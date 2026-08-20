@@ -1,6 +1,6 @@
 import DashboardClient from './DashboardClient';
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { getUnverifiedBlocks } from '@/app/actions/planner.actions';
 import { ensureTodaySlots } from '@/app/actions/schedule-slot.actions';
 
@@ -9,6 +9,7 @@ import { getISTMidnight } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
+  const { userId, workspaceId } = await getSession();
   const today = getISTMidnight();
   const now = new Date();
 
@@ -30,16 +31,26 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     // 1. Workspace
     prisma.workspace.findUnique({
-      where: { id: DEV_WORKSPACE_ID },
+      where: { id: workspaceId },
       select: { routineMode: true }
     }),
 
     // 2. Revisions Due (Pending & Overdue)
     prisma.revision.findMany({
       where: {
-        OR: [
-          { status: 'pending', scheduledFor: { lte: now } },
-          { status: 'done', completedAt: { gte: today } }
+        AND: [
+          {
+            OR: [
+              { status: 'pending', scheduledFor: { lte: now } },
+              { status: 'done', completedAt: { gte: today } }
+            ]
+          },
+          {
+            OR: [
+              { topic: { subject: { workspaceId } } },
+              { capture: { workspaceId } }
+            ]
+          }
         ]
       },
       include: {
@@ -56,7 +67,7 @@ export default async function DashboardPage() {
     // 3. Tasks
     prisma.capture.findMany({
       where: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId: workspaceId,
         type: 'TASK',
         isDone: false,
       },
@@ -69,7 +80,7 @@ export default async function DashboardPage() {
       where: {
         isDismissed: false,
         capture: { 
-          workspaceId: DEV_WORKSPACE_ID,
+          workspaceId: workspaceId,
           revisions: { none: { status: 'pending' } }
         }
       },
@@ -80,7 +91,7 @@ export default async function DashboardPage() {
     // 5. Inbox
     prisma.capture.findMany({
       where: { 
-        workspaceId: DEV_WORKSPACE_ID, 
+        workspaceId: workspaceId, 
         subjectId: null,
         type: { in: ['NOTE', 'LINK'] },
         NOT: [
@@ -96,23 +107,29 @@ export default async function DashboardPage() {
     // 6. Habits
     import('@/app/actions/habit.actions').then(m => m.getHabits()),
 
-    // 7. User (for streak)
+    // 7. User (for streak and name)
     prisma.user.findUnique({
-      where: { id: DEV_USER_ID },
-      select: { globalStreak: true }
+      where: { id: userId },
+      select: { globalStreak: true, name: true }
     }),
 
     // 8. Total Topics count
-    prisma.topic.count(),
+    prisma.topic.count({
+      where: { subject: { workspaceId } }
+    }),
 
     // 9. Topics with revisions count
     prisma.topic.count({
-      where: { revisions: { some: {} } }
+      where: { 
+        subject: { workspaceId },
+        revisions: { some: {} } 
+      }
     }),
 
     // 10. Mastered topics count
     prisma.topic.count({
       where: {
+        subject: { workspaceId },
         revisions: {
           some: { cycleNumber: { gte: 4 }, status: 'done' }
         }
@@ -121,12 +138,12 @@ export default async function DashboardPage() {
 
     // 11. Total revisions done count
     prisma.activityLog.count({
-      where: { userId: DEV_USER_ID, action: 'COMPLETED_REVISION' }
+      where: { userId: userId, action: 'COMPLETED_REVISION' }
     }),
 
     // 12. Quick Notes
     prisma.quickNote.findMany({
-      where: { workspaceId: DEV_WORKSPACE_ID },
+      where: { workspaceId: workspaceId },
       orderBy: { createdAt: 'asc' }
     }),
 
@@ -135,7 +152,7 @@ export default async function DashboardPage() {
   ]);
 
   // ── Phase 2: Dependent query (needs workspace result) ─────────────────
-  const todaySlots = await ensureTodaySlots(DEV_WORKSPACE_ID, workspace?.routineMode || 'MASTER');
+  const todaySlots = await ensureTodaySlots(workspaceId, workspace?.routineMode || 'MASTER');
 
   // ── Phase 3: Pure computation (no I/O, just mapping) ──────────────────
 
@@ -288,6 +305,9 @@ export default async function DashboardPage() {
       unverifiedBlocks={unverifiedBlocks}
       initialRoutineMode={workspace?.routineMode || 'MASTER'}
       habits={habits}
+      workspaceId={workspaceId}
+      userName={user?.name || 'User'}
     />
   );
 }
+

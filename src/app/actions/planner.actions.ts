@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { BlockStatus } from '@prisma/client';
 import { completeRevision } from './revision.actions';
 import { getISTMidnight } from '@/lib/utils';
@@ -11,9 +11,10 @@ import { getISTMidnight } from '@/lib/utils';
 // ====================================================================
 
 export async function getTimeBlocks() {
+  const { userId, workspaceId } = await getSession();
   try {
     const blocks = await prisma.timeBlock.findMany({
-      where: { workspaceId: DEV_WORKSPACE_ID },
+      where: { workspaceId },
       orderBy: { startTime: 'asc' },
     });
     return blocks;
@@ -24,9 +25,10 @@ export async function getTimeBlocks() {
 }
 
 export async function updateRoutineMode(mode: 'MASTER' | 'DAILY') {
+  const { userId, workspaceId } = await getSession();
   try {
     await prisma.workspace.update({
-      where: { id: DEV_WORKSPACE_ID },
+      where: { id: workspaceId },
       data: { routineMode: mode },
     });
     revalidatePath('/dashboard');
@@ -45,10 +47,11 @@ export async function createTimeBlock(data: {
   dayOfWeek?: number | null;
   date?: Date | null;
 }) {
+  const { userId, workspaceId } = await getSession();
   try {
     const block = await prisma.timeBlock.create({
       data: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         title: data.title,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -66,9 +69,10 @@ export async function createTimeBlock(data: {
 }
 
 export async function deleteTimeBlock(id: string) {
+  const { userId, workspaceId } = await getSession();
   try {
     await prisma.timeBlock.delete({
-      where: { id, workspaceId: DEV_WORKSPACE_ID },
+      where: { id, workspaceId },
     });
     revalidatePath('/dashboard/planner');
   } catch (error) {
@@ -82,6 +86,7 @@ export async function deleteTimeBlock(id: string) {
 // ====================================================================
 
 export async function getTasksAndRevisionsForMonth(year: number, month: number) {
+  const { userId, workspaceId } = await getSession();
   try {
     // Month is 0-indexed in JS dates (0 = Jan, 11 = Dec)
     const startDate = new Date(year, month, 1);
@@ -90,7 +95,7 @@ export async function getTasksAndRevisionsForMonth(year: number, month: number) 
     // 1. Fetch Tasks (Captures of type TASK with a dueDate)
     const tasks = await prisma.capture.findMany({
       where: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         type: 'TASK',
         dueDate: {
           gte: startDate,
@@ -118,8 +123,8 @@ export async function getTasksAndRevisionsForMonth(year: number, month: number) 
     const revisions = await prisma.revision.findMany({
       where: {
         OR: [
-          { topic: { subject: { workspaceId: DEV_WORKSPACE_ID } } },
-          { capture: { workspaceId: DEV_WORKSPACE_ID } },
+          { topic: { subject: { workspaceId } } },
+          { capture: { workspaceId } },
         ],
         scheduledFor: {
           gte: startDate,
@@ -275,6 +280,7 @@ export async function logSession(
 }
 
 export async function getUnverifiedBlocks() {
+  const { userId, workspaceId } = await getSession();
   try {
     const now = new Date();
     
@@ -287,7 +293,7 @@ export async function getUnverifiedBlocks() {
 
     const unverifiedSlots = await prisma.dailyScheduleSlot.findMany({
       where: { 
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         date: {
           gte: startRange,
           lt: todayMidnight // strictly before today
@@ -354,6 +360,7 @@ export async function shiftOrOverwriteBlock(
   newTitle: string, 
   remark: string
 ) {
+  const { userId, workspaceId } = await getSession();
   try {
     const targetMidnight = getISTMidnight(targetDate);
 
@@ -380,7 +387,7 @@ export async function shiftOrOverwriteBlock(
     // 2. Create one-off block for the new time
     const newBlock = await prisma.timeBlock.create({
       data: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         title: newTitle,
         startTime: newStartTime,
         endTime: newEndTime,
@@ -399,12 +406,13 @@ export async function shiftOrOverwriteBlock(
 }
 
 export async function bulkPreSkip(startDate: Date, endDate: Date, remark: string) {
+  const { userId, workspaceId } = await getSession();
   try {
     const startMidnight = getISTMidnight(startDate);
     const endMidnight = getISTMidnight(endDate);
 
     const blocks = await prisma.timeBlock.findMany({
-      where: { workspaceId: DEV_WORKSPACE_ID },
+      where: { workspaceId },
     });
 
     const logsToCreate = [];

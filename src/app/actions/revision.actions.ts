@@ -1,12 +1,13 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { DEV_USER_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { getISTMidnight } from '@/lib/utils';
 
 /** Start the spaced repetition cycle for a topic */
 export async function startTopicRevisions(topicId: string) {
+  const { userId, workspaceId } = await getSession();
   const intervals = [1, 3, 7, 21];
   const now = new Date();
   
@@ -37,7 +38,7 @@ export async function startTopicRevisions(topicId: string) {
     if (topic) {
       await tx.activityLog.create({
         data: {
-          userId: DEV_USER_ID,
+          userId,
           subjectId: topic.subjectId,
           topicId: topicId,
           action: 'STARTED_REVISIONS',
@@ -57,6 +58,7 @@ export async function startTopicRevisions(topicId: string) {
 
 /** Complete a revision cycle and calculate cascading shifts */
 export async function completeRevision(revisionId: string) {
+  const { userId, workspaceId } = await getSession();
   const revision = await prisma.revision.findUnique({
     where: { id: revisionId },
     include: {
@@ -84,7 +86,7 @@ export async function completeRevision(revisionId: string) {
     // 3. Activity Log
     await tx.activityLog.create({
       data: {
-        userId: DEV_USER_ID,
+        userId,
         subjectId: subjectId,
         topicId: revision.topicId,
         action: 'COMPLETED_REVISION',
@@ -107,13 +109,13 @@ export async function completeRevision(revisionId: string) {
     });
 
     let history = await tx.dailyHistory.findFirst({
-      where: { userId: DEV_USER_ID, subjectId: subjectId, date: today }
+      where: { userId, subjectId: subjectId, date: today }
     });
 
     if (!history) {
       history = await tx.dailyHistory.create({
         data: {
-          userId: DEV_USER_ID,
+          userId,
           subjectId: subjectId,
           date: today,
           revisionsDue: pendingDue + 1, // We know at least one was due (or done early, but let's count it)
@@ -134,9 +136,9 @@ export async function completeRevision(revisionId: string) {
     // Upsert SubjectStreak
     if (pendingDue === 0) {
       const streak = await tx.subjectStreak.upsert({
-        where: { userId_subjectId: { userId: DEV_USER_ID, subjectId: subjectId } },
+        where: { userId_subjectId: { userId, subjectId: subjectId } },
         create: {
-          userId: DEV_USER_ID,
+          userId,
           subjectId: subjectId,
           currentStreak: 1,
           longestStreak: 1,
@@ -150,7 +152,7 @@ export async function completeRevision(revisionId: string) {
       
       if (streak.currentStreak > streak.longestStreak) {
         await tx.subjectStreak.update({
-          where: { userId_subjectId: { userId: DEV_USER_ID, subjectId: subjectId } },
+          where: { userId_subjectId: { userId, subjectId: subjectId } },
           data: { longestStreak: streak.currentStreak }
         });
       }
@@ -160,8 +162,8 @@ export async function completeRevision(revisionId: string) {
     const globalPendingDue = await tx.revision.count({
       where: {
         OR: [
-          { topic: { subject: { workspace: { userId: DEV_USER_ID } } } },
-          { capture: { workspace: { userId: DEV_USER_ID } } }
+          { topic: { subject: { workspace: { userId } } } },
+          { capture: { workspace: { userId } } }
         ],
         scheduledFor: { lte: today },
         status: 'pending'
@@ -169,7 +171,7 @@ export async function completeRevision(revisionId: string) {
     });
 
     if (globalPendingDue === 0) {
-      const user = await tx.user.findUnique({ where: { id: DEV_USER_ID } });
+      const user = await tx.user.findUnique({ where: { id: userId } });
       if (user) {
         const lastUpdate = user.lastGlobalStreakUpdate;
         const alreadyUpdatedToday = lastUpdate && 
@@ -192,7 +194,7 @@ export async function completeRevision(revisionId: string) {
            }
 
            await tx.user.update({
-             where: { id: DEV_USER_ID },
+             where: { id: userId },
              data: {
                globalStreak: newStreak,
                longestGlobalStreak: Math.max(newStreak, user.longestGlobalStreak),
@@ -213,6 +215,7 @@ export async function completeRevision(revisionId: string) {
 
 /** Start the spaced repetition cycle for a Capture */
 export async function startCaptureRevisions(captureId: string) {
+  const { userId, workspaceId } = await getSession();
   const intervals = [1, 3, 7, 21];
   const now = new Date();
   
@@ -243,7 +246,7 @@ export async function startCaptureRevisions(captureId: string) {
     if (cap && cap.subjectId) {
       await tx.activityLog.create({
         data: {
-          userId: DEV_USER_ID,
+          userId,
           subjectId: cap.subjectId,
           action: 'STARTED_REVISIONS',
           details: cap.title || cap.content?.substring(0, 50) || 'Capture',

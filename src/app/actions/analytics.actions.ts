@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { DEV_USER_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 
 /** Get recent activity for a subject */
 export async function getRecentActivity(subjectId: string, limit = 5) {
@@ -16,8 +16,9 @@ export async function getRecentActivity(subjectId: string, limit = 5) {
 
 /** Get the subject's streak info */
 export async function getSubjectStreak(subjectId: string) {
+  const { userId, workspaceId } = await getSession();
   const streak = await prisma.subjectStreak.findUnique({
-    where: { userId_subjectId: { userId: DEV_USER_ID, subjectId } },
+    where: { userId_subjectId: { userId, subjectId } },
   });
 
   return streak;
@@ -25,12 +26,13 @@ export async function getSubjectStreak(subjectId: string) {
 
 /** Get last 7 days of daily history for the streak chart */
 export async function getDailyHistory(subjectId: string, days = 7) {
+  const { userId, workspaceId } = await getSession();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
   const history = await prisma.dailyHistory.findMany({
     where: {
-      userId: DEV_USER_ID,
+      userId,
       subjectId,
       date: { gte: since },
     },

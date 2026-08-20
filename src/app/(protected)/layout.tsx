@@ -1,26 +1,31 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { Sidebar } from "@/components/navigation/Sidebar";
 import { getSubjectsWithTopics } from "@/app/actions/subject.actions";
+import { getSessionSafe } from '@/lib/auth';
 
 export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const isAuthenticated = cookieStore.get('revise_auth')?.value === 'authenticated';
+  const session = await getSessionSafe();
 
-  if (!isAuthenticated) {
+  if (!session) {
     redirect('/login');
   }
 
   // Fetch subjects for the Sidebar
   const subjects = await getSubjectsWithTopics();
+  
+  const { prisma } = await import('@/lib/db');
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { name: true }
+  });
 
   return (
     <>
-      <Sidebar initialSubjects={subjects} />
+      <Sidebar initialSubjects={subjects} userName={user?.name || 'User'} />
       
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full relative overflow-y-auto overflow-x-hidden">

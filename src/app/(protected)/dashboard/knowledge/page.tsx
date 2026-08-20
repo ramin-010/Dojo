@@ -1,11 +1,12 @@
 import KnowledgeClient from './KnowledgeClient';
 import { getKnowledgeData } from '@/app/actions/knowledge.actions';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function KnowledgeHubPage() {
-  const result = await getKnowledgeData(DEV_WORKSPACE_ID);
+  const { workspaceId } = await getSession();
+  const result = await getKnowledgeData(workspaceId);
   
   if (!result.success) {
     return (

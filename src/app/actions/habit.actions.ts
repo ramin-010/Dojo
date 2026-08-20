@@ -1,14 +1,15 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
 export async function getHabits() {
+  const { userId, workspaceId } = await getSession();
   try {
     const habits = await prisma.habit.findMany({
       where: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
       },
       orderBy: {
         createdAt: 'asc',
@@ -22,10 +23,11 @@ export async function getHabits() {
 }
 
 export async function createHabit(name: string, icon?: string, color?: string) {
+  const { userId, workspaceId } = await getSession();
   try {
     const habit = await prisma.habit.create({
       data: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         name,
         icon,
         color,

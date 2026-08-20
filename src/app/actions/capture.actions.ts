@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { generateAIContent } from '@/lib/ai/orchestrator';
 import { QUICK_NOTE_SYSTEM_PROMPT } from '@/lib/ai/prompts/quickNotePrompt';
 import { startCaptureRevisions } from './revision.actions';
@@ -80,6 +80,7 @@ export async function createCapture(data: {
   fileType?: string;
   attachments?: { url: string; cloudPublicId: string; fileType?: string; fileName?: string }[];
 }) {
+  const { userId, workspaceId } = await getSession();
   try {
     let categoryId = null;
 
@@ -87,13 +88,13 @@ export async function createCapture(data: {
       const category = await prisma.noteCategory.upsert({
         where: {
           workspaceId_name: {
-            workspaceId: DEV_WORKSPACE_ID,
+            workspaceId: workspaceId,
             name: data.categoryName,
           },
         },
         update: {},
         create: {
-          workspaceId: DEV_WORKSPACE_ID,
+          workspaceId: workspaceId,
           name: data.categoryName,
         },
       });
@@ -138,7 +139,7 @@ export async function createCapture(data: {
 
     const savedItem = await prisma.capture.create({
       data: {
-        workspaceId: data.workspaceId || DEV_WORKSPACE_ID,
+        workspaceId: data.workspaceId || workspaceId,
         subjectId: resolvedSubjectId,
         topicId: data.topicId || null,
         type: typeEnum,
@@ -182,7 +183,7 @@ export async function createCapture(data: {
 
     await prisma.activityLog.create({
       data: {
-        userId: DEV_USER_ID,
+        userId,
         subjectId: resolvedSubjectId,
         topicId: data.topicId || null,
         action: 'CREATED_CAPTURE',
@@ -269,6 +270,7 @@ export async function togglePinCapture(id: string, isPinned: boolean) {
 }
 
 export async function toggleTaskStatus(id: string, isDone: boolean) {
+  const { userId, workspaceId } = await getSession();
   try {
     const item = await prisma.capture.update({
       where: { id },
@@ -281,7 +283,7 @@ export async function toggleTaskStatus(id: string, isDone: boolean) {
     if (isDone) {
       await prisma.activityLog.create({
         data: {
-          userId: DEV_USER_ID,
+          userId,
           subjectId: item.subjectId,
           topicId: item.topicId,
           action: 'COMPLETED_TASK',
@@ -409,13 +411,14 @@ export async function renameCapture(id: string, title: string) {
 }
 
 export async function createTextCaptureLink(topicId: string, text: string, type: 'url' | 'other' = 'other') {
+  const { userId, workspaceId } = await getSession();
   try {
     const isUrl = type === 'url' || text.startsWith('http');
     const captureType = isUrl ? 'LINK' : 'NOTE';
     
     const item = await prisma.capture.create({
       data: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         topicId,
         type: captureType,
         title: isUrl ? text : null,
@@ -432,10 +435,11 @@ export async function createTextCaptureLink(topicId: string, text: string, type:
 }
 
 export async function getWorkspaceNoteCategories() {
+  const { userId, workspaceId } = await getSession();
   try {
     const categories = await prisma.noteCategory.findMany({
       where: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
       },
       orderBy: {
         name: 'asc',
@@ -490,6 +494,7 @@ export async function generateCaptureAI(
 }
 
 export async function getUnresolvedWeeklyGoals() {
+  const { userId, workspaceId } = await getSession();
   try {
     const now = new Date();
     // Start of current week (Monday)
@@ -499,7 +504,7 @@ export async function getUnresolvedWeeklyGoals() {
 
     const goals = await prisma.capture.findMany({
       where: {
-        workspaceId: DEV_WORKSPACE_ID,
+        workspaceId,
         type: 'TASK',
         goalType: 'WEEKLY',
         isDone: false,

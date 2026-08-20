@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -12,6 +12,7 @@ cloudinary.config({
 
 export async function POST(request: NextRequest) {
   try {
+    const { workspaceId } = await getSession();
     const formData = await request.formData();
     const topicId = formData.get('topicId') as string | null;
     let subjectId = formData.get('subjectId') as string | null;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
       if (subjectId) {
         createdResource = await prisma.capture.create({
           data: {
-            workspaceId: DEV_WORKSPACE_ID,
+            workspaceId: workspaceId,
             subjectId,
             topicId,
             type: 'LINK',

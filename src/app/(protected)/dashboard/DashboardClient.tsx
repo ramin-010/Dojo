@@ -14,7 +14,6 @@ import TasksSidebar from './dashComponents/TasksSidebar';
 import { WeeklyReviewModal } from '@/components/dashboard/WeeklyReviewModal';
 import { DayDebriefModal } from '@/components/dashboard/DayDebriefModal';
 import { QuickNotesWidget, QuickNoteType } from '@/components/dashboard/QuickNotesWidget';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
 import { useAppStore } from '@/store/useAppStore';
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -109,9 +108,9 @@ interface DashboardClientProps {
   initialRoutineMode: 'MASTER' | 'DAILY';
   unverifiedBlocks?: any[];
   habits?: any[];
+  workspaceId: string;
+  userName?: string;
 }
-
-const MOCK_USER = { name: 'Ramin' };
 
 // ────────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -138,6 +137,8 @@ export default function DashboardClient({
   initialRoutineMode,
   unverifiedBlocks = [],
   habits = [],
+  workspaceId,
+  userName = 'User',
 }: DashboardClientProps) {
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
@@ -262,7 +263,7 @@ export default function DashboardClient({
             </button>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                {getGreeting()}, {MOCK_USER.name}
+                {getGreeting()}, {userName}
               </h1>
               <p className="text-muted text-sm mt-0.5 md:mt-1">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -355,7 +356,7 @@ export default function DashboardClient({
         <div className="lg:sticky lg:top-8 lg:self-start flex flex-col gap-16">
           <QuickNotesWidget 
             initialNotes={quickNotes || []} 
-            workspaceId={DEV_WORKSPACE_ID} 
+            workspaceId={workspaceId} 
           />
 
           {/* MOBILE PROGRESS */}
@@ -420,7 +421,7 @@ export default function DashboardClient({
       <DayDebriefModal
         isOpen={isDayDebriefOpen}
         onClose={() => setIsDayDebriefOpen(false)}
-        workspaceId={DEV_WORKSPACE_ID}
+        workspaceId={workspaceId}
         todaySlots={todaySlots}
         date={startOfToday}
       />

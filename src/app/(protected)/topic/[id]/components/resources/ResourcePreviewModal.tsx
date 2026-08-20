@@ -44,17 +44,6 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
   useEffect(() => {
     setMounted(true);
     
-    // Attempt to enter fullscreen
-    try {
-      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch((err) => {
-          console.log("Fullscreen request failed:", err);
-        });
-      }
-    } catch (e) {
-      console.log(e);
-    }
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -64,16 +53,6 @@ export function ResourcePreviewModal({ resource, onClose }: ResourcePreviewModal
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      // Attempt to exit fullscreen
-      try {
-        if (document.exitFullscreen && document.fullscreenElement) {
-          document.exitFullscreen().catch((err) => {
-            console.log("Exit fullscreen failed:", err);
-          });
-        }
-      } catch (e) {
-        console.log(e);
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -2,16 +2,17 @@ import PlannerClient from './PlannerClient';
 import { getTimeBlocks, getTasksAndRevisionsForMonth } from '@/app/actions';
 
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 
 export default async function PlannerPage() {
+  const { workspaceId } = await getSession();
   const now = new Date();
 
   // Fire all independent queries in parallel
   const [blocks, workspace, { tasks, revisions }] = await Promise.all([
     getTimeBlocks(),
     prisma.workspace.findUnique({
-      where: { id: DEV_WORKSPACE_ID },
+      where: { id: workspaceId },
       select: { routineMode: true }
     }),
     getTasksAndRevisionsForMonth(now.getFullYear(), now.getMonth()),

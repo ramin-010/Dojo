@@ -1,33 +1,51 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { verifyPassword, createSession } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
-    const { password } = await request.json();
-    const correctPassword = process.env.APP_PASSWORD;
+    const { email, password, rememberMe = false } = await request.json();
 
-    if (!correctPassword) {
-      return NextResponse.json({ error: 'APP_PASSWORD is not configured' }, { status: 500 });
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    if (password === correctPassword) {
-      const response = NextResponse.json({ success: true });
-      
-      // Set the cookie for 1 year
-      response.cookies.set({
-        name: 'revise_auth',
-        value: 'authenticated',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 365, // 1 year
-        path: '/',
-      });
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: {
+        workspaces: {
+          take: 1,
+          orderBy: { id: 'asc' },
+        },
+      },
+    });
 
-      return response;
+    if (!user || !user.password) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    // Verify password
+    const isValid = await verifyPassword(password, user.password);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
+
+    // Get workspace
+    const workspace = user.workspaces[0];
+    if (!workspace) {
+      return NextResponse.json({ error: 'No workspace found for this user' }, { status: 500 });
+    }
+
+    // Create session
+    await createSession(user.id, workspace.id, rememberMe);
+
+    return NextResponse.json({ 
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email }
+    });
   } catch (error) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    console.error('Login error:', error);
+    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
   }
 }

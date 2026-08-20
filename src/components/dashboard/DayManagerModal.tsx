@@ -17,7 +17,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { DayManagerSlotUpdate, updateDaySchedule } from '@/app/actions/schedule-slot.actions';
 import { SlotStatus } from '@prisma/client';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
 
 // ═══════════════════════════════════════════════════════════════════════
 // CONSTANTS & TYPES
@@ -753,7 +752,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
           remark: s.remark,
         };
       });
-      await updateDaySchedule(DEV_WORKSPACE_ID, updates);
+      await updateDaySchedule(updates);
       onClose();
     } catch (e) {
       console.error(e);

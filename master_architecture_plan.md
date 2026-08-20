@@ -1,16 +1,19 @@
 # Master Architecture Plan
 
-## Authentication System
-- **Previous System**: NextAuth v4 (Database backed credentials provider).
-- **Current System**: Lightweight Edge Middleware (`src/proxy.ts`).
+## Authentication System (Upgraded to Multi-User)
+- **Previous System**: Single-tenant Edge Middleware with a global `APP_PASSWORD`. The `DEV_USER_ID` and `DEV_WORKSPACE_ID` were hardcoded constants throughout 97 locations.
+- **Current System**: Full Multi-User JWT-based Authentication.
 - **Mechanism**: 
-  - Edge middleware intercepts all routes (except `/login`, `/_next`, `/api`, etc.).
-  - It checks for the existence of an HTTP-only `revise_auth` cookie.
-  - If missing, redirects to `/login`.
-  - `/login` is a single password screen that sends a POST to `/api/auth/login`.
-  - `/api/auth/login` verifies against `process.env.APP_PASSWORD` and sets the cookie with a 1-year expiration.
-  - `/api/auth/logout` clears the cookie.
-- **Benefits**: Zero database overhead, instant edge-level protection, minimal friction for personal usage.
+  - Edge middleware (`src/proxy.ts`) protects routes and redirects to `/login`.
+  - Registration (`/api/auth/register`) creates a `User` (with `bcryptjs` hashed password) and a default `Workspace`.
+  - Login (`/api/auth/login`) verifies credentials and issues a `jose` signed JWT HTTP-only cookie (`revise_session`).
+  - Across the app (Server Components, Actions, API Routes), `getSession()` from `@/lib/auth` replaces the hardcoded constants to dynamically resolve `userId` and `workspaceId`.
+  - Client components receive `workspaceId` as a prop from their server-side parents to guarantee tenant isolation.
+
+## Resource Preview & UI Theme 
+- **Resource Preview Modal**: A unified markdown rendering modal (`ResourcePreviewModal.tsx`) for `TopicWorkspace`. Uses `createPortal` to escape the stacking context so it displays above `z-[100]` sidebars. Hooks into the browser's Fullscreen API on mount for a distraction-free F11-style view.
+- **Theme Compatibility**: Strict overrides of Tailwind Typography (`@tailwindcss/typography`) default grays using dynamic CSS variables (e.g., `prose-headings:text-foreground`). This fixes the "invisible text" issue when using dark mode typography inverted on a Sepia (beige) theme.
+- **Responsive Navigation**: Utility buttons (Prev/Next Topic) collapse text on narrow screens (`max-md:hidden`) to prevent layout clipping.
 
 ## Dashboard Quick Notes
 - **Purpose**: Provide a zero-friction, WhatsApp-style scratchpad directly on the Dashboard.

@@ -91,9 +91,8 @@ function NavItem({
   );
 }
 
-export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
-  const userName = "Ramin";
-  const userInitials = "R";
+export function Sidebar({ initialSubjects, userName = "User" }: { initialSubjects: Subject[], userName?: string }) {
+  const userInitials = userName.charAt(0).toUpperCase();
 
   const { 
     subjects, setSubjects, 

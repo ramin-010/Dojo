@@ -2,9 +2,9 @@
 
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { DEV_WORKSPACE_ID } from '@/lib/constants';
 import { SlotStatus, BlockStatus } from '@prisma/client';
 import { getISTMidnight } from '@/lib/utils';
+import { getSession } from '@/lib/auth';
 
 // ====================================================================
 // ENSURE TODAY'S SLOTS EXIST
@@ -156,8 +156,9 @@ export type DayManagerSlotUpdate = {
   remark?: string | null;
 };
 
-export async function updateDaySchedule(workspaceId: string, updates: DayManagerSlotUpdate[]) {
+export async function updateDaySchedule(updates: DayManagerSlotUpdate[]) {
   try {
+    const { workspaceId } = await getSession();
     const now = new Date();
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     const todayMidnight = getISTMidnight();

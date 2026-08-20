@@ -1,13 +1,14 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
+import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
 /** Fetch all subjects with their topics for the sidebar */
 export async function getSubjectsWithTopics() {
+  const { userId, workspaceId } = await getSession();
   const subjects = await prisma.subject.findMany({
-    where: { workspaceId: DEV_WORKSPACE_ID },
+    where: { workspaceId },
     include: {
       topics: {
         select: {
@@ -82,9 +83,10 @@ export async function getSubjectById(subjectId: string) {
 
 /** Create a new subject */
 export async function createSubject(name: string, description?: string, color?: string) {
+  const { userId, workspaceId } = await getSession();
   const subject = await prisma.subject.create({
     data: {
-      workspaceId: DEV_WORKSPACE_ID,
+      workspaceId,
       name,
       description,
       color,
@@ -93,7 +95,7 @@ export async function createSubject(name: string, description?: string, color?: 
 
   await prisma.activityLog.create({
     data: {
-      userId: DEV_USER_ID,
+      userId,
       subjectId: subject.id,
       action: 'CREATED_SUBJECT',
       details: name
@@ -122,13 +124,14 @@ export async function updateSubject(
 
 /** Delete a subject and all its children */
 export async function deleteSubject(subjectId: string) {
+  const { userId, workspaceId } = await getSession();
   const subject = await prisma.subject.delete({
     where: { id: subjectId },
   });
 
   await prisma.activityLog.create({
     data: {
-      userId: DEV_USER_ID,
+      userId,
       action: 'DELETED_SUBJECT',
       details: subject.name
     }
