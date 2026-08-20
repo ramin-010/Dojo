@@ -11,9 +11,12 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
     notFound();
   }
 
-  const allSubjectTags = await getAllSubjectTags(topic.subjectId);
-  const adjacentTopics = await getAdjacentTopics(topic.subjectId, topic.id);
-  const noteCategoriesResult = await getWorkspaceNoteCategories();
+  // Fire all independent queries in parallel (all depend on topic, but not on each other)
+  const [allSubjectTags, adjacentTopics, noteCategoriesResult] = await Promise.all([
+    getAllSubjectTags(topic.subjectId),
+    getAdjacentTopics(topic.subjectId, topic.id),
+    getWorkspaceNoteCategories(),
+  ]);
 
   return (
     <TopicWorkspace 

@@ -140,7 +140,7 @@ export function ResourceRow({
 
     // Default Image (with thumbnail if available)
     return (
-      <div className="w-8 h-8 rounded-lg bg-zinc-800 overflow-hidden shrink-0 relative flex items-center justify-center border border-zinc-700/50">
+      <div className="w-8 h-8 rounded-lg bg-foreground/5 overflow-hidden shrink-0 relative flex items-center justify-center border border-divider">
         {thumbnailUrl ? (
           <>
             <img src={thumbnailUrl} alt={title} className="w-full h-full object-cover" />
@@ -200,33 +200,33 @@ export function ResourceRow({
                   if (!isSavingRename) handleRenameSubmit();
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[12px] font-medium text-zinc-200 bg-black/50 border border-blue-500 rounded-l px-1 w-full outline-none disabled:opacity-50"
+                className="text-[12px] font-medium text-foreground bg-background border border-accent rounded-l px-1 w-full outline-none disabled:opacity-50"
               />
               {initialExt && (
-                <span className="text-[12px] text-zinc-400 bg-black/30 border border-l-0 border-blue-500 rounded-r px-1 py-[1px] whitespace-nowrap">
+                <span className="text-[12px] text-muted bg-foreground/5 border border-l-0 border-accent rounded-r px-1 py-[1px] whitespace-nowrap">
                   {initialExt}
                 </span>
               )}
               {isSavingRename && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center rounded z-10">
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] flex items-center justify-center rounded z-10">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
                 </div>
               )}
             </div>
           ) : (
-            <span className="text-[12px] font-medium text-zinc-200 truncate">
+            <span className="text-[12px] font-medium text-foreground truncate">
               {title}
             </span>
           )}
           {isOnCanvas && !isRenaming && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-black/40 text-zinc-400 border border-white/10">
+            <span className="text-[9px] px-1 py-0.5 rounded bg-foreground/10 text-muted border border-divider">
               Canvas
             </span>
           )}
         </div>
 
         {content && (
-          <div className={`text-[11px] text-zinc-300 mt-1 whitespace-pre-wrap leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
+          <div className={`text-[11px] text-foreground/80 mt-1 whitespace-pre-wrap leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
             {content}
           </div>
         )}
@@ -247,14 +247,14 @@ export function ResourceRow({
                       window.open(att.url, '_blank', 'noopener,noreferrer');
                     }
                   }}
-                  className="block relative overflow-hidden rounded shadow-sm border border-white/10 hover:opacity-80 transition-opacity focus:outline-none"
+                  className="block relative overflow-hidden rounded shadow-sm border border-divider hover:opacity-80 transition-opacity focus:outline-none"
                 >
                   {isImg ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={att.url} alt="Attachment" className="w-8 h-8 object-cover" />
                   ) : (
-                    <div className="flex items-center justify-center w-8 h-8 rounded bg-black/30 border border-white/10 hover:bg-black/50 transition-colors">
-                      <Paperclip className="w-3.5 h-3.5 text-zinc-400" />
+                    <div className="flex items-center justify-center w-8 h-8 rounded bg-foreground/5 border border-divider hover:bg-foreground/10 transition-colors">
+                      <Paperclip className="w-3.5 h-3.5 text-muted" />
                     </div>
                   )}
                 </button>
@@ -264,22 +264,22 @@ export function ResourceRow({
         )}
 
         {category === 'link' && domain && (
-          <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+          <div className="text-[11px] text-muted truncate mt-0.5">
             {domain}
           </div>
         )}
-        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-zinc-500 truncate">
+        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted truncate">
           {category === 'link' && (
             <>
               {sourceContext && (
                 <>
-                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-300">
+                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-foreground/10 text-foreground/70">
                     {sourceContext}
                   </span>
                   <span>•</span>
                 </>
               )}
-              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-black/40 text-zinc-300">
+              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-foreground/5 text-foreground/70">
                 Link
               </span>
               <span>•</span>
@@ -291,7 +291,7 @@ export function ResourceRow({
             <>
               {sourceContext && (
                 <>
-                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-300">
+                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-foreground/10 text-foreground/70">
                     {sourceContext}
                   </span>
                   <span>•</span>
@@ -299,7 +299,7 @@ export function ResourceRow({
               )}
               {fileSize && <span>{fileSize}</span>}
               {fileFormat && (
-                <span className="px-1 py-0.5 rounded text-[9px] uppercase font-medium bg-black/40 text-zinc-300">
+                <span className="px-1 py-0.5 rounded text-[9px] uppercase font-medium bg-foreground/5 text-foreground/70">
                   {fileFormat}
                 </span>
               )}
@@ -312,13 +312,13 @@ export function ResourceRow({
             <>
               {sourceContext && (
                 <>
-                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-300">
+                  <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-foreground/10 text-foreground/70">
                     {sourceContext}
                   </span>
                   <span>•</span>
                 </>
               )}
-              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-black/40 text-zinc-300">
+              <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-foreground/5 text-foreground/70">
                 Image
               </span>
               <span>•</span>
@@ -340,7 +340,7 @@ export function ResourceRow({
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 top-6 w-32 bg-zinc-900 border border-zinc-800 rounded-md shadow-xl py-1 z-50 flex flex-col overflow-hidden">
+          <div className="absolute right-0 top-6 w-32 bg-popover border border-border rounded-md shadow-xl py-1 z-50 flex flex-col overflow-hidden">
             {category !== 'link' && (
               <button 
                 onClick={(e) => {
@@ -348,7 +348,7 @@ export function ResourceRow({
                   setShowMenu(false);
                   setIsRenaming(true);
                 }}
-                className="w-full text-left px-3 py-1.5 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-white transition-colors"
+                className="w-full text-left px-3 py-1.5 text-[11px] text-muted hover:bg-hover hover:text-foreground transition-colors"
               >
                 Rename
               </button>
@@ -363,7 +363,7 @@ export function ResourceRow({
                   data: { id, title, url, category, addedAt, isOnCanvas, domain, fileSize, fileFormat, thumbnailUrl }
                 });
               }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-blue-400 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-[11px] text-muted hover:bg-hover hover:text-blue-500 transition-colors"
             >
               Open in Split View
             </button>
@@ -373,7 +373,7 @@ export function ResourceRow({
                 setShowMenu(false);
                 onDelete?.(id, url);
               }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-[11px] text-red-500 hover:bg-red-500/10 hover:text-red-600 transition-colors"
             >
               Delete
             </button>

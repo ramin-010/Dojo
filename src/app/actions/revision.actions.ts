@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { DEV_USER_ID } from '@/lib/constants';
 import { revalidatePath } from 'next/cache';
+import { getISTMidnight } from '@/lib/utils';
 
 /** Start the spaced repetition cycle for a topic */
 export async function startTopicRevisions(topicId: string) {
@@ -10,9 +11,9 @@ export async function startTopicRevisions(topicId: string) {
   const now = new Date();
   
   // Midnight of next day
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
+  const tomorrowDate = new Date(now);
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = getISTMidnight(tomorrowDate);
 
   const revisions = intervals.map((intervalDays, index) => {
     const scheduledFor = new Date(tomorrow);
@@ -92,8 +93,7 @@ export async function completeRevision(revisionId: string) {
     });
 
     // 4. Update Streak & Daily History
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const today = getISTMidnight(now);
 
     const pendingDue = await tx.revision.count({
       where: {
@@ -217,9 +217,9 @@ export async function startCaptureRevisions(captureId: string) {
   const now = new Date();
   
   // Midnight of next day
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
+  const tomorrowDate = new Date(now);
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = getISTMidnight(tomorrowDate);
 
   const revisions = intervals.map((intervalDays, index) => {
     const scheduledFor = new Date(tomorrow);

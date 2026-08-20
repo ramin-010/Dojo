@@ -192,12 +192,12 @@ export function DayDebriefModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 overflow-y-auto">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-2xl bg-sidebar border border-divider shadow-2xl rounded-2xl flex flex-col my-auto relative"
+          className="w-full max-w-2xl bg-sidebar border border-divider shadow-2xl rounded-2xl flex flex-col my-auto relative max-h-[95vh] sm:max-h-[85vh]"
         >
           {/* Header */}
           <div className="px-6 py-5 border-b border-divider/50 bg-gradient-to-r from-accent/10 to-transparent rounded-t-2xl flex items-center justify-between">

@@ -107,8 +107,7 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
   let timelineStart = Math.min(...allStarts);
   let timelineEnd = Math.max(...allEnds);
 
-  // Give a little buffer on edges
-  timelineStart -= 30; // 30 min buffer
+  // Give a little buffer on edges (only on the end)
   timelineEnd += 30;
 
   if (currentMinutes >= timelineStart && currentMinutes < timelineEnd) {
@@ -123,7 +122,7 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
   const anyBlockCurrentlyActive = renderSlots.some(s => s.isCurrentlyActive);
 
   return (
-    <section className="mb-12 mt-4 relative">
+    <section className="mb-12 mt-4 relative w-full">
       <button 
         onClick={onManageDay} 
         className="absolute -top-6 right-0 p-1 text-muted hover:text-muted transition-colors outline-none z-20"
@@ -132,10 +131,11 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
         <Settings2 className="w-4 h-4" />
       </button>
 
-      <div className="relative mt-2">
-        
-        {/* ── Background Bar (Track) ── */}
-        <div className="absolute top-0 w-full h-[8px] rounded-full bg-divider/50 pointer-events-none" />
+      <div className="overflow-x-auto custom-scrollbar pb-6 -mb-6">
+        <div className="relative mt-2 min-w-[600px] w-full">
+          
+          {/* ── Background Bar (Track) ── */}
+          <div className="absolute top-0 w-full h-[8px] rounded-full bg-divider/50 pointer-events-none" />
 
         {/* ── The Static Blocks ── */}
         <div className="relative h-[8px] rounded-full w-full">
@@ -226,6 +226,7 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
             </div>
           )}
         </div>
+      </div>
       </div>
     </section>
   );

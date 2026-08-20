@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { DEV_WORKSPACE_ID } from '@/lib/constants';
 import { SlotStatus, BlockStatus } from '@prisma/client';
+import { getISTMidnight } from '@/lib/utils';
 
 // ====================================================================
 // ENSURE TODAY'S SLOTS EXIST
@@ -17,8 +18,7 @@ export async function ensureTodaySlots(
   workspaceId: string,
   routineMode: 'MASTER' | 'DAILY'
 ) {
-  const todayMidnight = new Date();
-  todayMidnight.setHours(0, 0, 0, 0);
+  const todayMidnight = getISTMidnight();
 
   // Check if slots already exist for today
   const existingSlots = await prisma.dailyScheduleSlot.findMany({
@@ -158,8 +158,9 @@ export type DayManagerSlotUpdate = {
 
 export async function updateDaySchedule(workspaceId: string, updates: DayManagerSlotUpdate[]) {
   try {
-    const todayMidnight = new Date();
-    todayMidnight.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const todayMidnight = getISTMidnight();
 
     // Get existing slots for today to map them
     const existingSlots = await prisma.dailyScheduleSlot.findMany({

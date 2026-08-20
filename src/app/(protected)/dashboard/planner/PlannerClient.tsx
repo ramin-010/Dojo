@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Menu } from 'lucide-react';
 import WeeklyTimetable from './WeeklyTimetable';
 import TasksCalendar from './TasksCalendar';
 import RescheduleModal, { RescheduleTarget } from '@/components/dashboard/RescheduleModal';
 import { VacationModal } from '@/components/dashboard/VacationModal';
 import { Plane } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
 
 interface PlannerClientProps {
   initialBlocks: any[];
@@ -20,17 +21,26 @@ export default function PlannerClient({ initialBlocks, initialTasks, initialRevi
   const [rescheduleTarget, setRescheduleTarget] = useState<RescheduleTarget | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isVacationModalOpen, setIsVacationModalOpen] = useState(false);
+  const setMobileMenuOpen = useAppStore(state => state.setIsMobileMenuOpen);
 
   return (
     <div className="p-8 max-w-[1100px] mx-auto w-full h-full flex flex-col">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex flex-col gap-6 mb-8">
         <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Planner</h1>
-            <p className="text-muted text-sm mt-1">
-              Organize your weekly routine and upcoming tasks
-            </p>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden p-2 -ml-2 text-foreground/70 hover:text-foreground hover:bg-hover rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Planner</h1>
+              <p className="text-muted text-sm mt-1">
+                Organize your weekly routine and upcoming tasks
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button 

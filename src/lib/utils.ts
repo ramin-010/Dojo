@@ -23,3 +23,18 @@ export function timeAgo(date: Date | string): string {
   const months = Math.floor(days / 30);
   return `${months}mo ago`;
 }
+
+/**
+ * Returns a UTC Date object representing Midnight in IST (Indian Standard Time)
+ * for the given date. This ensures consistent "start of day" regardless of
+ * where the server is hosted (Vercel UTC vs Localhost IST).
+ */
+export function getISTMidnight(date: Date = new Date()): Date {
+  // IST is UTC + 5:30
+  const tzOffsetMs = 5.5 * 60 * 60 * 1000;
+  // Convert current time to IST
+  const istTime = new Date(date.getTime() + tzOffsetMs);
+  // Return UTC Midnight matching the IST year, month, date
+  return new Date(Date.UTC(istTime.getUTCFullYear(), istTime.getUTCMonth(), istTime.getUTCDate()));
+}
+

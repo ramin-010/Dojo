@@ -86,7 +86,7 @@ export function TriageInterceptor({ unverifiedBlocks: initialBlocks, onComplete 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 sm:p-6 overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-2 sm:p-4 md:p-6 overflow-y-auto custom-scrollbar">
       <div className="bg-sidebar border border-divider shadow-2xl rounded-2xl w-full max-w-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
         
         {/* Header */}

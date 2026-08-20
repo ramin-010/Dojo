@@ -80,12 +80,12 @@ export function WeeklyReviewModal() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-md bg-sidebar border border-divider shadow-2xl overflow-hidden flex flex-col rounded-2xl relative"
+          className="w-full max-w-md bg-sidebar border border-divider shadow-2xl overflow-hidden flex flex-col rounded-2xl relative max-h-[95vh]"
         >
           {/* Header */}
           <div className="px-6 py-5 border-b border-divider/50 bg-gradient-to-r from-blue-500/10 to-transparent">

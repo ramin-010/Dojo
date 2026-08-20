@@ -45,7 +45,7 @@ import { useSplitViewResize } from './hooks/useSplitViewResize';
 export type { SidebarTab };
 
 export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCategories }: TopicWorkspaceProps) {
-  const { topicTheme } = useAppStore();
+  const { topicTheme, setIsMobileMenuOpen: setMobileMenuOpen } = useAppStore();
   // ── Split View State ───────────────────────────────────────────────────────
   const [splitViewData, setSplitViewData] = useState<SplitViewData | null>(null);
   const { isDraggingSplitView, setIsDraggingSplitView } = useSplitViewResize();
@@ -862,7 +862,7 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
     <div className="h-screen w-full bg-background flex overflow-hidden relative">
       {/* ── Main Content Area ──────────────────────────────────────────────── */}
       <div
-        className={`h-full relative ${
+        className={`h-full relative max-md:!mr-0 max-md:!w-full max-md:!min-w-0 ${
           isDragging || isDraggingSplitView ? '' : 'transition-all duration-300 ease-in-out'
         } ${splitViewData ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
         style={{ 
@@ -901,22 +901,30 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
         )}
 
         <div 
-          className="mx-auto w-full min-h-full px-8 transition-all duration-300 ease-in-out"
-          style={{ maxWidth: `${layoutWidth}px`, minWidth: splitViewData ? undefined : `${layoutWidth}px` }}
+          className="mx-auto w-full min-h-full px-4 sm:px-8 transition-all duration-300 ease-in-out"
+          style={{ maxWidth: `${layoutWidth}px` }}
         >
           {/* ── Top Utility Row ─────────────────────────────────────────── */}
           <div className="pt-5 flex-shrink-0 bg-background z-30">
             <div className="flex items-center justify-between">
-              <Link
-                href={`/subject/${topic.subject.id}`}
-                className={`inline-flex p-1.5 hover:bg-accent rounded-md text-muted hover:text-foreground transition-all duration-300 -ml-1.5 ${
-                  !isScrolled
-                    ? 'opacity-100 translate-x-0'
-                    : 'opacity-0 -translate-x-2 pointer-events-none'
-                }`}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="md:hidden p-1.5 hover:bg-hover rounded-md text-foreground/70 hover:text-foreground transition-all"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <Link
+                  href={`/subject/${topic.subject.id}`}
+                  className={`inline-flex p-1.5 hover:bg-accent rounded-md text-muted hover:text-foreground transition-all duration-300 -ml-1.5 ${
+                    !isScrolled
+                      ? 'opacity-100 translate-x-0'
+                      : 'opacity-0 -translate-x-2 pointer-events-none'
+                  }`}
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+              </div>
 
               <div className="flex items-center gap-1 ">
                 {/* Previous Topic Button */}
@@ -924,31 +932,33 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   <button 
                     onClick={() => router.push(`/topic/${adjacentTopics.prev?.id}`)}
                     className="flex items-center gap-1 text-xs font-medium text-muted bg-foreground/5 hover:text-foreground hover:bg-foreground/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
+                    title={adjacentTopics.prev.title}
                   >
                     <ChevronLeft className="w-3.5 h-3.5 " />
-                    <span className="truncate text-[13.5px] text-muted hover:text-foreground">{adjacentTopics.prev.title}</span>
+                    <span className="truncate text-[13.5px] text-muted hover:text-foreground max-md:hidden">{adjacentTopics.prev.title}</span>
                   </button>
                 ) : (
                   <button className="flex items-center gap-1 text-[8px] font-medium text-muted px-2.5 py-1 rounded-md max-w-[150px] opacity-60">
                     <ChevronLeft className="w-3.5 h-3.5" />
-                    <span className="truncate text-[13.5px]">First Topic</span>
+                    <span className="truncate text-[13.5px] max-md:hidden">First Topic</span>
                   </button>
                 )}
 
-                <div className="w-px h-3 bg-border/50 " />
+                <div className="w-px h-3 bg-border/50 max-md:hidden" />
 
                 {/* Next Topic Button */}
                 {adjacentTopics?.next ? (
                   <button 
                     onClick={() => router.push(`/topic/${adjacentTopics.next?.id}`)}
                     className="flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground bg-foreground/5 hover:bg-foreground/10 px-2.5 py-1 rounded-md transition-colors max-w-[150px]"
+                    title={adjacentTopics.next.title}
                   >
-                    <span className="truncate text-[13.5px] text-muted hover:text-foreground">{adjacentTopics.next.title}</span>
+                    <span className="truncate text-[13.5px] text-muted hover:text-foreground max-md:hidden">{adjacentTopics.next.title}</span>
                     <ChevronRight className="w-3.5 h-3.5 " />
                   </button>
                 ) : (
                   <button className="flex items-center gap-1 text-xs font-medium text-muted px-2.5 py-1 rounded-md max-w-[150px] opacity-60">
-                    <span className="truncate text-[13.5px]">Last Topic</span>
+                    <span className="truncate text-[13.5px] max-md:hidden">Last Topic</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -970,13 +980,14 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                   }}
                   disabled={isCreatingTopic}
                   className="flex items-center gap-1 text-xs font-medium text-muted hover:text-foreground hover:bg-foreground/10 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
+                  title="New Topic"
                 >
                   {isCreatingTopic ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Plus className="w-3.5 h-3.5" />
                   )}
-                  New Topic
+                  <span className="max-md:hidden">New Topic</span>
                 </button>
               </div>
             </div>
@@ -1115,32 +1126,36 @@ export function TopicWorkspace({ topic, allSubjectTags, adjacentTopics, noteCate
                           <button
                             onClick={() => setIsAllExpanded(!isAllExpanded)}
                             className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                            title={isAllExpanded ? 'Collapse All Blocks' : 'Reveal All Blocks'}
                           >
                             {isAllExpanded ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            {isAllExpanded ? 'Collapse' : 'Reveal'}
+                            <span className="max-md:hidden">{isAllExpanded ? 'Collapse' : 'Reveal'}</span>
                           </button>
                         )}
                         <button
                           onClick={() => setShowAiCommandBar(true)}
                           disabled={isAiImporting}
                           className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all disabled:opacity-30"
+                          title="Import AI"
                         >
                           <Bot className="w-3.5 h-3.5" />
-                          Import AI
+                          <span className="max-md:hidden">Import AI</span>
                         </button>
                         <button
                           onClick={() => setIsSettingsModalOpen(true)}
                           className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                          title="Actions"
                         >
                           <Settings className="w-3.5 h-3.5" />
-                          Actions
+                          <span className="max-md:hidden">Actions</span>
                         </button>
                         <button
                           onClick={() => setIsInfoModalOpen(true)}
                           className="flex items-center gap-1 text-muted hover:text-foreground text-[11px] opacity-70 hover:opacity-100 font-medium transition-all"
+                          title="Info"
                         >
                           <Info className="w-3.5 h-3.5" />
-                          Info
+                          <span className="max-md:hidden">Info</span>
                         </button>
                       </div>
                     )}

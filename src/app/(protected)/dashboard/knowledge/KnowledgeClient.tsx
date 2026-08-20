@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Hash, Brain, FileText, Zap, Circle, BookOpen } from 'lucide-react';
+import { Search, Hash, Brain, FileText, Zap, Circle, BookOpen, Menu } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
 
 interface TagData {
   id: string;
@@ -38,6 +39,7 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
   const [selectedTag, setSelectedTag] = useState<string>(initialTags[0]?.name || '');
   const [activeTab, setActiveTab] = useState<'topics' | 'notes'>('topics');
   const [searchQuery, setSearchQuery] = useState('');
+  const setMobileMenuOpen = useAppStore(state => state.setIsMobileMenuOpen);
 
   // Filter content based on selected tag
   const filteredTopics = initialTopics.filter(t => t.tags.includes(selectedTag));
@@ -50,14 +52,22 @@ export default function KnowledgeClient({ initialTags, initialTopics, initialNot
     <div className="p-8 max-w-[1100px] mx-auto w-full h-full flex flex-col">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex flex-col gap-6 mb-8">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              Knowledge Hub
-            </h1>
-            <p className="text-muted text-sm mt-1">
-              Explore your tags and cross-subject connections
-            </p>
+        <div className="flex justify-between items-start flex-col gap-4 sm:flex-row sm:gap-0">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden p-2 -ml-2 text-foreground/70 hover:text-foreground hover:bg-hover rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+                Knowledge Hub
+              </h1>
+              <p className="text-muted text-sm mt-1">
+                Explore your tags and cross-subject connections
+              </p>
+            </div>
           </div>
           
           <div className="relative w-64">

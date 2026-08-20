@@ -4,39 +4,142 @@ import { DEV_WORKSPACE_ID, DEV_USER_ID } from '@/lib/constants';
 import { getUnverifiedBlocks } from '@/app/actions/planner.actions';
 import { ensureTodaySlots } from '@/app/actions/schedule-slot.actions';
 
+import { getISTMidnight } from '@/lib/utils';
+
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getISTMidnight();
   const now = new Date();
 
-  // 1. Fetch Workspace for Routine Mode
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: DEV_WORKSPACE_ID },
-    select: { routineMode: true }
-  });
+  // ── Phase 1: Fire ALL independent queries in parallel ─────────────────
+  const [
+    workspace,
+    pendingRevisions,
+    rawTasks,
+    rawReminders,
+    rawInbox,
+    habitsResponse,
+    user,
+    totalTopics,
+    topicsWithRevisions,
+    masteredTopics,
+    totalRevisionsDone,
+    quickNotesRaw,
+    unverifiedBlocks,
+  ] = await Promise.all([
+    // 1. Workspace
+    prisma.workspace.findUnique({
+      where: { id: DEV_WORKSPACE_ID },
+      select: { routineMode: true }
+    }),
 
-  // 2. Fetch Revisions Due (Pending & Overdue)
-  const pendingRevisions = await prisma.revision.findMany({
-    where: {
-      OR: [
-        { status: 'pending', scheduledFor: { lte: now } },
-        { status: 'done', completedAt: { gte: today } }
-      ]
-    },
-    include: {
-      topic: {
-        include: { subject: true, tags: true }
+    // 2. Revisions Due (Pending & Overdue)
+    prisma.revision.findMany({
+      where: {
+        OR: [
+          { status: 'pending', scheduledFor: { lte: now } },
+          { status: 'done', completedAt: { gte: today } }
+        ]
       },
-      capture: {
-        include: { subject: true, category: true, attachments: true }
-      }
-    },
-    orderBy: { scheduledFor: 'asc' }
-  });
+      include: {
+        topic: {
+          include: { subject: true, tags: true }
+        },
+        capture: {
+          include: { subject: true, category: true, attachments: true }
+        }
+      },
+      orderBy: { scheduledFor: 'asc' }
+    }),
 
-  // Map them into a unified format for the UI
+    // 3. Tasks
+    prisma.capture.findMany({
+      where: {
+        workspaceId: DEV_WORKSPACE_ID,
+        type: 'TASK',
+        isDone: false,
+      },
+      include: { attachments: true, category: true },
+      orderBy: { dueDate: 'asc' }
+    }),
+
+    // 4. Reminders
+    prisma.reminder.findMany({
+      where: {
+        isDismissed: false,
+        capture: { 
+          workspaceId: DEV_WORKSPACE_ID,
+          revisions: { none: { status: 'pending' } }
+        }
+      },
+      include: { capture: { include: { attachments: true, category: true } } },
+      orderBy: { remindAt: 'asc' }
+    }),
+
+    // 5. Inbox
+    prisma.capture.findMany({
+      where: { 
+        workspaceId: DEV_WORKSPACE_ID, 
+        subjectId: null,
+        type: { in: ['NOTE', 'LINK'] },
+        NOT: [
+          { reminder: { isDismissed: false } },
+          { revisions: { some: { status: 'pending' } } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: { category: true, attachments: true }
+    }),
+
+    // 6. Habits
+    import('@/app/actions/habit.actions').then(m => m.getHabits()),
+
+    // 7. User (for streak)
+    prisma.user.findUnique({
+      where: { id: DEV_USER_ID },
+      select: { globalStreak: true }
+    }),
+
+    // 8. Total Topics count
+    prisma.topic.count(),
+
+    // 9. Topics with revisions count
+    prisma.topic.count({
+      where: { revisions: { some: {} } }
+    }),
+
+    // 10. Mastered topics count
+    prisma.topic.count({
+      where: {
+        revisions: {
+          some: { cycleNumber: { gte: 4 }, status: 'done' }
+        }
+      }
+    }),
+
+    // 11. Total revisions done count
+    prisma.activityLog.count({
+      where: { userId: DEV_USER_ID, action: 'COMPLETED_REVISION' }
+    }),
+
+    // 12. Quick Notes
+    prisma.quickNote.findMany({
+      where: { workspaceId: DEV_WORKSPACE_ID },
+      orderBy: { createdAt: 'asc' }
+    }),
+
+    // 13. Unverified Blocks
+    getUnverifiedBlocks(),
+  ]);
+
+  // ── Phase 2: Dependent query (needs workspace result) ─────────────────
+  const todaySlots = await ensureTodaySlots(DEV_WORKSPACE_ID, workspace?.routineMode || 'MASTER');
+
+  // ── Phase 3: Pure computation (no I/O, just mapping) ──────────────────
+
+  // Map revisions
   const mappedRevisions = pendingRevisions.map(rev => {
     if (rev.topic) {
       return {
@@ -57,7 +160,7 @@ export default async function DashboardPage() {
     } else if (rev.capture) {
       return {
         id: rev.id,
-        topicId: rev.capture.id, // Using note ID for routing/UI
+        topicId: rev.capture.id,
         topicTitle: rev.capture.title || rev.capture.content?.substring(0, 50) || 'Capture',
         subjectId: rev.capture.subjectId || 'general',
         subjectName: rev.capture.subject?.name || 'General',
@@ -92,32 +195,7 @@ export default async function DashboardPage() {
     attachments?: any[];
   }[];
 
-  // 2. Fetch Tasks (Tasks and Reminders)
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
-
-  const rawTasks = await prisma.capture.findMany({
-    where: {
-      workspaceId: DEV_WORKSPACE_ID,
-      type: 'TASK',
-      isDone: false,
-    },
-    include: { attachments: true, category: true },
-    orderBy: { dueDate: 'asc' }
-  });
-
-  const rawReminders = await prisma.reminder.findMany({
-    where: {
-      isDismissed: false,
-      capture: { 
-        workspaceId: DEV_WORKSPACE_ID,
-        revisions: { none: { status: 'pending' } }
-      }
-    },
-    include: { capture: { include: { attachments: true, category: true } } },
-    orderBy: { remindAt: 'asc' }
-  });
-
+  // Map tasks + reminders
   const tasks = [
     ...rawTasks.map(t => {
       const isOverdue = t.dueDate && t.dueDate < today;
@@ -130,7 +208,7 @@ export default async function DashboardPage() {
         type: 'task' as 'task',
         goalType: t.goalType,
         isOverdue: !!isOverdue,
-        source: undefined, // TASKS don't have linkedResource anymore
+        source: undefined,
         description: t.content,
         tags: t.category ? [t.category.name] : [],
         attachments: t.attachments.map(a => ({ url: a.url, fileType: a.fileType, fileName: a.fileName }))
@@ -159,22 +237,7 @@ export default async function DashboardPage() {
     return a.dueDate.getTime() - b.dueDate.getTime();
   });
 
-  // 3. Fetch Inbox (Captures without Subject and not TASK)
-  const rawInbox = await prisma.capture.findMany({
-    where: { 
-      workspaceId: DEV_WORKSPACE_ID, 
-      subjectId: null,
-      type: { in: ['NOTE', 'LINK'] },
-      NOT: [
-        { reminder: { isDismissed: false } },
-        { revisions: { some: { status: 'pending' } } }
-      ]
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 10,
-    include: { category: true, attachments: true }
-  });
-
+  // Map inbox
   const inboxItems = rawInbox.map(item => ({
     id: item.id,
     type: item.type === 'LINK' ? ('link' as const) : ('note' as const),
@@ -190,67 +253,27 @@ export default async function DashboardPage() {
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
 
-  const habitsResponse = await import('@/app/actions/habit.actions').then(m => m.getHabits());
+  // Habits
   const habits = habitsResponse.success ? habitsResponse.habits : [];
 
-  // 4. Fetch Stats
-  const user = await prisma.user.findUnique({
-    where: { id: DEV_USER_ID },
-    select: { globalStreak: true }
-  });
-
-  const totalTopics = await prisma.topic.count();
-  
-  const topicsWithRevisions = await prisma.topic.count({
-    where: {
-      revisions: {
-        some: {}
-      }
-    }
-  });
-
-  const masteredTopics = await prisma.topic.count({
-    where: {
-      revisions: {
-        some: {
-          cycleNumber: { gte: 4 },
-          status: 'done'
-        }
-      }
-    }
-  });
-
+  // Stats
   const inProgressTopics = Math.max(0, topicsWithRevisions - masteredTopics);
   const notStartedTopics = Math.max(0, totalTopics - topicsWithRevisions);
-
-  const totalRevisionsDone = await prisma.activityLog.count({
-    where: { userId: DEV_USER_ID, action: 'COMPLETED_REVISION' }
-  });
 
   const stats = {
     streak: user?.globalStreak || 0,
     totalTopics,
     totalRevisionsDone,
-    weeklyActivity: [0, 0, 0, 0, 0, 0, 0], // Mock for now
+    weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
     mastered: masteredTopics,
     inProgress: inProgressTopics,
     notStarted: notStartedTopics
   };
 
-  // 5. Fetch/Generate Today's Schedule Slots
-  const todaySlots = await ensureTodaySlots(DEV_WORKSPACE_ID, workspace?.routineMode || 'MASTER');
-
-  // 6. Fetch Unverified Blocks
-  const unverifiedBlocks = await getUnverifiedBlocks();
-
-  // 7. Fetch Quick Notes
-  const quickNotesRaw = await prisma.quickNote.findMany({
-    where: { workspaceId: DEV_WORKSPACE_ID },
-    orderBy: { createdAt: 'asc' }
-  });
-
+  // Quick Notes
   const quickNotes = quickNotesRaw.map(qn => ({
     ...qn,
+    category: qn.category as 'PRIMARY' | 'TEMPORARY',
     attachments: qn.attachments as any
   }));
 

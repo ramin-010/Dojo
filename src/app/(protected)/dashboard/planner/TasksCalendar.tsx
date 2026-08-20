@@ -154,9 +154,9 @@ export default function TasksCalendar({
   const totalUpcoming = selectedDayTasks.filter(t => !t.isDone).length + selectedDayRevisions.filter(r => r.status === 'pending').length;
 
   return (
-    <div className="flex h-full gap-8 max-w-5xl mx-auto">
+    <div className="flex flex-col lg:flex-row h-full gap-8 lg:gap-8 max-w-5xl mx-auto overflow-y-auto lg:overflow-hidden">
       {/* ── Left Pane: Minimal Calendar Picker ────────────────────────────── */}
-      <div className="w-[320px] flex-shrink-0 flex flex-col pt-2">
+      <div className="w-full lg:w-[320px] max-w-[320px] mx-auto lg:mx-0 flex-shrink-0 flex flex-col pt-2 shrink-0">
         
         <div className="flex justify-between items-center mb-8 px-2">
           <h2 className="text-[17px] font-bold text-foreground tracking-tight">{format(currentDate, 'MMMM yyyy')}</h2>
@@ -230,7 +230,7 @@ export default function TasksCalendar({
       </div>
 
       {/* ── Right Pane: Daily Agenda ──────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col pt-2 pb-32 pr-6 overflow-y-auto max-w-2xl">
+      <div className="flex-1 flex flex-col pt-8 lg:pt-2 pb-32 px-4 lg:px-0 lg:pr-6 lg:overflow-y-auto max-w-2xl w-full mx-auto">
         
         <div className="flex justify-between items-end mb-10">
           <div>

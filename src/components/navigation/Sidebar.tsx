@@ -102,6 +102,8 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
     initializeTypographyState,
     initializeTopicThemeState,
     isSplitViewActive,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
     revisionQueue,
     topicTheme,
     setTopicTheme
@@ -133,6 +135,10 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
       initializeTopicThemeState();
     }, 1000);
   }, [initializeSidebarState, initializeTypographyState, initializeTopicThemeState]);
+
+  React.useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname, setIsMobileMenuOpen]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isCollapsed);
@@ -187,10 +193,24 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
 
   return (
     <>
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[90] md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       <motion.aside 
         animate={{ width: isRevisionActive || isSplitViewActive ? 0 : isCollapsed ? 72 : 256 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`${isCollapsed ? 'bg-background border-r-transparent' : 'bg-sidebar border-r border-border/50'} flex flex-col shrink-0 overflow-hidden relative z-50 ${isRevisionActive || isSplitViewActive ? 'border-r-0 opacity-0 pointer-events-none' : ''}`}
+        className={`${isCollapsed ? 'bg-background border-r-transparent' : 'bg-sidebar border-r border-border/50'} flex flex-col shrink-0 overflow-hidden relative z-[100] ${isRevisionActive || isSplitViewActive ? 'border-r-0 opacity-0 pointer-events-none' : ''} max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:h-full max-md:shadow-2xl transition-transform duration-300 ${!isMobileMenuOpen ? 'max-md:-translate-x-full' : 'max-md:translate-x-0'} md:translate-x-0`}
       >
         <div className={`flex items-center pt-4 pb-2 px-3 shrink-0 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
@@ -268,36 +288,47 @@ export function Sidebar({ initialSubjects }: { initialSubjects: Subject[] }) {
           )}
         </nav>
 
-        <div className={`p-3 shrink-0 flex items-center justify-center ${!isCollapsed ? 'gap-2' : 'flex-col gap-2'}`}>
-          <button 
-            onClick={() => setIsThemeSettingsOpen(true)}
-            className={`flex items-center justify-center p-2 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-all duration-200 ${!isCollapsed ? 'opacity-50 hover:opacity-100' : 'opacity-20 hover:opacity-100'}`}
-            title="Theme Settings"
-          >
-            <Palette className="w-4 h-4" />
-          </button>
-          
+        <div className={`p-3 shrink-0 flex ${!isCollapsed ? 'items-center gap-2' : 'flex-col gap-2 items-center justify-center'}`}>
           {!isCollapsed ? (
-            <button 
-              onClick={async () => {
-                await fetch('/api/auth/logout', { method: 'POST' });
-                window.location.href = '/login';
-              }} 
-              className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium"
-            >
-              <LogOutIcon className="w-4 h-4" />
-              <span>Sign out</span>
-            </button>
+            <>
+              <button 
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  window.location.href = '/login';
+                }} 
+                className="flex-1 flex items-center justify-center gap-2 px-2 py-[7px] rounded-lg text-muted hover:bg-hover hover:text-foreground transition-colors text-[13px] font-medium"
+              >
+                <LogOutIcon className="w-4 h-4 shrink-0" />
+                <span>Sign out</span>
+              </button>
+              <button 
+                onClick={() => setIsThemeSettingsOpen(true)}
+                className="p-[7px] rounded-lg text-muted hover:bg-hover hover:text-foreground transition-colors shrink-0"
+                title="Theme Settings"
+              >
+                <Palette className="w-[18px] h-[18px]" />
+              </button>
+            </>
           ) : (
-            <button 
-              onClick={async () => {
-                await fetch('/api/auth/logout', { method: 'POST' });
-                window.location.href = '/login';
-              }} 
-              className="p-2 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
-            >
-              <LogOutIcon className="w-4 h-4" />
-            </button>
+            <>
+              <button 
+                onClick={() => setIsThemeSettingsOpen(true)}
+                className="p-2 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
+                title="Theme Settings"
+              >
+                <Palette className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  window.location.href = '/login';
+                }} 
+                className="p-2 rounded-lg text-muted hover:bg-hover hover:text-foreground transition-all duration-200 opacity-20 hover:opacity-100"
+                title="Sign out"
+              >
+                <LogOutIcon className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </motion.aside>

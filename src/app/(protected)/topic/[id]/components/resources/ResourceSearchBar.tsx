@@ -18,7 +18,7 @@ export function ResourceSearchBar({ searchQuery, onSearchChange }: ResourceSearc
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search resources..."
-          className="block w-full pl-8 pr-3 py-1.5 bg-black/20 border border-white/5 rounded-lg text-xs placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
+          className="block w-full pl-8 pr-3 py-1.5 bg-foreground/5 border border-divider rounded-lg text-xs placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/50 transition-colors text-foreground"
         />
       </div>
     </div>

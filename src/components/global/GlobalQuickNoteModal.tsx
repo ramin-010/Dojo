@@ -354,10 +354,10 @@ export function GlobalQuickNoteModal() {
       const isTag = tagMatches.some(t => t.toLowerCase() === part.toLowerCase());
       
       if (isDate) {
-        return <span key={i} className="bg-indigo-500/20 text-indigo-300 rounded-sm">{part}</span>;
+        return <span key={i} className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-sm">{part}</span>;
       }
       if (isTag) {
-        return <span key={i} className="bg-emerald-500/20 text-emerald-300 rounded-sm">{part}</span>;
+        return <span key={i} className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-sm">{part}</span>;
       }
       return <span key={i} className="text-foreground">{part}</span>;
     });
@@ -511,7 +511,7 @@ export function GlobalQuickNoteModal() {
                     exit={{ opacity: 0, height: 0, marginTop: 0 }}
                     className="px-2"
                   >
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-bold rounded-md border border-indigo-500/20">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-md border border-indigo-500/20">
                       <CalendarClock className="w-3.5 h-3.5" />
                       Set for: {(explicitDate || parsedResult.dueDate)!.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       <button 
@@ -605,35 +605,27 @@ export function GlobalQuickNoteModal() {
                   </div>
                   
                   {/* Explicit Type Toggles */}
-                  <div className="flex items-center gap-1 bg-foreground/5 rounded-lg p-0.5 ml-2">
+                  <div className="flex items-center ml-2 p-0.5 rounded-full bg-foreground/5 transform scale-[0.8] origin-left">
                     <button
                       onClick={() => { setExplicitType('note'); setIsMonthlyGoal(false); }}
-                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
-                        explicitType === 'note' ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      className={`px-3 py-1 rounded-full scale-[0.9] uppercase tracking-[0.1em] transition-all duration-200 ${
+                        explicitType === 'note' ? 'bg-background text-foreground font-bold shadow-[0_1px_3px_rgba(0,0,0,0.1)]' : 'text-foreground/50 hover:text-foreground/90 font-medium'
                       }`}
                     >
                       Note
                     </button>
                     <button
                       onClick={() => { setExplicitType('task'); setIsMonthlyGoal(false); }}
-                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
-                        explicitType === 'task' && !isMonthlyGoal ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      className={`px-3 py-1 rounded-full scale-[0.9] uppercase tracking-[0.1em] transition-all duration-200 ${
+                        explicitType === 'task' ? 'bg-background text-foreground font-bold shadow-[0_1px_3px_rgba(0,0,0,0.1)]' : 'text-foreground/50 hover:text-foreground/90 font-medium'
                       }`}
                     >
                       Task
                     </button>
                     <button
-                      onClick={() => { setExplicitType('task'); setIsMonthlyGoal(true); }}
-                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
-                        isMonthlyGoal ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
-                      }`}
-                    >
-                      Goal
-                    </button>
-                    <button
-                      onClick={() => setExplicitType('link')}
-                      className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-md transition-all ${
-                        explicitType === 'link' ? 'bg-background shadow-sm text-foreground' : 'text-foreground/60 hover:text-foreground/90'
+                      onClick={() => { setExplicitType('link'); setIsMonthlyGoal(false); }}
+                      className={`px-3 py-1 rounded-full scale-[0.9] uppercase tracking-[0.1em] transition-all duration-200 ${
+                        explicitType === 'link' ? 'bg-background text-foreground font-bold shadow-[0_1px_3px_rgba(0,0,0,0.1)]' : 'text-foreground/50 hover:text-foreground/90 font-medium'
                       }`}
                     >
                       Resource

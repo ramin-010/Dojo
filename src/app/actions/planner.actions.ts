@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { DEV_WORKSPACE_ID } from '@/lib/constants';
 import { BlockStatus } from '@prisma/client';
 import { completeRevision } from './revision.actions';
+import { getISTMidnight } from '@/lib/utils';
 // ====================================================================
 // TIME BLOCKS
 // ====================================================================
@@ -189,10 +190,8 @@ export async function rescheduleRevision(id: string, newDate: Date) {
     });
     if (!current) throw new Error('Revision not found');
 
-    const currentMidnight = new Date(current.scheduledFor);
-    currentMidnight.setHours(0,0,0,0);
-    const targetMidnight = new Date(newDate);
-    targetMidnight.setHours(0,0,0,0);
+    const currentMidnight = getISTMidnight(new Date(current.scheduledFor));
+    const targetMidnight = getISTMidnight(new Date(newDate));
     const daysDiff = Math.round((targetMidnight.getTime() - currentMidnight.getTime()) / (1000 * 60 * 60 * 24));
 
     await prisma.revision.update({
@@ -243,8 +242,7 @@ export async function logSession(
   minutesDone?: number
 ) {
   try {
-    const targetMidnight = new Date(date);
-    targetMidnight.setHours(0, 0, 0, 0);
+    const targetMidnight = getISTMidnight(date);
 
     const log = await prisma.blockSessionLog.upsert({
       where: {
@@ -281,12 +279,11 @@ export async function getUnverifiedBlocks() {
     const now = new Date();
     
     // Only fetch for the past 7 days to avoid a massive query forever
-    const startRange = new Date(now);
-    startRange.setDate(now.getDate() - 7);
-    startRange.setHours(0, 0, 0, 0);
+    const startRangeDate = new Date(now);
+    startRangeDate.setDate(now.getDate() - 7);
+    const startRange = getISTMidnight(startRangeDate);
 
-    const todayMidnight = new Date(now);
-    todayMidnight.setHours(0, 0, 0, 0);
+    const todayMidnight = getISTMidnight(now);
 
     const unverifiedSlots = await prisma.dailyScheduleSlot.findMany({
       where: { 
@@ -312,9 +309,6 @@ export async function getUnverifiedBlocks() {
       }
     });
 
-    console.log("AUTO-HEAL DEBUG: unverifiedSlots count =", unverifiedSlots.length);
-    console.log("AUTO-HEAL DEBUG: existingLogs count =", existingLogs.length);
-
     const trulyUnverified = [];
     for (const slot of unverifiedSlots) {
       if (slot.sourceBlockId) {
@@ -323,8 +317,6 @@ export async function getUnverifiedBlocks() {
           log.timeBlockId === slot.sourceBlockId &&
           Math.abs(log.date.getTime() - slot.date.getTime()) <= 24 * 60 * 60 * 1000
         );
-        
-        console.log("AUTO-HEAL DEBUG: Checking slot", slot.title, "found log:", !!existingLog, "log status:", existingLog?.status);
         
         if (existingLog && (existingLog.status === 'COMPLETED' || existingLog.status === 'SKIPPED' || existingLog.status === 'PARTIAL')) {
           // Auto-heal the database silently
@@ -363,8 +355,7 @@ export async function shiftOrOverwriteBlock(
   remark: string
 ) {
   try {
-    const targetMidnight = new Date(targetDate);
-    targetMidnight.setHours(0, 0, 0, 0);
+    const targetMidnight = getISTMidnight(targetDate);
 
     // 1. Log original block as SKIPPED
     await prisma.blockSessionLog.upsert({
@@ -409,11 +400,8 @@ export async function shiftOrOverwriteBlock(
 
 export async function bulkPreSkip(startDate: Date, endDate: Date, remark: string) {
   try {
-    const startMidnight = new Date(startDate);
-    startMidnight.setHours(0, 0, 0, 0);
-    
-    const endMidnight = new Date(endDate);
-    endMidnight.setHours(0, 0, 0, 0);
+    const startMidnight = getISTMidnight(startDate);
+    const endMidnight = getISTMidnight(endDate);
 
     const blocks = await prisma.timeBlock.findMany({
       where: { workspaceId: DEV_WORKSPACE_ID },

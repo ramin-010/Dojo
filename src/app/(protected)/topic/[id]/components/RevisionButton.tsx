@@ -46,9 +46,10 @@ export function RevisionButton({
       onClick={onClick}
       disabled={isDisabled}
       className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all duration-300 ${colorClass}`}
+      title={text}
     >
       <Icon />
-      {text}
+      <span className="max-md:hidden">{text}</span>
     </button>
   );
 }

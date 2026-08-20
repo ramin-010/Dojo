@@ -178,7 +178,7 @@ export default function TasksSidebar({
       {/* UNIFIED WORKSPACE */}
       <section className="mb-8">
         <div className="flex justify-between items-center h-8 mb-4">
-          <div className="flex items-center gap-6 transform scale-[0.85] origin-left">
+          <div className="flex items-center gap-4 md:gap-6 transform scale-[0.85] origin-left overflow-x-auto custom-scrollbar pr-4">
             <button 
               onClick={() => setActiveMainTab('today')}
               className={`text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition-colors ${activeMainTab === 'today' ? 'text-foreground' : 'text-muted hover:text-muted'}`}
@@ -417,7 +417,7 @@ export default function TasksSidebar({
       </section>
 
       {/* PROGRESS */}
-      <section>
+      <section className="hidden lg:block">
         <h2 className="text-xs font-semibold text-muted uppercase tracking-wider h-8 flex items-center mb-4">
           Progress
         </h2>
@@ -462,11 +462,11 @@ export default function TasksSidebar({
       {/* View All Tasks Modal */}
       {isAllTasksModalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-8"
           style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setIsAllTasksModalOpen(false); }}
         >
-          <div className="bg-[#191919] border border-divider/60 rounded-2xl w-full max-w-[720px] max-h-[88vh] flex flex-col overflow-hidden shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
+          <div className="bg-[#191919] border border-divider/60 rounded-2xl w-full max-w-[720px] max-h-[90vh] md:max-h-[88vh] flex flex-col overflow-hidden shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
 
             {/* Header */}
             <div className="flex justify-between items-start px-6 pt-6 pb-4">

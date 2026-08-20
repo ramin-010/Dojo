@@ -107,12 +107,12 @@ export function CaptureCard({
         <div className="flex items-center justify-between mt-1.5 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {categoryName !== 'Others' && capture.type !== 'LINK' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold uppercase tracking-wider">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold uppercase tracking-wider">
                 {categoryName}
               </span>
             )}
             {sourceContext && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-zinc-800 text-zinc-300 font-bold tracking-wider">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-foreground/10 text-foreground/70 font-bold tracking-wider">
                 {sourceContext}
               </span>
             )}

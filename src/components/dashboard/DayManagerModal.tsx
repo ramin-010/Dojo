@@ -102,8 +102,8 @@ function PastBlockItem({ slot, onUpdate }: { slot: LocalSlot, onUpdate: (id: str
   return (
     <div className="bg-background border border-divider/40 rounded-xl p-3 flex flex-col gap-3 mb-1">
       {/* Top row: Info and Actions */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full">
           <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: slot.color }} />
           <div className="flex-1 min-w-0">
             <h4 className="text-sm font-semibold text-foreground truncate">{slot.title}</h4>
@@ -114,7 +114,7 @@ function PastBlockItem({ slot, onUpdate }: { slot: LocalSlot, onUpdate: (id: str
           </div>
         </div>
         
-        <div className="flex items-center shrink-0">
+        <div className="flex items-center shrink-0 pl-5 sm:pl-0 w-full sm:w-auto">
           <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50">
             <button
               onClick={() => onUpdate(slot.id, { status: 'UPCOMING' })}
@@ -264,161 +264,168 @@ function SortableItem({
         hasOverlap  ? '!border-amber-500/30 bg-amber-500/5' : '',
       ].join(' ')}
     >
-      <div className="flex items-center gap-3 w-full">
-      {/* ── Drag handle / active indicator ── */}
-      {!isActive ? (
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab p-1 text-muted hover:text-muted outline-none transition-colors"
-        >
-          <GripVertical className="w-4 h-4" />
-        </div>
-      ) : (
-        <div className="w-6 flex items-center justify-center">
-          <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-        </div>
-      )}
-
-      {/* ── Color bar ── */}
-      <button
-        onClick={cycleColor}
-        className="w-2 h-10 rounded-full shrink-0 transition-transform active:scale-90 cursor-pointer"
-        style={{ backgroundColor: slot.color }}
-        title="Click to change color"
-      />
-
-      {/* ── Title + time ── */}
-      <div className="flex-1 min-w-0 flex flex-col gap-0.5 py-0.5">
-        <input
-          value={slot.title}
-          onChange={(e) => onUpdate(slot.id, { title: e.target.value })}
-          placeholder="Block Title"
-          className={`bg-transparent outline-none w-full text-sm font-semibold transition-colors placeholder:text-muted focus:text-accent ${isBreak ? 'text-muted' : 'text-foreground/90'}`}
-        />
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <input
-            type="time"
-            value={localStartTime}
-            onChange={(e) => setLocalStartTime(e.target.value)}
-            onBlur={(e) => {
-              if (e.target.value && e.target.value !== slot.startTime) {
-                onUpdate(slot.id, { startTime: e.target.value, isPinned: true });
-              }
-            }}
-            className={`bg-transparent text-[11px] font-mono outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors ${
-              slot.isPinned ? 'text-amber-400 font-semibold' : 'text-muted hover:text-foreground'
-            }`}
-            title="Click to set start time (automatically pins block)"
-          />
-          <span className="text-[11px] font-mono text-muted">–</span>
-          <input
-            type="time"
-            value={localEndTime}
-            onChange={(e) => setLocalEndTime(e.target.value)}
-            onBlur={(e) => {
-              if (e.target.value && e.target.value !== slot.endTime) {
-                const startMin = parseTime(slot.startTime);
-                let endMin = parseTime(e.target.value);
-                if (endMin <= startMin) endMin += 24 * 60;
-                const dur = Math.max(5, endMin - startMin);
-                onUpdate(slot.id, { durationMin: dur });
-              }
-            }}
-            className="bg-transparent text-[11px] font-mono text-muted hover:text-foreground outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors"
-            title="Click to set end time (automatically adjusts duration)"
-          />
-          {slot.isPinned && (
-            <span className="text-[9px] font-medium text-amber-400/80 bg-amber-400/10 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5">
-              <Lock className="w-2.5 h-2.5 inline" /> Pinned
-            </span>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+        {/* ── Top Row (Mobile) / Left Side (Desktop) ── */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full">
+          {/* ── Drag handle / active indicator ── */}
+          {!isActive ? (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab p-1 text-muted hover:text-muted outline-none transition-colors shrink-0"
+            >
+              <GripVertical className="w-4 h-4" />
+            </div>
+          ) : (
+            <div className="w-6 flex items-center justify-center shrink-0">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            </div>
           )}
-          {hasOverlap && (
-            <span className="text-[9px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full leading-none">
-              OVERLAP
-            </span>
-          )}
-        </div>
-      </div>
 
-      {/* ── Controls ── */}
-      <div className="flex items-center gap-1.5 pr-1 opacity-50 group-hover:opacity-100 transition-opacity">
-        {/* Pin toggle (not for ACTIVE blocks) */}
-        {!isActive && (
+          {/* ── Color bar ── */}
           <button
-            onClick={() => onUpdate(slot.id, { isPinned: !slot.isPinned })}
-            className={`p-1.5 rounded-lg transition-colors outline-none ${
-              slot.isPinned
-                ? 'text-amber-400 hover:text-amber-300 bg-amber-400/10'
-                : 'text-muted hover:text-muted hover:bg-hover'
-            }`}
-            title={slot.isPinned ? 'Unpin (allow cascading)' : 'Pin at this time'}
-          >
-            {slot.isPinned ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-          </button>
-        )}
-
-        {/* Duration ± controls */}
-        <div className="flex items-center bg-background/50 rounded-lg px-1 py-0.5 focus-within:bg-background transition-colors">
-          <button
-            onClick={() => onUpdate(slot.id, { durationMin: Math.max(5, slot.durationMin - 15) })}
-            className="p-1 hover:text-accent text-muted transition-colors"
-          >
-            <Minus className="w-3 h-3" />
-          </button>
-          <input
-            type="number"
-            value={slot.durationMin || ''}
-            onChange={(e) =>
-              onUpdate(slot.id, { durationMin: Math.max(5, parseInt(e.target.value) || 5) })
-            }
-            className="w-8 bg-transparent text-xs font-mono text-center outline-none text-foreground/70 hide-arrows"
+            onClick={cycleColor}
+            className="w-2 h-10 rounded-full shrink-0 transition-transform active:scale-90 cursor-pointer"
+            style={{ backgroundColor: slot.color }}
+            title="Click to change color"
           />
-          <span className="text-[10px] font-mono text-muted pr-0.5">m</span>
-          <button
-            onClick={() => onUpdate(slot.id, { durationMin: slot.durationMin + 15 })}
-            className="p-1 hover:text-accent text-muted transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-          </button>
+
+          {/* ── Title + time ── */}
+          <div className="flex-1 min-w-0 flex flex-col gap-0.5 py-0.5">
+            <input
+              value={slot.title}
+              onChange={(e) => onUpdate(slot.id, { title: e.target.value })}
+              placeholder="Block Title"
+              className={`bg-transparent outline-none w-full text-sm font-semibold transition-colors placeholder:text-muted focus:text-accent truncate ${isBreak ? 'text-muted' : 'text-foreground/90'}`}
+            />
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <input
+                type="time"
+                value={localStartTime}
+                onChange={(e) => setLocalStartTime(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value && e.target.value !== slot.startTime) {
+                    const newStartMin = parseTime(e.target.value);
+                    let endMin = parseTime(slot.endTime);
+                    if (endMin <= newStartMin) endMin += 24 * 60;
+                    const newDur = Math.max(5, endMin - newStartMin);
+                    onUpdate(slot.id, { startTime: e.target.value, durationMin: newDur, isPinned: true });
+                  }
+                }}
+                className={`bg-transparent text-[11px] font-mono outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors ${
+                  slot.isPinned ? 'text-amber-400 font-semibold' : 'text-muted hover:text-foreground'
+                }`}
+                title="Click to set start time (automatically pins block)"
+              />
+              <span className="text-[11px] font-mono text-muted">–</span>
+              <input
+                type="time"
+                value={localEndTime}
+                onChange={(e) => setLocalEndTime(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value && e.target.value !== slot.endTime) {
+                    const startMin = parseTime(slot.startTime);
+                    let endMin = parseTime(e.target.value);
+                    if (endMin <= startMin) endMin += 24 * 60;
+                    const dur = Math.max(5, endMin - startMin);
+                    onUpdate(slot.id, { durationMin: dur });
+                  }
+                }}
+                className="bg-transparent text-[11px] font-mono text-muted hover:text-foreground outline-none hover:bg-hover/60 focus:bg-hover rounded px-1 cursor-pointer transition-colors"
+                title="Click to set end time (automatically adjusts duration)"
+              />
+              {slot.isPinned && (
+                <span className="text-[9px] font-medium text-amber-400/80 bg-amber-400/10 px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5">
+                  <Lock className="w-2.5 h-2.5 inline" /> Pinned
+                </span>
+              )}
+              {hasOverlap && (
+                <span className="text-[9px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full leading-none">
+                  OVERLAP
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="w-px h-4 bg-divider/30" />
+        {/* ── Bottom Row (Mobile) / Right Side (Desktop): Controls ── */}
+        <div className="flex items-center gap-1.5 pl-[2.25rem] sm:pl-0 sm:pr-1 opacity-100 sm:opacity-50 group-hover:opacity-100 transition-opacity w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
+          {/* Pin toggle (not for ACTIVE blocks) */}
+          {!isActive && (
+            <button
+              onClick={() => onUpdate(slot.id, { isPinned: !slot.isPinned })}
+              className={`p-1.5 rounded-lg transition-colors outline-none shrink-0 ${
+                slot.isPinned
+                  ? 'text-amber-400 hover:text-amber-300 bg-amber-400/10'
+                  : 'text-muted hover:text-muted hover:bg-hover'
+              }`}
+              title={slot.isPinned ? 'Unpin (allow cascading)' : 'Pin at this time'}
+            >
+              {slot.isPinned ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+            </button>
+          )}
 
-        {/* ── Status Toggle ── */}
-        <div className="flex bg-background/50 rounded-lg p-0.5 border border-divider/30">
+          {/* Duration ± controls */}
+          <div className="flex items-center bg-background/50 rounded-lg px-1 py-0.5 focus-within:bg-background transition-colors shrink-0">
+            <button
+              onClick={() => onUpdate(slot.id, { durationMin: Math.max(5, slot.durationMin - 15) })}
+              className="p-1 hover:text-accent text-muted transition-colors"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <input
+              type="number"
+              value={slot.durationMin || ''}
+              onChange={(e) =>
+                onUpdate(slot.id, { durationMin: Math.max(5, parseInt(e.target.value) || 5) })
+              }
+              className="w-8 bg-transparent text-xs font-mono text-center outline-none text-foreground/70 hide-arrows"
+            />
+            <span className="text-[10px] font-mono text-muted pr-0.5">m</span>
+            <button
+              onClick={() => onUpdate(slot.id, { durationMin: slot.durationMin + 15 })}
+              className="p-1 hover:text-accent text-muted transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="hidden sm:block w-px h-4 bg-divider/30 shrink-0" />
+
+          {/* ── Status Toggle ── */}
+          <div className="flex bg-background/50 rounded-lg p-0.5 border border-divider/30 shrink-0">
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'UPCOMING' }); }}
+              className={`p-1 rounded-md transition-colors ${!isPastStatus(slot.status) ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground hover:bg-hover'}`}
+              title="Unmarked"
+            >
+              <CircleDashed className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'COMPLETED' }); }}
+              className={`p-1 rounded-md transition-colors ${slot.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-muted hover:text-foreground hover:bg-hover'}`}
+              title="Completed"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'SKIPPED' }); }}
+              className={`p-1 rounded-md transition-colors ${slot.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-muted hover:text-foreground hover:bg-hover'}`}
+              title="Skipped"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Delete */}
           <button
-            onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'UPCOMING' }); }}
-            className={`p-1 rounded-md transition-colors ${!isPastStatus(slot.status) ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground hover:bg-hover'}`}
-            title="Unmarked"
+            onClick={(e) => { e.stopPropagation(); onDelete(slot.id); }}
+            className="p-1 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400 transition-colors outline-none sm:ml-1 shrink-0 ml-auto sm:ml-0"
+            title="Remove block"
           >
-            <CircleDashed className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'COMPLETED' }); }}
-            className={`p-1 rounded-md transition-colors ${slot.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'text-muted hover:text-foreground hover:bg-hover'}`}
-            title="Completed"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onUpdate(slot.id, { status: 'SKIPPED' }); }}
-            className={`p-1 rounded-md transition-colors ${slot.status === 'SKIPPED' ? 'bg-red-500/10 text-red-500' : 'text-muted hover:text-foreground hover:bg-hover'}`}
-            title="Skipped"
-          >
-            <XCircle className="w-3.5 h-3.5" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
-
-        {/* Delete */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(slot.id); }}
-          className="p-1 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400 transition-colors outline-none ml-1"
-          title="Remove block"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
       </div>
 
       {/* ── Bottom row: Input ── */}
@@ -761,12 +768,12 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-8 bg-black/50"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 md:p-8 bg-black/50"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-background border border-divider/35 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] relative animate-in fade-in zoom-in-95 duration-200"
+        className="bg-background border border-divider/35 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[85vh] relative animate-in fade-in zoom-in-95 duration-200"
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">

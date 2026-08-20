@@ -33,6 +33,9 @@ interface AppState {
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   initializeSidebarState: () => void;
   
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  
   isSaving: boolean;
   setIsSaving: (saving: boolean) => void;
   
@@ -56,6 +59,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   setSubjects: (subjects) => set({ subjects }),
   
+  isMobileMenuOpen: false,
+  setIsMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
+
   updateTopicTitle: (subjectId, topicId, newTitle) => 
     set((state) => ({
       subjects: state.subjects.map((sub) => 

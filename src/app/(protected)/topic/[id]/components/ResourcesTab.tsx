@@ -189,9 +189,9 @@ export function ResourcesTab({
   );
 
   return (
-    <div className="flex flex-col h-full bg-transparent p-4 py-1 text-zinc-200">
+    <div className="flex flex-col h-full bg-transparent p-4 py-1 text-foreground">
       <div className="mb-2">
-        <p className="text-xs text-zinc-400 mb-2 mt-2">All the resources attached to this topic.</p>
+        <p className="text-xs text-muted mb-2 mt-2">All the resources attached to this topic.</p>
         <ResourceSearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <ResourceFilterPills 
           selectedCategory={selectedCategory} 

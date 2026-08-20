@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Flame, BookOpen, CheckCircle2, FolderPlus } from 'lucide-react';
+import { Flame, BookOpen, CheckCircle2, FolderPlus, Menu, Target, Zap, Inbox } from 'lucide-react';
 import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
 import RescheduleModal from '@/components/dashboard/RescheduleModal';
 import { ResourcePreviewModal } from '@/app/(protected)/topic/[id]/components/resources/ResourcePreviewModal';
@@ -15,6 +15,7 @@ import { WeeklyReviewModal } from '@/components/dashboard/WeeklyReviewModal';
 import { DayDebriefModal } from '@/components/dashboard/DayDebriefModal';
 import { QuickNotesWidget, QuickNoteType } from '@/components/dashboard/QuickNotesWidget';
 import { DEV_WORKSPACE_ID } from '@/lib/constants';
+import { useAppStore } from '@/store/useAppStore';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // TYPES & PROPS (shared — imported as `type` by the dashcomponents files)
@@ -143,6 +144,7 @@ export default function DashboardClient({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDayManagerOpen, setIsDayManagerOpen] = useState(false);
   const [isDayDebriefOpen, setIsDayDebriefOpen] = useState(false);
+  const { setIsMobileMenuOpen } = useAppStore();
   const [taskActionMenuId, setTaskActionMenuId] = useState<string | null>(null);
   const [rescheduleTaskTarget, setRescheduleTaskTarget] = useState<any | null>(null);
   const [previewDocument, setPreviewDocument] = useState<PreviewDocument | null>(null);
@@ -242,24 +244,32 @@ export default function DashboardClient({
   };
 
   return (
-    <div className="p-8 pb-24 max-w-[1200px]  mx-auto w-full min-h-full flex flex-col">
+    <div className="p-4 md:p-8 pb-24 max-w-[1200px] mx-auto w-full min-h-full flex flex-col">
       <TriageInterceptor
         unverifiedBlocks={unverifiedBlocks}
         onComplete={() => router.refresh()}
       />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="flex flex-col gap-1 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              {getGreeting()}, {MOCK_USER.name}
-            </h1>
-            <p className="text-muted text-sm mt-1">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
+      <header className="flex flex-col gap-3 md:gap-1 mb-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 -ml-2 text-muted hover:text-foreground transition-colors rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                {getGreeting()}, {MOCK_USER.name}
+              </h1>
+              <p className="text-muted text-sm mt-0.5 md:mt-1">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-4 mt-1">
+          <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2 md:mt-1">
             <button 
               onClick={() => setIsDayDebriefOpen(true)}
               className="text-xs font-semibold px-3 py-1.5 bg-accent/10 text-accent hover:bg-accent/20 transition-colors rounded-lg flex items-center gap-1.5 border border-accent/20"
@@ -283,10 +293,10 @@ export default function DashboardClient({
               <span className="font-semibold text-emerald-500/70">{stats.totalRevisionsDone}</span>
               <span>reviews</span>
             </div>
-            <div className="h-4 w-px bg-divider ml-2" />
+            <div className="h-4 w-px bg-divider hidden md:block ml-2" />
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-1.5 bg-accent hover:bg-[#026EC1] text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors ml-2"
+              className="flex items-center gap-1.5 bg-accent hover:bg-[#026EC1] text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors md:ml-2 w-full md:w-auto justify-center"
             >
               <FolderPlus className="w-4 h-4" />
               New Subject
@@ -342,11 +352,54 @@ export default function DashboardClient({
         </div>
 
         {/* ── Right Column: Quick Notes (sticky chat sidebar) ─────────────────── */}
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="lg:sticky lg:top-8 lg:self-start flex flex-col gap-16">
           <QuickNotesWidget 
             initialNotes={quickNotes || []} 
             workspaceId={DEV_WORKSPACE_ID} 
           />
+
+          {/* MOBILE PROGRESS */}
+          <section className="lg:hidden">
+            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider h-8 flex items-center mb-4">
+              Progress
+            </h2>
+            <div className="bg-sidebar border border-divider rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <Target className="w-4 h-4 text-accent/50" />
+                  <span>Mastered</span>
+                </div>
+                <span className="text-sm font-semibold text-muted">{stats.mastered} / {stats.totalTopics}</span>
+              </div>
+              <div className="w-full h-1.5 bg-background rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-full transition-all duration-500"
+                  style={{ width: `${stats.totalTopics > 0 ? (stats.mastered / stats.totalTopics) * 100 : 0}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <Zap className="w-4 h-4 text-amber-400/50" />
+                  <span>In progress</span>
+                </div>
+                <span className="text-sm font-semibold text-muted">{stats.inProgress}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <Inbox className="w-4 h-4 text-accent/50" />
+                  <span>Inbox ({filteredInbox.length})</span>
+                </div>
+                <span className="text-sm font-semibold text-muted"></span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <BookOpen className="w-4 h-4 text-muted" />
+                  <span>Not started</span>
+                </div>
+                <span className="text-sm font-semibold text-muted">{stats.notStarted}</span>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 

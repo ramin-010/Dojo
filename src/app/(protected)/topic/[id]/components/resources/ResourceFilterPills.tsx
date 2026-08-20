@@ -27,7 +27,7 @@ export function ResourceFilterPills({ selectedCategory, onCategoryChange, counts
             onClick={() => onCategoryChange(category)}
             className={`flex items-center whitespace-nowrap px-2  scale-[0.85] rounded-md text-[11px] font-medium transition-all border ${
               isSelected 
-                ? 'bg-accent text-foreground border-border shadow-sm' 
+                ? 'bg-foreground text-background border-foreground shadow-sm py-1' 
                 : 'bg-transparent text-muted border-transparent py-1 hover:border-border/50 hover:text-foreground hover:bg-accent/50'
             }`}
           >

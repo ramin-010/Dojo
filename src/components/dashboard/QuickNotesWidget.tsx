@@ -19,6 +19,7 @@ export type QuickNoteType = {
   isOptimistic?: boolean;
   attachments?: DraftAttachment[] | null;
   isPinned?: boolean;
+  category?: 'PRIMARY' | 'TEMPORARY';
 };
 
 export type DraftAttachment = {

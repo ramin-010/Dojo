@@ -80,15 +80,15 @@ export function ContextSidebar({
 
       {/* ── Sidebar Panel ─────────────────────────────────────────────────── */}
       <div
-        className={`fixed right-0 top-0 bottom-0 flex flex-col h-full shadow-2xl z-50 overflow-hidden ${
+        className={`fixed right-0 top-0 bottom-0 flex flex-col h-full shadow-2xl z-50 overflow-hidden bg-sidebar max-md:!max-w-[85vw] ${
           isDragging ? '' : 'transition-all duration-300 ease-in-out'
         } ${isOpen ? 'border-l border-divider' : 'border-none'}`}
         style={{ 
           width: isOpen ? `${sidebarWidth}px` : '0px',
-          backgroundColor: '#191919'
         }}
       >
         <div
+          className="max-md:!w-[85vw]"
           style={{
             width: `${sidebarWidth}px`,
             height: '100%',
@@ -97,8 +97,8 @@ export function ContextSidebar({
           }}
         >
           {/* Header & Tabs */}
-          <div className="flex items-center justify-between px-6 border-b border-divider pt-4">
-            <div className="flex space-x-6">
+          <div className="flex items-center justify-between px-3 sm:px-6 border-b border-divider pt-4 gap-2">
+            <div className="flex space-x-4 sm:space-x-6 overflow-x-auto custom-scrollbar shrink-0">
               {(['symlinks', 'resources', 'library'] as SidebarTab[]).map((tab) => (
                 <button
                   key={tab}
@@ -119,7 +119,7 @@ export function ContextSidebar({
             
             <button
               onClick={onClose}
-              className="text-muted hover:text-foreground transition-colors pb-3"
+              className="text-muted hover:text-foreground transition-colors pb-3 shrink-0"
               title="Close Panel"
             >
               <X className="w-[18px] h-[18px]" />
