@@ -47,7 +47,7 @@ export default function WeeklyTimetable({ initialBlocks = [], initialRoutineMode
       </div>
 
       {/* ── Board Area ────────────────────────────────────────────────────── */}
-      <div className={`flex-1 pb-4 ${sameForAll ? 'overflow-hidden' : 'overflow-x-auto'}`}>
+      <div className={`flex-1 pb-4 ${sameForAll ? 'overflow-x-clip' : 'overflow-x-auto'}`}>
         {sameForAll ? (
           /* Master Routine Layout with Illustration */
           <div className="flex w-full items-start gap-2">
