@@ -639,8 +639,13 @@ const NoteBlock = ({
               e.target.value = '';
             }}
           />
-          <div className="flex-1 min-w-0 flex items-center relative">
-            <div className="w-full">
+          <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center relative">
+            {/* Mobile Tabs */}
+            <div className="w-full flex justify-end md:hidden pr-2 mb-1">
+              {composerRightElement}
+            </div>
+            
+            <div className="w-full relative">
               {draftAttachments && draftAttachments.length > 0 && !isSearchMode && (
                 <div className="mb-3 flex flex-wrap gap-2">
                   {draftAttachments.map((draft, idx) => (
@@ -667,9 +672,23 @@ const NoteBlock = ({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 placeholder={isSearchMode ? 'Search notes...' : (isDragging ? 'Drop file here...' : 'Jot something down...')}
-                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/30 custom-scrollbar mt-1.5"
+                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/30 custom-scrollbar mt-1.5 md:pr-0 pb-1"
+                style={{ paddingRight: (!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0))) ? '40px' : '0' }}
               />
+              
+              {/* Mobile Submit Button */}
+              {!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) && (
+                <button
+                  onClick={handleSubmitComposer}
+                  disabled={isSubmitting}
+                  className="absolute right-0 bottom-1 p-1.5 bg-accent text-white rounded-full transition-colors shadow-sm md:hidden"
+                  title="Send (Enter)"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 translate-x-[1px]"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>}
+                </button>
+              )}
             </div>
+            
             {isSearchMode && searchQuery && (
               <button
                 onClick={() => onSearchQueryChange?.('')}
@@ -678,24 +697,61 @@ const NoteBlock = ({
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            <div className="ml-2 shrink-0 self-start mt-[4px] flex flex-col items-end gap-2">
+            
+            {/* Desktop Tabs */}
+            <div className="hidden md:flex ml-2 shrink-0 self-start mt-[4px] flex-col items-end gap-2">
               {composerRightElement}
-              {!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) && (
-                <button
-                  onClick={handleSubmitComposer}
-                  disabled={isSubmitting}
-                  className="p-1.5 bg-accent text-white rounded-full transition-colors shadow-sm md:hidden"
-                  title="Send (Enter)"
-                >
-                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 translate-x-[1px]"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>}
-                </button>
-              )}
             </div>
           </div>
         </div>
       </div>
     );
   }
+
+  const renderActionButtons = (isMobile: boolean) => (
+    <>
+      {isConfirmingDelete ? (
+        <div className={`flex items-center gap-1 p-1 bg-[#1A1A1A] border border-red-500/20 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-right-2 ${isMobile ? '' : 'z-10'}`}>
+          <span className="text-[11px] text-red-400/80 font-medium px-2 select-none">Delete?</span>
+          <button 
+            onClick={confirmDelete}
+            className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+            title="Yes, delete"
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button 
+            onClick={() => setIsConfirmingDelete(false)}
+            className="p-1 hover:bg-white/10 text-foreground/50 hover:text-foreground rounded transition-colors"
+            title="Cancel"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={() => onTogglePin?.(note.id)}
+            className={`p-2 rounded-md transition-all ${
+              note.isPinned 
+                ? 'text-blue-400 hover:bg-blue-500/10 opacity-100' 
+                : `hover:bg-white/10 text-foreground/30 hover:text-foreground/60 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`
+            }`}
+            title={note.isPinned ? 'Unpin note' : 'Pin note'}
+          >
+            {note.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            onClick={() => setIsConfirmingDelete(true)}
+            className={`p-2 rounded-md hover:bg-red-500/10 text-foreground/30 hover:text-red-400 transition-all focus:opacity-100 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            title="Delete note"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </>
+      )}
+    </>
+  );
 
   return (
     <div className="group flex items-start gap-2 w-full relative animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -732,7 +788,7 @@ const NoteBlock = ({
             ) : (
               <div 
                 onDoubleClick={handleDoubleClick}
-                className="w-full bg-transparent text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap cursor-text"
+                className="w-full bg-transparent text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap cursor-text break-words"
                 title="Double click to edit"
               >
                 {localContent}
@@ -741,50 +797,16 @@ const NoteBlock = ({
           )}
           <AttachmentView note={note} />
         </div>
+        
+        {/* Mobile Action buttons (below bubble) */}
+        <div className="md:hidden flex items-center gap-1 mt-1 -ml-1">
+          {renderActionButtons(true)}
+        </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="absolute top-0 right-0 flex items-center gap-0.5">
-        {isConfirmingDelete ? (
-          <div className="flex items-center gap-1 p-1 bg-[#1A1A1A] border border-red-500/20 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-right-2 z-10">
-            <span className="text-[11px] text-red-400/80 font-medium px-2 select-none">Delete?</span>
-            <button 
-              onClick={confirmDelete}
-              className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
-              title="Yes, delete"
-            >
-              <Check className="w-3.5 h-3.5" />
-            </button>
-            <button 
-              onClick={() => setIsConfirmingDelete(false)}
-              className="p-1 hover:bg-white/10 text-foreground/50 hover:text-foreground rounded transition-colors"
-              title="Cancel"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <button
-              onClick={() => onTogglePin?.(note.id)}
-              className={`p-2 rounded-md transition-all ${
-                note.isPinned 
-                  ? 'text-blue-400 hover:bg-blue-500/10 opacity-100' 
-                  : 'hover:bg-white/10 text-foreground/30 hover:text-foreground/60 opacity-0 group-hover:opacity-100'
-              }`}
-              title={note.isPinned ? 'Unpin note' : 'Pin note'}
-            >
-              {note.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              onClick={() => setIsConfirmingDelete(true)}
-              className="p-2 rounded-md hover:bg-red-500/10 text-foreground/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
-              title="Delete note"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </>
-        )}
+      {/* Desktop Action buttons (absolutely positioned on right) */}
+      <div className="hidden md:flex absolute top-0 right-0 items-center gap-0.5">
+        {renderActionButtons(false)}
       </div>
     </div>
   );
@@ -796,6 +818,7 @@ const NoteBlock = ({
 
 export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidgetProps) => {
   const [notes, setNotes] = useState<QuickNoteType[]>(initialNotes);
+  const [composerId, setComposerId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<{ id: string; fileName: string }[]>([]);
   const [draftAttachments, setDraftAttachments] = useState<DraftAttachment[]>([]);
@@ -844,10 +867,9 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
 
   const sortedNotes = [...notes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   
-  // Composer is the first empty/optimistic note; everything else is history
-  const hasAttachments = (n: QuickNoteType) => Array.isArray(n.attachments) && n.attachments.length > 0;
-  const composerNote = sortedNotes.find(n => n.isOptimistic && n.content.trim() === '' && !hasAttachments(n)) || sortedNotes[0];
-  const historyNotes = sortedNotes.filter(n => n.id !== composerNote?.id && (n.content.trim() !== '' || hasAttachments(n)));
+  // Composer is the explicitly tracked note ID
+  const composerNote = sortedNotes.find(n => n.id === composerId);
+  const historyNotes = sortedNotes.filter(n => n.id !== composerId);
 
   // ── Filtering logic ─────────────────────────────────────────────────────────
   const filteredNotes = useMemo(() => {
@@ -878,9 +900,7 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
       const key = format(date, 'MMM d, yyyy');
 
       if (!acc[key]) acc[key] = [];
-      if (!note.isPinned) {
-        acc[key].push(note);
-      }
+      acc[key].push(note);
       return acc;
     }, {} as Record<string, QuickNoteType[]>);
     
@@ -925,8 +945,9 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
     // Clear draft attachments
     setDraftAttachments([]);
     
+    const id = uuidv4();
     const newNote: QuickNoteType = {
-      id: uuidv4(),
+      id,
       content: '',
       createdAt: new Date(),
       workspaceId,
@@ -934,6 +955,7 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
       category: activeTab
     };
     
+    setComposerId(id);
     setNotes(prev => [newNote, ...prev]);
     setFocusId(newNote.id);
     
@@ -966,19 +988,17 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
 
   // Create initial composer note on mount only
   useEffect(() => {
-    const currentSorted = [...notes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    const hasEmptyComposer = currentSorted.some(n => n.isOptimistic && n.content.trim() === '' && !(Array.isArray(n.attachments) && n.attachments.length > 0));
-    if (!hasEmptyComposer) {
-      const newNote: QuickNoteType = {
-        id: uuidv4(),
-        content: '',
-        createdAt: new Date(),
-        workspaceId,
-        isOptimistic: true,
-        category: 'PRIMARY' // will be overwritten on save by activeTab
-      };
-      setNotes(prev => [newNote, ...prev]);
-    }
+    const id = uuidv4();
+    const newNote: QuickNoteType = {
+      id,
+      content: '',
+      createdAt: new Date(),
+      workspaceId,
+      isOptimistic: true,
+      category: 'PRIMARY' // will be overwritten on save by activeTab
+    };
+    setComposerId(id);
+    setNotes(prev => [newNote, ...prev]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
