@@ -16,6 +16,8 @@ export const metadata: Metadata = {
 
 import { Toaster } from 'sonner';
 import { GlobalQuickNoteModal } from "@/components/global/GlobalQuickNoteModal";
+import { GlobalEditCaptureModal } from "@/components/global/GlobalEditCaptureModal";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export default function RootLayout({
   children,
@@ -38,6 +40,8 @@ export default function RootLayout({
           }
         }} />
         <GlobalQuickNoteModal />
+        <GlobalEditCaptureModal />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

@@ -423,7 +423,7 @@ const NoteBlock = ({
   note: QuickNoteType;
   workspaceId: string;
   isFirst: boolean;
-  onUpdate: (id: string, content: string, attachments?: DraftAttachment[]) => void;
+  onUpdate: (id: string, content: string, attachments?: DraftAttachment[], category?: 'PRIMARY' | 'TEMPORARY') => void;
   onEnterPress: () => void;
   onFileUpload: (file: File) => void;
   shouldFocus?: boolean;
@@ -468,34 +468,37 @@ const NoteBlock = ({
     onUpdate(note.id, val);
   };
 
+  const handleSubmitComposer = async () => {
+    if (isSubmitting || isSearchMode) return;
+
+    // Only save if there's text or attachments
+    if (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) {
+      setIsSubmitting(true);
+      const categoryToSave = (isFirst ? activeCategory : note.category) || 'PRIMARY';
+      // Lock the attachments into local React state immediately so they render for the sender
+      onUpdate(note.id, localContent, draftAttachments, categoryToSave);
+
+      try {
+        if (draftAttachments && draftAttachments.length > 0) {
+          await createQuickNoteWithAttachments(note.id, workspaceId, localContent, draftAttachments, categoryToSave);
+        } else {
+          await upsertQuickNote(note.id, localContent, workspaceId, undefined, categoryToSave);
+        }
+        setLocalContent('');
+        onEnterPress();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      
-      if (isSubmitting || isSearchMode) return;
-
-      // Only save if there's text or attachments
-      if (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) {
-        setIsSubmitting(true);
-        // Lock the attachments into local React state immediately so they render for the sender
-        onUpdate(note.id, localContent, draftAttachments);
-
-        try {
-          const categoryToSave = note.category || activeCategory || 'PRIMARY';
-          if (draftAttachments && draftAttachments.length > 0) {
-            await createQuickNoteWithAttachments(note.id, workspaceId, localContent, draftAttachments, categoryToSave);
-          } else {
-            await upsertQuickNote(note.id, localContent, workspaceId, undefined, categoryToSave);
-          }
-          setLocalContent('');
-          onEnterPress();
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsSubmitting(false);
-        }
-      }
+      handleSubmitComposer();
     }
   };
 
@@ -675,11 +678,19 @@ const NoteBlock = ({
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            {composerRightElement && (
-              <div className="ml-2 shrink-0 self-start mt-[4px]">
-                {composerRightElement}
-              </div>
-            )}
+            <div className="ml-2 shrink-0 self-start mt-[4px] flex flex-col items-end gap-2">
+              {composerRightElement}
+              {!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) && (
+                <button
+                  onClick={handleSubmitComposer}
+                  disabled={isSubmitting}
+                  className="p-1.5 bg-accent text-white rounded-full transition-colors shadow-sm md:hidden"
+                  title="Send (Enter)"
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 translate-x-[1px]"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -798,8 +809,16 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
   useQuickNoteSync(workspaceId, {
     onCreated: (payload: QuickNoteSyncPayload) => {
       setNotes(prev => {
-        // Avoid duplicates (from optimistic updates on the same tab)
-        if (prev.some(n => n.id === payload.id)) return prev;
+        const exists = prev.some(n => n.id === payload.id);
+        if (exists) {
+          // If it exists, it's likely our own optimistic update. Convert it to a real note.
+          return prev.map(n => 
+            n.id === payload.id 
+              ? { ...n, ...payload, createdAt: new Date(payload.createdAt), isOptimistic: false }
+              : n
+          );
+        }
+        // If it doesn't exist, it's a new note from another client.
         return [
           {
             ...payload,
@@ -874,8 +893,8 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
 
 
 
-  const handleUpdate = (id: string, content: string, attachments?: DraftAttachment[]) => {
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, content, isOptimistic: true, ...(attachments ? { attachments } : {}) } : n));
+  const handleUpdate = (id: string, content: string, attachments?: DraftAttachment[], category?: 'PRIMARY' | 'TEMPORARY') => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, content, isOptimistic: true, ...(attachments ? { attachments } : {}), ...(category ? { category } : {}) } : n));
   };
 
   const handleDelete = async (id: string, noteSnapshot: QuickNoteType) => {
@@ -911,7 +930,8 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
       content: '',
       createdAt: new Date(),
       workspaceId,
-      isOptimistic: true
+      isOptimistic: true,
+      category: activeTab
     };
     
     setNotes(prev => [newNote, ...prev]);

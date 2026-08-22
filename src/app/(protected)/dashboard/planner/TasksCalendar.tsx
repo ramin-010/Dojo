@@ -385,6 +385,9 @@ export default function TasksCalendar({
                           }
                           setActionMenuId(null);
                         }}
+                        onEdit={rev.capture ? () => {
+                          window.dispatchEvent(new CustomEvent('OPEN_EDIT_CAPTURE', { detail: { captureId: rev.captureId, title: rev.capture?.title, content: rev.capture?.content } }));
+                        } : undefined}
                         onOpen={(e) => { e.stopPropagation(); setActionMenuId(rev.id); }}
                         onClose={() => setActionMenuId(null)}
                         circleColorClass="text-accent/60"
@@ -495,6 +498,9 @@ function TaskItem({
               onRescheduleItem({ id: task.id, type: 'task', title: task.title });
             }
             setActionMenuId(null);
+          }}
+          onEdit={() => {
+            window.dispatchEvent(new CustomEvent('OPEN_EDIT_CAPTURE', { detail: { captureId: task.id, title: task.title, content: task.description } }));
           }}
           onOpen={(e) => { e.stopPropagation(); setActionMenuId(task.id); }}
           onClose={() => setActionMenuId(null)}

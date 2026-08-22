@@ -336,7 +336,7 @@ export async function rescheduleReminder(id: string, remindAt: Date) {
   }
 }
 
-export async function updateCapture(id: string, data: { dueDate?: Date | null }) {
+export async function updateCapture(id: string, data: { dueDate?: Date | null; title?: string | null; content?: string | null }) {
   try {
     const item = await prisma.capture.update({
       where: { id },

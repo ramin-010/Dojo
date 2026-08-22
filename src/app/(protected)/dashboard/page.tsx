@@ -268,6 +268,7 @@ export default async function DashboardPage() {
     id: item.id,
     type: item.type === 'LINK' ? ('link' as const) : ('note' as const),
     title: item.title || item.content?.substring(0, 50) || 'Untitled',
+    description: item.content,
     url: item.url || undefined,
     createdAt: item.createdAt,
     isPinned: item.isPinned,

@@ -58,6 +58,7 @@ export interface InboxProp {
   type: 'link' | 'note' | 'file';
   title: string;
   url?: string;
+  description?: string | null;
   createdAt: Date;
   isPinned?: boolean;
   tags: string[];

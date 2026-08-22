@@ -148,6 +148,9 @@ export default function RevisionsList({
                           await toggleRevision(rev.id, true);
                         }}
                         onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
+                        onEdit={rev.isQuickNote ? () => {
+                          window.dispatchEvent(new CustomEvent('OPEN_EDIT_CAPTURE', { detail: { captureId: rev.topicId, title: rev.topicTitle, content: rev.description } }));
+                        } : undefined}
                         onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
                         onClose={() => setTaskActionMenuId(null)}
                         circleColorClass="text-muted"
@@ -244,6 +247,9 @@ export default function RevisionsList({
                             await toggleRevision(rev.id, !rev.isDone);
                           }}
                           onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
+                          onEdit={rev.isQuickNote ? () => {
+                            window.dispatchEvent(new CustomEvent('OPEN_EDIT_CAPTURE', { detail: { captureId: rev.topicId, title: rev.topicTitle, content: rev.description } }));
+                          } : undefined}
                           onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
                           onClose={() => setTaskActionMenuId(null)}
                           circleColorClass="text-[#f48771]/40"
@@ -319,6 +325,9 @@ export default function RevisionsList({
                         await toggleRevision(rev.id, !rev.isDone);
                       }}
                       onReschedule={() => { setRescheduleTaskTarget({ id: rev.id, type: 'revision', title: rev.topicTitle }); setTaskActionMenuId(null); }}
+                      onEdit={rev.isQuickNote ? () => {
+                        window.dispatchEvent(new CustomEvent('OPEN_EDIT_CAPTURE', { detail: { captureId: rev.topicId, title: rev.topicTitle, content: rev.description } }));
+                      } : undefined}
                       onOpen={(e) => { e.stopPropagation(); setTaskActionMenuId(rev.id); }}
                       onClose={() => setTaskActionMenuId(null)}
                       circleColorClass="text-emerald-500/70"

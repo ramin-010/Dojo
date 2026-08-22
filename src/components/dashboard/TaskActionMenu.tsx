@@ -11,8 +11,9 @@ export function TaskActionMenu({
   circleColorClass,
   hoverColorClass,
   sizeClass = "w-4 h-4",
-  labels = { complete: "Complete", reschedule: "Reschedule", delete: "Delete" },
-  onDelete
+  labels = { complete: "Complete", reschedule: "Reschedule", delete: "Delete", edit: "Edit" },
+  onDelete,
+  onEdit
 }: { 
   task: any, 
   isOpen: boolean,
@@ -23,8 +24,9 @@ export function TaskActionMenu({
   circleColorClass: string,
   hoverColorClass: string,
   sizeClass?: string,
-  labels?: { complete: string, reschedule: string, delete?: string },
-  onDelete?: () => void
+  labels?: { complete: string, reschedule: string, delete?: string, edit?: string },
+  onDelete?: () => void,
+  onEdit?: () => void
 }) {
   return (
     <div className="shrink-0 relative h-5 flex items-center justify-center z-10 ml-2">
@@ -56,6 +58,15 @@ export function TaskActionMenu({
                   <CalendarIcon className="w-[15px] h-[15px] text-accent/80 group-hover/item:text-accent" />
                   <span className="text-[13px] font-medium text-foreground/80 group-hover/item:text-foreground">{labels.reschedule}</span>
                 </button>
+                {onEdit && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(); onClose(); }}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-hover rounded-lg transition-colors w-full text-left group/item"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/60 group-hover/item:text-foreground"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span className="text-[13px] font-medium text-foreground/80 group-hover/item:text-foreground">{labels.edit || "Edit"}</span>
+                  </button>
+                )}
                 {onDelete && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onDelete(); onClose(); }}

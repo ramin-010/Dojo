@@ -1,6 +1,6 @@
 {
   // Auto-convert images dropped into watched folders
-  "enabled": true,
+  "enabled": false,
 
   // Watched folders — each can have its own format & quality
   "watchTargets": [
