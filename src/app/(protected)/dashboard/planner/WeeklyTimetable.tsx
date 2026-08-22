@@ -47,24 +47,36 @@ export default function WeeklyTimetable({ initialBlocks = [], initialRoutineMode
       </div>
 
       {/* ── Board Area ────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-x-auto pb-4">
+      <div className={`flex-1 pb-4 ${sameForAll ? 'overflow-hidden' : 'overflow-x-auto'}`}>
         {sameForAll ? (
-          /* Single Master Routine Column */
-          <div className="max-w-md mx-auto w-full flex flex-col">
-            <div className="flex items-center gap-2 mb-4">
-              <CalendarDays className="w-4 h-4 text-accent" />
-              <span className="text-sm font-semibold text-foreground/80">Master Daily Routine</span>
+          /* Master Routine Layout with Illustration */
+          <div className="flex w-full items-start gap-2">
+            {/* Left side: Routine Column */}
+            <div className="w-full max-w-md flex flex-col shrink-0">
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarDays className="w-4 h-4 text-accent" />
+                <span className="text-sm font-semibold text-foreground/80">Master Daily Routine</span>
+              </div>
+              <div className="flex flex-col gap-3">
+                {masterBlocks.map(block => (
+                  <BlockCard key={block.id} block={block} />
+                ))}
+                
+                {addingDay === 'master' ? (
+                  <AddBlockForm dayOfWeek={null} onCancel={() => setAddingDay(null)} />
+                ) : (
+                  <AddBlockButton onClick={() => setAddingDay('master')} />
+                )}
+              </div>
             </div>
-            <div className="flex flex-col gap-3">
-              {masterBlocks.map(block => (
-                <BlockCard key={block.id} block={block} />
-              ))}
-              
-              {addingDay === 'master' ? (
-                <AddBlockForm dayOfWeek={null} onCancel={() => setAddingDay(null)} />
-              ) : (
-                <AddBlockButton onClick={() => setAddingDay('master')} />
-              )}
+
+            {/* Right side: Illustration Image */}
+            <div className="hidden lg:flex flex-1 justify-center items-start pointer-events-none mt-[-10px]">
+              <img 
+                src="/planner.webp" 
+                alt="Planner Illustration" 
+                className="w-full max-w-[500px] xl:max-w-[550px] object-contain opacity-95 dark:opacity-85" 
+              />
             </div>
           </div>
         ) : (

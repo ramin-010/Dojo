@@ -27,7 +27,7 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
-      <body className="font-sans antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background">
+      <body className="font-sans antialiased flex h-screen w-screen overflow-hidden text-foreground bg-background theme-light">
         {children}
         
         <Toaster theme="dark" position="bottom-right" toastOptions={{

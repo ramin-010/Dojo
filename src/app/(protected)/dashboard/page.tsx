@@ -157,7 +157,16 @@ export default async function DashboardPage() {
   // ── Phase 3: Pure computation (no I/O, just mapping) ──────────────────
 
   // Map revisions
-  const mappedRevisions = pendingRevisions.map(rev => {
+  const seenPendingIds = new Set<string>();
+  const filteredRevisions = pendingRevisions.filter(rev => {
+    if (rev.status === 'done') return true; // Always show completed ones
+    const identifier = rev.topicId ? `topic_${rev.topicId}` : `capture_${rev.captureId}`;
+    if (seenPendingIds.has(identifier)) return false;
+    seenPendingIds.add(identifier);
+    return true;
+  });
+
+  const mappedRevisions = filteredRevisions.map(rev => {
     if (rev.topic) {
       return {
         id: rev.id,

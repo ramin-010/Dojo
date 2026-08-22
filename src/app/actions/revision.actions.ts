@@ -83,6 +83,30 @@ export async function completeRevision(revisionId: string) {
       data: { status: 'done', completedAt: now }
     });
 
+    // 2. Shift future schedules dynamically based on completion date
+    const today = getISTMidnight(now);
+    const scheduledDay = getISTMidnight(new Date(revision.scheduledFor));
+    const delayDays = Math.round((today.getTime() - scheduledDay.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (delayDays !== 0) {
+      const futureRevisions = await tx.revision.findMany({
+        where: {
+          ...(revision.topicId ? { topicId: revision.topicId } : { captureId: revision.captureId }),
+          cycleNumber: { gt: revision.cycleNumber },
+          status: 'pending'
+        }
+      });
+
+      for (const fRev of futureRevisions) {
+        const newDate = new Date(fRev.scheduledFor);
+        newDate.setDate(newDate.getDate() + delayDays);
+        await tx.revision.update({
+          where: { id: fRev.id },
+          data: { scheduledFor: newDate }
+        });
+      }
+    }
+
     // 3. Activity Log
     await tx.activityLog.create({
       data: {
@@ -95,8 +119,6 @@ export async function completeRevision(revisionId: string) {
     });
 
     // 4. Update Streak & Daily History
-    const today = getISTMidnight(now);
-
     const pendingDue = await tx.revision.count({
       where: {
         OR: [

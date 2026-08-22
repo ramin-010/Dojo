@@ -42,7 +42,7 @@ export function VacationModal({ isOpen, onClose }: VacationModalProps) {
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 md:p-8"
-      style={{ backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+      style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-background border border-divider/60 rounded-3xl w-full max-w-md max-h-[95vh] flex flex-col overflow-y-auto shadow-[0_32px_64px_rgba(0,0,0,0.6)] relative">
@@ -53,14 +53,22 @@ export function VacationModal({ isOpen, onClose }: VacationModalProps) {
           <X className="w-4 h-4" />
         </button>
 
-        <div className="p-6 border-b border-divider/40 flex flex-col items-center justify-center text-center bg-accent/5">
-          <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-4">
-            <Plane className="w-6 h-6 text-accent" />
+        <div className="relative overflow-hidden rounded-t-3xl">
+          {/* Illustration Banner */}
+          <div className="w-full h-[180px] relative bg-gradient-to-b from-[#e8eef5] to-background">
+            <img 
+              src="/vacation.webp" 
+              alt="Vacation Illustration" 
+              className="w-full h-full object-cover object-center opacity-90"
+            />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Vacation Mode</h2>
-          <p className="text-sm text-foreground/60 mt-1">
-            Pre-skip all schedule blocks between a given date range.
-          </p>
+          {/* Title overlay at bottom of banner */}
+          <div className="px-6 pb-5 pt-4 text-center border-b border-divider/40">
+            <h2 className="text-xl font-bold text-foreground">Vacation Mode</h2>
+            <p className="text-sm text-foreground/60 mt-1">
+              Pre-skip all schedule blocks between a given date range.
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">

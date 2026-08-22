@@ -64,7 +64,7 @@ function LoginContent() {
   };
 
   return (
-    <div className="w-full max-w-sm px-6">
+    <div className="w-full max-w-sm">
       <div className="flex flex-col items-center mb-8">
         <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 border border-accent/20">
           <div className="w-6 h-6 rounded bg-accent" />
@@ -133,7 +133,7 @@ function LoginContent() {
         <button
           type="submit"
           disabled={isLoading || !email.trim() || !password.trim()}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-foreground text-background rounded-xl font-semibold hover:bg-foreground/90 transition-colors disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-foreground text-background rounded-xl font-semibold hover:bg-foreground/90 transition-colors disabled:bg-foreground/10 disabled:text-foreground/40 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -171,10 +171,17 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground selection:bg-indigo-500/30">
-      <Suspense fallback={<div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted" /></div>}>
-        <LoginContent />
-      </Suspense>
+    <div 
+      className="w-full min-h-screen flex items-center justify-center lg:justify-end bg-background text-foreground selection:bg-indigo-500/30 bg-no-repeat bg-cover bg-[center_left] lg:bg-center"
+      style={{ backgroundImage: "url('/I4.webp')",  }}
+    >
+      <div className="w-full lg:w-[40%] xl:w-[35%] 2xl:w-[30%] flex items-center justify-center lg:justify-end lg:pr-12 xl:pr-16 2xl:pr-24 p-4 sm:p-8 z-10 lg:-translate-y-12">
+        <div className="w-full max-w-sm bg-background/95 lg:bg-transparent backdrop-blur-xl lg:backdrop-blur-none p-8 lg:p-0 rounded-3xl shadow-2xl lg:shadow-none border border-border/50 lg:border-none">
+          <Suspense fallback={<div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted" /></div>}>
+            <LoginContent />
+          </Suspense>
+        </div>
+      </div>
     </div>
   );
 }

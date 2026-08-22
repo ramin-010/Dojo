@@ -248,6 +248,7 @@ export default function DashboardClient({
     <div className="p-4 md:p-8 pb-24 max-w-[1200px] mx-auto w-full min-h-full flex flex-col">
       <TriageInterceptor
         unverifiedBlocks={unverifiedBlocks}
+        workspaceId={workspaceId}
         onComplete={() => router.refresh()}
       />
 

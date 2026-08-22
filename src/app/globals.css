@@ -2,48 +2,49 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --color-foreground: #f0efed;
-  --color-background: #141414;
-  --color-sidebar: #202020;
-  --color-hover: #2d2d2d;
-  --color-accent: #007acc;
-  --color-divider: #262626;
-  --color-border: #262626;
-  --color-muted: #8f8f8f;
+  --color-foreground: #2b2a27;
+  --color-background: #f7f5f0;
+  --color-sidebar: #efece5;
+  --color-hover: #e8e4da;
+  --color-accent: #3a5a7d;
+  --color-divider: #e3dfd4;
+  --color-border: #d6d1c2;
+  --color-muted: #78766f;
   --color-muted-foreground: var(--color-muted);
-  --color-card: #2d2d2d;
+  --color-card: #ffffff;
   
   --font-sans: var(--font-inter, 'Inter'), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --foreground: #f0efed;
-  --bg-sidebar: #202020;
-  --bg-main: #191919;
-  --bg-hover: #2d2d2d;
-  --accent: #007acc;
-  --divider: #262626;
-  --muted: #8f8f8f;
+  --foreground: #2b2a27;
+  --bg-sidebar: #efece5;
+  --bg-main: #f7f5f0;
+  --bg-hover: #e8e4da;
+  --accent: #3a5a7d;
+  --divider: #e3dfd4;
+  --muted: #78766f;
 }
 
 /* ─── Topic Themes ─── */
-.theme-light {
-  --color-background: #f7f5f0 !important;
-  --color-sidebar:    #efece5 !important;
-  --color-card:       #ffffff !important;
-  --color-foreground: #2b2a27 !important;
-  --color-muted:      #78766f !important;
-  --color-accent:     #3a5a7d !important;
-  --color-hover:      #e8e4da !important;
-  --color-divider:    #e3dfd4 !important;
-  --color-border:     #d6d1c2 !important;
+.theme-dark {
+  --color-background: #141414 !important;
+  --color-sidebar:    #202020 !important;
+  --color-card:       #2d2d2d !important;
+  --color-foreground: #f0efed !important;
+  --color-muted:      #8f8f8f !important;
+  --color-accent:     #007acc !important;
+  --color-hover:      #2d2d2d !important;
+  --color-divider:    #262626 !important;
+  --color-border:     #262626 !important;
   
-  --bg-main: #f7f5f0 !important;
-  --bg-sidebar: #efece5 !important;
-  --foreground: #2b2a27 !important;
-  --bg-hover: #e8e4da !important;
-  --accent: #3a5a7d !important;
-  --divider: #e3dfd4 !important;
+  --bg-main: #191919 !important;
+  --bg-sidebar: #202020 !important;
+  --foreground: #f0efed !important;
+  --bg-hover: #2d2d2d !important;
+  --accent: #007acc !important;
+  --divider: #262626 !important;
+  --muted: #8f8f8f !important;
 }
 
 .theme-sepia {
@@ -148,6 +149,16 @@ body {
 input, textarea, button {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Fix Chrome Autofill Background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--color-sidebar) inset !important;
+    -webkit-text-fill-color: var(--color-foreground) !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Text selection — premium blue highlight */

@@ -114,7 +114,7 @@ export function Sidebar({ initialSubjects, userName = "User" }: { initialSubject
   // ── Global Theme Application ──
   React.useEffect(() => {
     // Clean up all possible themes first
-    const allThemes = ['default', 'catppuccin-latte', 'light', 'sepia', 'gruvbox-light', 'rose-pine-dawn'];
+    const allThemes = ['default', 'catppuccin-latte', 'dark', 'sepia', 'gruvbox-light', 'rose-pine-dawn'];
     allThemes.forEach(t => document.body.classList.remove(`theme-${t}`));
     
     // Apply current theme
@@ -373,9 +373,9 @@ export function Sidebar({ initialSubjects, userName = "User" }: { initialSubject
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { id: 'default', label: 'Default', bg: 'bg-[#191919]', accent: 'bg-[#007acc]' },
+                  { id: 'default', label: 'Light (Default)', bg: 'bg-[#f7f5f0]', accent: 'bg-[#3a5a7d]' },
+                  { id: 'dark', label: 'Dark', bg: 'bg-[#191919]', accent: 'bg-[#007acc]' },
                   { id: 'catppuccin-latte', label: 'Catppuccin', bg: 'bg-[#eff1f5]', accent: 'bg-[#8839ef]' },
-                  { id: 'light', label: 'Light', bg: 'bg-[#f7f5f0]', accent: 'bg-[#3a5a7d]' },
                   { id: 'sepia', label: 'Sepia', bg: 'bg-[#f4ecd8]', accent: 'bg-[#a8672c]' },
                   { id: 'gruvbox-light', label: 'Gruvbox', bg: 'bg-[#ebdbb2]', accent: 'bg-[#d65d0e]' },
                   { id: 'rose-pine-dawn', label: 'Rosé Pine', bg: 'bg-[#faf4ed]', accent: 'bg-[#b4637a]' }
