@@ -4,7 +4,7 @@
 
   // Watched folders — each can have its own format & quality
   "watchTargets": [
-    { "path": "public", "format": "webp", "quality": 100 }
+    { "path": "public", "format": "webp", "quality": 50 }
   ],
 
   // "in-place"           → replace original in same location

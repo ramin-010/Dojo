@@ -169,12 +169,18 @@ function LoginContent() {
   );
 }
 
+import Image from 'next/image';
+
 export default function LoginPage() {
   return (
-    <div 
-      className="w-full min-h-screen flex items-center justify-center lg:justify-end bg-background text-foreground selection:bg-indigo-500/30 bg-no-repeat bg-cover bg-[center_left] lg:bg-center"
-      style={{ backgroundImage: "url('/I4.webp')",  }}
-    >
+    <div className="w-full min-h-screen flex items-center justify-center lg:justify-end bg-background text-foreground selection:bg-indigo-500/30 relative overflow-hidden">
+      <Image
+        src="/I4.webp"
+        alt="Login Background"
+        fill
+        priority
+        className="object-cover object-[center_left] lg:object-center z-0"
+      />
       <div className="w-full lg:w-[40%] xl:w-[35%] 2xl:w-[30%] flex items-center justify-center lg:justify-end lg:pr-12 xl:pr-16 2xl:pr-24 p-4 sm:p-8 z-10 lg:-translate-y-12">
         <div className="w-full max-w-sm bg-background/95 lg:bg-transparent backdrop-blur-xl lg:backdrop-blur-none p-8 lg:p-0 rounded-3xl shadow-2xl lg:shadow-none border border-border/50 lg:border-none">
           <Suspense fallback={<div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted" /></div>}>

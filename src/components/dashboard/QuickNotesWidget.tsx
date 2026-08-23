@@ -614,7 +614,7 @@ const NoteBlock = ({
           <div className="flex items-center gap-1.5 mt-[2px]">
             <button
               onClick={onToggleSearch}
-              className={`p-1.5 rounded-md transition-colors ${isSearchMode ? 'bg-accent/20 text-accent ring-1 ring-accent/30' : 'text-foreground/30 hover:text-foreground/60 hover:bg-hover'}`}
+              className={`p-1.5 rounded-md transition-colors ${isSearchMode ? 'bg-accent/20 text-accent ring-1 ring-accent/30' : 'text-foreground/50 hover:text-foreground/80 hover:bg-hover'}`}
               title={isSearchMode ? "Exit search" : "Search notes"}
             >
               <Search className="w-4 h-4" />
@@ -623,7 +623,7 @@ const NoteBlock = ({
               <button
                 onClick={() => !isUploading && fileInputRef.current?.click()}
                 disabled={isUploading}
-                className={`p-1.5 rounded-md transition-colors ${isUploading ? 'text-accent cursor-not-allowed' : 'text-foreground/30 hover:text-foreground/60 hover:bg-hover'}`}
+                className={`p-1.5 rounded-md transition-colors ${isUploading ? 'text-accent cursor-not-allowed' : 'text-foreground/50 hover:text-foreground/80 hover:bg-hover'}`}
                 title="Attach file"
               >
                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -674,7 +674,7 @@ const NoteBlock = ({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 placeholder={isSearchMode ? 'Search notes...' : (isDragging ? 'Drop file here...' : 'Jot something down...')}
-                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/30 custom-scrollbar mt-1.5 md:pr-0 pb-1"
+                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/50 custom-scrollbar mt-1.5 md:pr-0 pb-1"
                 style={{ paddingRight: (!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0))) ? '40px' : '0' }}
               />
               
