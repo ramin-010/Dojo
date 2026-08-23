@@ -179,6 +179,7 @@ export default function LoginPage() {
         alt="Login Background"
         fill
         priority
+        unoptimized
         className="object-cover object-[center_left] lg:object-center z-0"
       />
       <div className="w-full lg:w-[40%] xl:w-[35%] 2xl:w-[30%] flex items-center justify-center lg:justify-end lg:pr-12 xl:pr-16 2xl:pr-24 p-4 sm:p-8 z-10 lg:-translate-y-12">
