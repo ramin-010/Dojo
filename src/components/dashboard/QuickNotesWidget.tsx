@@ -480,8 +480,10 @@ const NoteBlock = ({
 
       try {
         if (draftAttachments && draftAttachments.length > 0) {
+          onUpdate(note.id, localContent, draftAttachments, categoryToSave);
           await createQuickNoteWithAttachments(note.id, workspaceId, localContent, draftAttachments, categoryToSave);
         } else {
+          onUpdate(note.id, localContent, undefined, categoryToSave);
           await upsertQuickNote(note.id, localContent, workspaceId, undefined, categoryToSave);
         }
         setLocalContent('');
@@ -852,13 +854,23 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
       });
     },
     onUpdated: (payload: QuickNoteSyncPayload) => {
-      setNotes(prev =>
-        prev.map(n =>
-          n.id === payload.id
-            ? { ...n, ...payload, createdAt: new Date(payload.createdAt), isOptimistic: false }
-            : n
-        )
-      );
+      setNotes(prev => {
+        const exists = prev.some(n => n.id === payload.id);
+        if (exists) {
+          return prev.map(n =>
+            n.id === payload.id
+              ? { ...n, ...payload, createdAt: new Date(payload.createdAt), isOptimistic: false }
+              : n
+          );
+        }
+        return [
+          {
+            ...payload,
+            createdAt: new Date(payload.createdAt),
+          },
+          ...prev,
+        ];
+      });
     },
     onDeleted: ({ id }) => {
       setNotes(prev => prev.filter(n => n.id !== id));
@@ -879,6 +891,13 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
     filtered = filtered.filter(n => {
       if (activeTab === 'PRIMARY') return !n.category || n.category === 'PRIMARY';
       return n.category === 'TEMPORARY';
+    });
+
+    // Exclude completely empty ghost notes (content empty, no attachments)
+    filtered = filtered.filter(n => {
+      const hasContent = n.content.trim() !== '';
+      const hasAttachments = Array.isArray(n.attachments) && n.attachments.length > 0;
+      return hasContent || hasAttachments;
     });
 
     // Apply search
@@ -1055,7 +1074,7 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
       {/* ── Scrollable Feed ──────────────────────────────────────────────────── */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto custom-scrollbar relative scroll-smooth pr-2 pt-0"
+        className={`flex-1 overflow-y-auto custom-scrollbar relative scroll-smooth pr-2 ${activeTab === 'TEMPORARY' ? 'pt-4' : 'pt-0'}`}
       >
         {/* ── Pinned Shelf ─────────────────────────────────────────────────────── */}
         {pinnedNotes.length > 0 && (
