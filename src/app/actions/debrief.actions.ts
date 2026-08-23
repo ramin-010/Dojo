@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { startOfDay } from 'date-fns';
+import { getISTMidnight } from '@/lib/utils';
 import { SlotStatus, BlockStatus } from '@prisma/client';
 
 export interface SlotLogInput {
@@ -42,7 +43,7 @@ export interface SaveDebriefInput {
 }
 
 export async function getDebriefForDate(workspaceId: string, date: Date) {
-  const normalizedDate = startOfDay(new Date(date));
+  const normalizedDate = getISTMidnight(new Date(date));
   
   try {
     const debrief = await prisma.dayDebrief.findUnique({
@@ -61,7 +62,7 @@ export async function getDebriefForDate(workspaceId: string, date: Date) {
 }
 
 export async function saveDebrief(data: SaveDebriefInput) {
-  const normalizedDate = startOfDay(new Date(data.date));
+  const normalizedDate = getISTMidnight(new Date(data.date));
   
   try {
     const debrief = await prisma.$transaction(async (tx) => {
