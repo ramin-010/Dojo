@@ -61,6 +61,7 @@ export function SidebarSubject({ subject, isCollapsed }: SidebarSubjectProps) {
           
           <Link 
             href={`/subject/${subject.id}`}
+            prefetch={true}
             className="flex-1 text-[13px] font-semibold text-foreground/80 tracking-tight truncate py-1.5 hover:text-foreground transition-colors"
           >
             {subject.name}

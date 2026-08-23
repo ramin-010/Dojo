@@ -46,7 +46,8 @@ export function SidebarTopicItem({ topic, isCollapsed }: SidebarTopicItemProps) 
       )}
       
       <Link 
-        href={`/topic/${topic.id}`} 
+        href={`/topic/${topic.id}`}
+        prefetch={true} 
         className={`flex items-center gap-2.5 flex-1 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}
         title={isCollapsed ? topic.title : undefined}
       >

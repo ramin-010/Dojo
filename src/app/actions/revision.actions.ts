@@ -72,8 +72,6 @@ export async function completeRevision(revisionId: string) {
   const subjectId = revision.topic?.subjectId || revision.capture?.subjectId;
   const title = revision.topic?.title || revision.capture?.title || revision.capture?.content?.substring(0, 50) || "Capture";
 
-  if (!subjectId) throw new Error("Revision must belong to a subject to maintain streaks");
-
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
@@ -111,72 +109,72 @@ export async function completeRevision(revisionId: string) {
     await tx.activityLog.create({
       data: {
         userId,
-        subjectId: subjectId,
+        subjectId: subjectId || null,
         topicId: revision.topicId,
         action: 'COMPLETED_REVISION',
         details: `Cycle ${revision.cycleNumber} for ${title}`
       }
     });
 
-    // 4. Update Streak & Daily History
-    const pendingDue = await tx.revision.count({
-      where: {
-        OR: [
-          { topic: { subjectId: subjectId } },
-          { capture: { subjectId: subjectId } }
-        ],
-        scheduledFor: { lte: today },
-        status: 'pending'
-      }
-    });
-
-    let history = await tx.dailyHistory.findFirst({
-      where: { userId, subjectId: subjectId, date: today }
-    });
-
-    if (!history) {
-      history = await tx.dailyHistory.create({
-        data: {
-          userId,
-          subjectId: subjectId,
-          date: today,
-          revisionsDue: pendingDue + 1, // We know at least one was due (or done early, but let's count it)
-          revisionsDone: 1,
-          streakMaintained: pendingDue === 0
+    // 4. Update Streak & Daily History (Only if assigned to a subject)
+    if (subjectId) {
+      const pendingDue = await tx.revision.count({
+        where: {
+          OR: [
+            { topic: { subjectId: subjectId } },
+            { capture: { subjectId: subjectId } }
+          ],
+          scheduledFor: { lte: today },
+          status: 'pending'
         }
       });
-    } else {
-      history = await tx.dailyHistory.update({
-        where: { id: history.id },
-        data: {
-          revisionsDone: history.revisionsDone + 1,
-          streakMaintained: pendingDue === 0
-        }
-      });
-    }
 
-    // Upsert SubjectStreak
-    if (pendingDue === 0) {
-      const streak = await tx.subjectStreak.upsert({
-        where: { userId_subjectId: { userId, subjectId: subjectId } },
-        create: {
-          userId,
-          subjectId: subjectId,
-          currentStreak: 1,
-          longestStreak: 1,
-          lastCalculated: today
-        },
-        update: {
-          currentStreak: { increment: 1 },
-          lastCalculated: today
-        }
+      let history = await tx.dailyHistory.findFirst({
+        where: { userId, subjectId: subjectId, date: today }
       });
-      
-      if (streak.currentStreak > streak.longestStreak) {
-        await tx.subjectStreak.update({
-          where: { userId_subjectId: { userId, subjectId: subjectId } },
-          data: { longestStreak: streak.currentStreak }
+
+      if (!history) {
+        history = await tx.dailyHistory.create({
+          data: {
+            userId,
+            subjectId: subjectId,
+            date: today,
+            revisionsDue: pendingDue + 1, // We know at least one was due (or done early, but let's count it)
+            revisionsDone: 1,
+            streakMaintained: pendingDue === 0
+          }
         });
+      } else {
+        history = await tx.dailyHistory.update({
+          where: { id: history.id },
+          data: {
+            revisionsDone: history.revisionsDone + 1,
+            streakMaintained: pendingDue === 0
+          }
+        });
+      }
+
+      // Upsert SubjectStreak
+      if (pendingDue === 0) {
+        const streak = await tx.subjectStreak.upsert({
+          where: { userId_subjectId: { userId, subjectId: subjectId } },
+          update: {}, // We'll manually increment safely
+          create: { userId, subjectId: subjectId, currentStreak: 0, longestStreak: 0, lastCalculated: new Date(0) }
+        });
+
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (streak.lastCalculated.getTime() < today.getTime()) {
+          const isConsecutive = streak.lastCalculated.getTime() === yesterday.getTime();
+          const newCurrent = isConsecutive ? streak.currentStreak + 1 : 1;
+          const newLongest = Math.max(streak.longestStreak, newCurrent);
+
+          await tx.subjectStreak.update({
+            where: { userId_subjectId: { userId, subjectId: subjectId } },
+            data: { currentStreak: newCurrent, longestStreak: newLongest, lastCalculated: today }
+          });
+        }
       }
     }
 
