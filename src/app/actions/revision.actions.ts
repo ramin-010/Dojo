@@ -81,28 +81,29 @@ export async function completeRevision(revisionId: string) {
       data: { status: 'done', completedAt: now }
     });
 
-    // 2. Shift future schedules dynamically based on completion date
+    // 2. Snap future schedules rigidly to Spaced Repetition intervals relative to TODAY
     const today = getISTMidnight(now);
-    const scheduledDay = getISTMidnight(new Date(revision.scheduledFor));
-    const delayDays = Math.round((today.getTime() - scheduledDay.getTime()) / (1000 * 60 * 60 * 24));
+    const currentInterval = revision.intervalDays;
 
-    if (delayDays !== 0) {
-      const futureRevisions = await tx.revision.findMany({
-        where: {
-          ...(revision.topicId ? { topicId: revision.topicId } : { captureId: revision.captureId }),
-          cycleNumber: { gt: revision.cycleNumber },
-          status: 'pending'
-        }
-      });
-
-      for (const fRev of futureRevisions) {
-        const newDate = new Date(fRev.scheduledFor);
-        newDate.setDate(newDate.getDate() + delayDays);
-        await tx.revision.update({
-          where: { id: fRev.id },
-          data: { scheduledFor: newDate }
-        });
+    const futureRevisions = await tx.revision.findMany({
+      where: {
+        ...(revision.topicId ? { topicId: revision.topicId } : { captureId: revision.captureId }),
+        cycleNumber: { gt: revision.cycleNumber },
+        status: 'pending'
       }
+    });
+
+    for (const fRev of futureRevisions) {
+      const futureInterval = fRev.intervalDays;
+      const daysFromToday = futureInterval - currentInterval;
+      
+      const newDate = new Date(today);
+      newDate.setDate(newDate.getDate() + daysFromToday);
+
+      await tx.revision.update({
+        where: { id: fRev.id },
+        data: { scheduledFor: newDate }
+      });
     }
 
     // 3. Activity Log

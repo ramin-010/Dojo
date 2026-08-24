@@ -1,5 +1,5 @@
-import { CheckCircle2, Circle, CalendarIcon } from 'lucide-react';
-import React from 'react';
+import { CheckCircle2, Circle, CalendarIcon, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 export function TaskActionMenu({ 
   task, 
@@ -17,7 +17,7 @@ export function TaskActionMenu({
 }: { 
   task: any, 
   isOpen: boolean,
-  onToggle: () => void,
+  onToggle: () => void | Promise<void>,
   onReschedule: () => void,
   onOpen: (e: React.MouseEvent) => void,
   onClose: () => void,
@@ -28,15 +28,30 @@ export function TaskActionMenu({
   onDelete?: () => void,
   onEdit?: () => void
 }) {
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsUpdating(true);
+    try {
+      await onToggle();
+    } finally {
+      setIsUpdating(false);
+      onClose();
+    }
+  };
+
   return (
     <div className="shrink-0 relative h-5 flex items-center justify-center z-10 ml-2">
-      {task.status === 'done' || task.isDone ? (
-        <button onClick={(e) => { e.stopPropagation(); onToggle(); }}>
+      {isUpdating ? (
+        <Loader2 className={`${sizeClass} text-muted animate-spin`} />
+      ) : task.status === 'done' || task.isDone ? (
+        <button onClick={handleToggle} disabled={isUpdating}>
           <CheckCircle2 className={`${sizeClass} text-emerald-500/60 hover:text-emerald-500 transition-colors`} />
         </button>
       ) : (
         <>
-          <button onClick={onOpen} className={`${sizeClass} group/btn flex items-center justify-center`}>
+          <button onClick={onOpen} className={`${sizeClass} group/btn flex items-center justify-center`} disabled={isUpdating}>
             <Circle className={`${sizeClass} transition-colors ${circleColorClass} ${hoverColorClass}`} />
           </button>
           
@@ -45,7 +60,8 @@ export function TaskActionMenu({
               <div className="fixed inset-0 z-[9998]" onClick={(e) => { e.stopPropagation(); onClose(); }} />
               <div className="absolute top-6 left-0 z-[9999] bg-sidebar border border-divider rounded-xl p-1 shadow-[0_16px_40px_rgba(0,0,0,0.25)] min-w-[150px] flex flex-col gap-0.5 animate-in fade-in zoom-in-95">
                 <button 
-                  onClick={(e) => { e.stopPropagation(); onToggle(); onClose(); }}
+                  onClick={handleToggle}
+                  disabled={isUpdating}
                   className="flex items-center gap-3 px-3 py-2 hover:bg-hover rounded-lg transition-colors w-full text-left group/item"
                 >
                   <CheckCircle2 className="w-[15px] h-[15px] text-emerald-500/80 group-hover/item:text-emerald-500" />
