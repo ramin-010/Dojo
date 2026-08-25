@@ -65,7 +65,7 @@ export function FloatingToolbar({ editor, show, position }: FloatingToolbarProps
   return (
     <div 
       ref={toolbarRef}
-      className="fixed z-[9999] flex items-center gap-0.5 p-1.5 rounded-lg bg-popover border border-border shadow-xl backdrop-blur-sm animate-in fade-in-0 zoom-in-95 duration-150"
+      className="fixed z-[9999] flex items-center gap-0.5 p-1.5 rounded-lg bg-background/95 border border-border shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150"
       style={{ top: position.top, left: position.left }}
       onMouseDown={preventBlur}
     >
@@ -91,7 +91,7 @@ export function FloatingToolbar({ editor, show, position }: FloatingToolbarProps
           <Palette className="h-4 w-4" />
         </button>
         {showTextColorPicker && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-popover border border-border rounded-xl shadow-2xl z-50 min-w-[200px]">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-background border border-border rounded-xl shadow-2xl z-50 min-w-[200px]">
             <p className="text-[10px] text-foreground/50 mb-2 text-center uppercase tracking-wider font-semibold">Text Color</p>
             <div className="grid grid-cols-4 gap-2">
               {TEXT_COLORS.map((item) => (
@@ -138,7 +138,7 @@ export function FloatingToolbar({ editor, show, position }: FloatingToolbarProps
           <Highlighter className="h-4 w-4" />
         </button>
         {showHighlightPicker && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-popover border border-border rounded-xl shadow-2xl z-50 min-w-[200px]">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-background border border-border rounded-xl shadow-2xl z-50 min-w-[200px]">
             <p className="text-[10px] text-foreground/50 mb-2 text-center uppercase tracking-wider font-semibold">Highlight Color</p>
             <div className="grid grid-cols-4 gap-2">
               {HIGHLIGHT_COLORS.map((item) => (

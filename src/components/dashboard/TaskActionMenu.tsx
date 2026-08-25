@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, CalendarIcon, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, CalendarIcon, Loader2, Trash2, Edit2 } from 'lucide-react';
 import React, { useState } from 'react';
 
 export function TaskActionMenu({ 
@@ -17,7 +17,7 @@ export function TaskActionMenu({
 }: { 
   task: any, 
   isOpen: boolean,
-  onToggle: () => void | Promise<void>,
+  onToggle: () => void | Promise<any>,
   onReschedule: () => void,
   onOpen: (e: React.MouseEvent) => void,
   onClose: () => void,

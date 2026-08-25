@@ -68,7 +68,9 @@ export default function ScheduleTimeline({ todaySlots, onManageDay }: ScheduleTi
   }, []);
 
   // Compute base slots from props
-  const baseSlots: ComputedSlot[] = todaySlots.map(slot => {
+  const baseSlots: ComputedSlot[] = todaySlots
+    .filter(slot => slot.status !== 'SKIPPED')
+    .map(slot => {
     const startMin = toMinutes(slot.startTime);
     let endMin = toMinutes(slot.endTime);
     if (endMin <= startMin) endMin += 24 * 60; // midnight crossover
