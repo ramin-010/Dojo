@@ -107,8 +107,6 @@ export function ResourcesTab({
   const links = filteredBySearch.filter(r => r.uiCategory === 'link');
   const files = filteredBySearch.filter(r => r.uiCategory === 'file');
 
-  const recent = filteredBySearch.slice(0, 5);
-
   const mapToRowProps = (r: any): ResourceRowProps => {
     let fileFormat = undefined;
     let domain = undefined;
@@ -214,17 +212,7 @@ export function ResourcesTab({
           </div>
         ) : (
           <>
-            {/* RECENT SECTION */}
-        {(selectedCategory === 'All' && recent.length > 0) && (
-          <div className="mb-4">
-            {renderSectionHeader(<Clock className="w-3.5 h-3.5 text-muted" />, 'Recent')}
-            <div className="flex flex-col gap-2">
-              {recent.map(r => renderItem(r))}
-            </div>
-          </div>
-        )}
-
-        {/* NOTES SECTION */}
+            {/* NOTES SECTION */}
         {(selectedCategory === 'All' || selectedCategory === 'Notes') && notesAndBundles.length > 0 && (
           <div className="mb-4">
             {renderSectionHeader(<Layers className="w-3.5 h-3.5 text-fuchsia-500" />, `Notes & Bundles (${notesAndBundles.length})`, notesAndBundles.map(l => l.id))}

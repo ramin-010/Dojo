@@ -515,7 +515,8 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
     const future = allSlots.filter(s => !isPastStatus(s.status));
     if (future.length === 0) return allSlots;
 
-    let currentMin = startMin;
+    const lastPastEnd = past.length > 0 ? parseTime(past[past.length - 1].endTime) : 0;
+    let currentMin = Math.max(startMin, lastPastEnd);
 
     const recalculated = future.map((slot, idx) => {
       // ACTIVE — locked start, only endTime adjusts with duration
@@ -561,8 +562,18 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
       const idx = items.findIndex(i => i.id === id);
       if (idx === -1) return items;
 
+      const oldStatus = items[idx].status;
       const updated = [...items];
       updated[idx]  = { ...updated[idx], ...updates };
+
+      let effectiveStartMin = dayStartMin;
+      if (!isPastStatus(oldStatus) && updates.status && isPastStatus(updates.status)) {
+        const newPastEnd = parseTime(updated[idx].endTime);
+        if (newPastEnd > dayStartMin) {
+          effectiveStartMin = newPastEnd;
+          setTimeout(() => setDayStartMin(effectiveStartMin), 0);
+        }
+      }
 
       const needsRecalc =
         updates.durationMin !== undefined ||
@@ -570,7 +581,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
         updates.startTime   !== undefined ||
         updates.status      !== undefined;
 
-      return needsRecalc ? recalculate(updated, dayStartMin) : updated;
+      return needsRecalc ? recalculate(updated, effectiveStartMin) : updated;
     });
   };
 

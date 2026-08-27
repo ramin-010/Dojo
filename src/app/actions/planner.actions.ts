@@ -339,10 +339,12 @@ export async function getUnverifiedBlocks() {
     return trulyUnverified.map(slot => ({
       slot: {
         id: slot.id,
+        sourceBlockId: slot.sourceBlockId,
         title: slot.title,
         startTime: slot.startTime,
         endTime: slot.endTime,
         color: slot.color,
+        remark: slot.remark,
       },
       date: slot.date,
     }));

@@ -27,6 +27,8 @@ interface DayDebriefModalProps {
   workspaceId: string;
   todaySlots: ScheduleSlotProp[];
   date?: Date;
+  title?: string;
+  subtitle?: string;
 }
 
 export function DayDebriefModal({
@@ -34,7 +36,9 @@ export function DayDebriefModal({
   onClose,
   workspaceId,
   todaySlots,
-  date = new Date()
+  date = new Date(),
+  title = "Daily Debrief — AI Context",
+  subtitle = 'Log your blocks and help your AI mentor understand the "why".'
 }: DayDebriefModalProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -204,10 +208,10 @@ export function DayDebriefModal({
             <div>
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <BrainCircuit className="w-5 h-5 text-accent" />
-                Daily Debrief — AI Context
+                {title}
               </h2>
               <p className="text-[13px] text-muted-foreground mt-1">
-                Log your blocks and help your AI mentor understand the "why".
+                {subtitle}
               </p>
             </div>
             <button
