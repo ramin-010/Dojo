@@ -18,7 +18,14 @@ const DEFAULT_TAGS = [
   'Distracted',
   'Deep Work',
   'Flow State',
-  'Low Motivation'
+  'Low Motivation',
+  'High Motivation',
+  'Tired',
+  'Burnout',
+  'Family Time',
+  'Errands',
+  'Hydrated',
+  'Caffeine Crash'
 ];
 
 interface DayDebriefModalProps {
@@ -196,12 +203,12 @@ export function DayDebriefModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60 overflow-y-auto">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/30 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-2xl bg-sidebar border border-divider shadow-2xl rounded-2xl flex flex-col my-auto relative max-h-[95vh] sm:max-h-[85vh]"
+          className="w-full max-w-3xl bg-sidebar border border-divider shadow-2xl rounded-2xl flex flex-col my-auto relative max-h-[95vh] sm:max-h-[92vh]"
         >
           {/* Header */}
           <div className="px-6 py-5 border-b border-divider/50 bg-gradient-to-r from-accent/10 to-transparent rounded-t-2xl flex items-center justify-between">
@@ -222,7 +229,7 @@ export function DayDebriefModal({
             </button>
           </div>
 
-          <div className="p-6 flex flex-col gap-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          <div className="p-6 flex flex-col gap-8 max-h-[82vh] overflow-y-auto custom-scrollbar">
             {isLoading ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-6 h-6 text-accent animate-spin" />
