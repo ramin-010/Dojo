@@ -157,3 +157,126 @@ export async function saveDebrief(data: SaveDebriefInput) {
     return { success: false, error: 'Failed to save debrief' };
   }
 }
+
+// ====================================================================
+// MULTI-DAY CATCH-UP SAVE
+// ====================================================================
+
+export async function saveMultiDayCatchUp(input: {
+  workspaceId: string;
+  dates: string[];
+  sharedContext: {
+    energy: number;
+    focus: number;
+    mood: number;
+    tags: string[];
+    narrative: string;
+  };
+  slotUpdates: Array<{
+    slotId: string;
+    sourceBlockId: string | null;
+    status: 'COMPLETED' | 'SKIPPED';
+    remark?: string;
+  }>;
+}) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      // 1. Create a DayDebrief for each missed date with the shared context
+      for (const dateStr of input.dates) {
+        const normalizedDate = getISTMidnight(new Date(dateStr));
+
+        await tx.dayDebrief.upsert({
+          where: {
+            workspaceId_date: {
+              workspaceId: input.workspaceId,
+              date: normalizedDate,
+            },
+          },
+          create: {
+            workspaceId: input.workspaceId,
+            date: normalizedDate,
+            blocksPlanned: 0, // Will be corrected below
+            blocksCompleted: 0,
+            blocksSkipped: 0,
+            totalFocusedMin: 0,
+            energy: input.sharedContext.energy,
+            focus: input.sharedContext.focus,
+            mood: input.sharedContext.mood,
+            tags: input.sharedContext.tags,
+            narrative: input.sharedContext.narrative,
+          },
+          update: {
+            energy: input.sharedContext.energy,
+            focus: input.sharedContext.focus,
+            mood: input.sharedContext.mood,
+            tags: input.sharedContext.tags,
+            narrative: input.sharedContext.narrative,
+          },
+        });
+      }
+
+      // 2. Update each slot and create BlockSessionLog
+      for (const update of input.slotUpdates) {
+        const slot = await tx.dailyScheduleSlot.update({
+          where: { id: update.slotId },
+          data: {
+            status: update.status,
+            remark: update.remark || null,
+          },
+        });
+
+        if (update.sourceBlockId && (update.status === 'COMPLETED' || update.status === 'SKIPPED')) {
+          const blockStatus: BlockStatus = update.status === 'SKIPPED' ? 'SKIPPED' : 'COMPLETED';
+          await tx.blockSessionLog.upsert({
+            where: {
+              timeBlockId_date: {
+                timeBlockId: update.sourceBlockId,
+                date: slot.date,
+              },
+            },
+            update: { status: blockStatus, remark: update.remark || null },
+            create: {
+              timeBlockId: update.sourceBlockId,
+              date: slot.date,
+              status: blockStatus,
+              remark: update.remark || null,
+            },
+          });
+        }
+      }
+
+      // 3. Correct the debrief stats per date
+      for (const dateStr of input.dates) {
+        const normalizedDate = getISTMidnight(new Date(dateStr));
+        const dateSlots = await tx.dailyScheduleSlot.findMany({
+          where: { workspaceId: input.workspaceId, date: normalizedDate },
+        });
+
+        const planned = dateSlots.length;
+        const completed = dateSlots.filter(s => s.status === 'COMPLETED' || s.status === 'PARTIAL').length;
+        const skipped = dateSlots.filter(s => s.status === 'SKIPPED').length;
+
+        await tx.dayDebrief.update({
+          where: {
+            workspaceId_date: {
+              workspaceId: input.workspaceId,
+              date: normalizedDate,
+            },
+          },
+          data: {
+            blocksPlanned: planned,
+            blocksCompleted: completed,
+            blocksSkipped: skipped,
+            totalFocusedMin: 0,
+          },
+        });
+      }
+    });
+
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save multi-day catch-up:', error);
+    return { success: false, error: 'Failed to save catch-up' };
+  }
+}

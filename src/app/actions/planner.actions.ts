@@ -283,11 +283,16 @@ export async function getUnverifiedBlocks() {
   const { userId, workspaceId } = await getSession();
   try {
     const now = new Date();
-    
-    // Only fetch for the past 7 days to avoid a massive query forever
-    const startRangeDate = new Date(now);
-    startRangeDate.setDate(now.getDate() - 7);
-    const startRange = getISTMidnight(startRangeDate);
+
+    // Dynamic lookback: start from the last debrief date, fallback to 30 days ago
+    const lastDebrief = await prisma.dayDebrief.findFirst({
+      where: { workspaceId },
+      orderBy: { date: 'desc' },
+      select: { date: true },
+    });
+    const fallbackDate = new Date(now);
+    fallbackDate.setDate(now.getDate() - 30);
+    const startRange = getISTMidnight(lastDebrief?.date || fallbackDate);
 
     const todayMidnight = getISTMidnight(now);
 

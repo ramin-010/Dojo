@@ -2,7 +2,7 @@ import DashboardClient from './DashboardClient';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { getUnverifiedBlocks } from '@/app/actions/planner.actions';
-import { ensureTodaySlots } from '@/app/actions/schedule-slot.actions';
+import { ensureTodaySlots, backfillMissedDays } from '@/app/actions/schedule-slot.actions';
 
 import { getISTMidnight } from '@/lib/utils';
 
@@ -152,7 +152,9 @@ export default async function DashboardPage() {
   ]);
 
   // ── Phase 2: Dependent query (needs workspace result) ─────────────────
-  const todaySlots = await ensureTodaySlots(workspaceId, workspace?.routineMode || 'MASTER');
+  const routineMode = workspace?.routineMode || 'MASTER';
+  const backfillResult = await backfillMissedDays(workspaceId, routineMode);
+  const todaySlots = await ensureTodaySlots(workspaceId, routineMode);
 
   // ── Phase 3: Pure computation (no I/O, just mapping) ──────────────────
 

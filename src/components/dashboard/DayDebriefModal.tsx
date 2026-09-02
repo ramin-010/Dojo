@@ -436,8 +436,9 @@ export function DayDebriefModal({
               </button>
               <button
                 onClick={handleSave}
-                disabled={isSaving || isLoading}
+                disabled={isSaving || isLoading || energy === null || focus === null || mood === null}
                 className="px-5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+                title={energy === null || focus === null || mood === null ? 'Rate Energy, Focus, and Mood to save' : ''}
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Save Debrief

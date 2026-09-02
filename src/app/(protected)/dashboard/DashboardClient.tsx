@@ -2,12 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Flame, BookOpen, CheckCircle2, FolderPlus, Menu, Target, Zap, Inbox } from 'lucide-react';
+import { Flame, BookOpen, CheckCircle2, FolderPlus, Menu, Target, Zap, Inbox, Sparkles } from 'lucide-react';
 import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
 import RescheduleModal from '@/components/dashboard/RescheduleModal';
 import { ResourcePreviewModal } from '@/app/(protected)/topic/[id]/components/resources/ResourcePreviewModal';
 import { TriageInterceptor } from '@/components/dashboard/TriageInterceptor';
 import { DayManagerModal } from '@/components/dashboard/DayManagerModal';
+import { AiContextExportModal } from '@/components/dashboard/AiContextExportModal';
 import ScheduleTimeline from './dashComponents/ScheduleTimeline';
 import RevisionsList from './dashComponents/RevisionsList';
 import TasksSidebar from './dashComponents/TasksSidebar';
@@ -146,6 +147,7 @@ export default function DashboardClient({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDayManagerOpen, setIsDayManagerOpen] = useState(false);
   const [isDayDebriefOpen, setIsDayDebriefOpen] = useState(false);
+  const [isAiExportOpen, setIsAiExportOpen] = useState(false);
   const { setIsMobileMenuOpen } = useAppStore();
   const [taskActionMenuId, setTaskActionMenuId] = useState<string | null>(null);
   const [rescheduleTaskTarget, setRescheduleTaskTarget] = useState<any | null>(null);
@@ -253,6 +255,12 @@ export default function DashboardClient({
         onComplete={() => router.refresh()}
       />
 
+      <AiContextExportModal
+        isOpen={isAiExportOpen}
+        onClose={() => setIsAiExportOpen(false)}
+        workspaceId={workspaceId}
+      />
+
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="flex flex-col gap-3 md:gap-1 mb-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-0">
@@ -279,7 +287,14 @@ export default function DashboardClient({
             >
               Wrap Up Day
             </button>
-            <div className="flex items-center gap-1.5 text-sm text-muted">
+            <button
+              onClick={() => setIsAiExportOpen(true)}
+              className="p-1.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors rounded-lg border border-purple-500/20"
+              title="Export AI Context"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1.5 text-sm text-muted ml-2">
               <Flame className="w-4 h-4 text-orange-400" />
               <span className="font-semibold text-orange-400">{stats.streak}</span>
               <span>day streak</span>

@@ -7,6 +7,160 @@ import { getISTMidnight } from '@/lib/utils';
 import { getSession } from '@/lib/auth';
 
 // ====================================================================
+// BACKFILL MISSED DAYS
+// ====================================================================
+
+/**
+ * Detects days where the user didn't open the app and retroactively
+ * creates DailyScheduleSlot records for each missed day.
+ * Returns info about the gap so the UI can decide which triage modal to show.
+ */
+export async function backfillMissedDays(
+  workspaceId: string,
+  routineMode: 'MASTER' | 'DAILY'
+): Promise<{ backfilledDays: number; startDate: Date | null; endDate: Date | null }> {
+  const todayMidnight = getISTMidnight();
+
+  // Find the most recent date that already has slots
+  const lastSlotRecord = await prisma.dailyScheduleSlot.findFirst({
+    where: { workspaceId },
+    orderBy: { date: 'desc' },
+    select: { date: true },
+  });
+
+  // If no slots exist at all, use the earliest TimeBlock creation as starting point
+  let startFrom: Date;
+  if (!lastSlotRecord) {
+    const earliestBlock = await prisma.timeBlock.findFirst({
+      where: { workspaceId },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    if (!earliestBlock) {
+      return { backfilledDays: 0, startDate: null, endDate: null };
+    }
+    startFrom = getISTMidnight(earliestBlock.createdAt);
+  } else {
+    startFrom = lastSlotRecord.date;
+  }
+
+  // Calculate the day after the last slot date
+  const dayAfterLast = new Date(startFrom);
+  dayAfterLast.setDate(dayAfterLast.getDate() + 1);
+  const fillStart = getISTMidnight(dayAfterLast);
+
+  // We only backfill up to yesterday (today is handled by ensureTodaySlots)
+  const yesterdayDate = new Date(todayMidnight);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const fillEnd = getISTMidnight(yesterdayDate);
+
+  // Nothing to backfill
+  if (fillStart > fillEnd) {
+    return { backfilledDays: 0, startDate: null, endDate: null };
+  }
+
+  // Cap at 30 days to prevent unbounded backfill
+  const maxBackfillDate = new Date(todayMidnight);
+  maxBackfillDate.setDate(maxBackfillDate.getDate() - 30);
+  const cappedStart = fillStart < maxBackfillDate ? maxBackfillDate : fillStart;
+
+  // Fetch all templates once
+  const allTemplates = await prisma.timeBlock.findMany({
+    where: { workspaceId },
+    orderBy: { startTime: 'asc' },
+  });
+
+  if (allTemplates.length === 0) {
+    return { backfilledDays: 0, startDate: null, endDate: null };
+  }
+
+  // Fetch all pre-existing BlockSessionLogs in the range (from bulkPreSkip / vacation)
+  const existingLogs = await prisma.blockSessionLog.findMany({
+    where: {
+      timeBlockId: { in: allTemplates.map(t => t.id) },
+      date: { gte: cappedStart, lte: fillEnd },
+    },
+  });
+  const logsByDateAndBlock = new Map<string, typeof existingLogs[0]>();
+  for (const log of existingLogs) {
+    logsByDateAndBlock.set(`${log.date.toISOString()}_${log.timeBlockId}`, log);
+  }
+
+  const allSlotsToCreate: Array<{
+    workspaceId: string;
+    sourceBlockId: string;
+    date: Date;
+    title: string;
+    color: string;
+    startTime: string;
+    endTime: string;
+    status: SlotStatus;
+    remark: string | null;
+    minutesDone: number | null;
+    sortOrder: number;
+  }> = [];
+
+  let backfilledDays = 0;
+  let actualStart: Date | null = null;
+  let actualEnd: Date | null = null;
+
+  for (let d = new Date(cappedStart); d <= fillEnd; d.setDate(d.getDate() + 1)) {
+    const dayMidnight = getISTMidnight(d);
+    const jsDay = d.getDay();
+    const mappedDay = jsDay === 0 ? 6 : jsDay - 1;
+
+    // Pick correct templates based on routine mode
+    const dayTemplates = routineMode === 'MASTER'
+      ? allTemplates.filter(t => t.dayOfWeek === null)
+      : allTemplates.filter(t => t.dayOfWeek === mappedDay);
+
+    if (dayTemplates.length === 0) continue;
+
+    backfilledDays++;
+    if (!actualStart) actualStart = new Date(dayMidnight);
+    actualEnd = new Date(dayMidnight);
+
+    dayTemplates.forEach((block, index) => {
+      const existingLog = logsByDateAndBlock.get(`${dayMidnight.toISOString()}_${block.id}`);
+      let initialStatus: SlotStatus = 'UPCOMING';
+      let initialRemark: string | null = null;
+      let initialMinutesDone: number | null = null;
+
+      if (existingLog) {
+        if (existingLog.status === 'SKIPPED') initialStatus = 'SKIPPED';
+        else if (existingLog.status === 'COMPLETED') initialStatus = 'COMPLETED';
+        else if (existingLog.status === 'PARTIAL') initialStatus = 'PARTIAL';
+        initialRemark = existingLog.remark;
+        initialMinutesDone = existingLog.minutesDone;
+      }
+
+      allSlotsToCreate.push({
+        workspaceId,
+        sourceBlockId: block.id,
+        date: dayMidnight,
+        title: block.title,
+        color: block.color,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        status: initialStatus,
+        remark: initialRemark,
+        minutesDone: initialMinutesDone,
+        sortOrder: index,
+      });
+    });
+  }
+
+  if (allSlotsToCreate.length > 0) {
+    await prisma.dailyScheduleSlot.createMany({
+      data: allSlotsToCreate,
+      skipDuplicates: true,
+    });
+  }
+
+  return { backfilledDays, startDate: actualStart, endDate: actualEnd };
+}
+
+// ====================================================================
 // ENSURE TODAY'S SLOTS EXIST
 // ====================================================================
 
