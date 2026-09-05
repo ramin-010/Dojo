@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db';
+import { differenceInISTDays } from '@/lib/date';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
@@ -50,18 +51,14 @@ export async function logHabit(habitId: string) {
     if (!habit) return { error: 'Habit not found' };
 
     const now = new Date();
-    // Normalize "today" to start of day for comparison
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     let newStreak = habit.currentStreak;
     let newLongest = habit.longestStreak;
 
     if (habit.lastCompletedAt) {
-      const last = new Date(habit.lastCompletedAt);
-      const lastDay = new Date(last.getFullYear(), last.getMonth(), last.getDate());
-      
-      const diffTime = today.getTime() - lastDay.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // Compare in IST day space rather than server-local days, so a habit
+      // logged late at night counts against the day the user was living in.
+      const diffDays = differenceInISTDays(now, habit.lastCompletedAt);
 
       if (diffDays === 0) {
         // Already logged today

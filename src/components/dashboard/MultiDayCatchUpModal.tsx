@@ -52,6 +52,9 @@ function RatingScale({ label, icon, value, onChange }: { label: string, icon: Re
   );
 }
 
+/** A block is unmarked until the user says otherwise. */
+type SlotDecision = 'COMPLETED' | 'SKIPPED' | 'UNRESOLVED';
+
 export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDate }: MultiDayCatchUpModalProps) {
   const [narrative, setNarrative] = useState('');
   const [energy, setEnergy] = useState<number | null>(null);
@@ -59,15 +62,18 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
   const [mood, setMood] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   
-  const [slotUpdates, setSlotUpdates] = useState<Record<string, { sourceBlockId: string | null; status: 'COMPLETED' | 'SKIPPED'; remark: string }>>({});
+  // 'UNRESOLVED' is a first-class state: a block nobody marked stays unmarked.
+  // Defaulting to SKIPPED here is what silently wrote phantom skips for every
+  // block the user never touched.
+  const [slotUpdates, setSlotUpdates] = useState<Record<string, { sourceBlockId: string | null; status: SlotDecision; remark: string }>>({});
   const [showRemark, setShowRemark] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      const initialUpdates: Record<string, { sourceBlockId: string | null; status: 'COMPLETED' | 'SKIPPED'; remark: string }> = {};
+      const initialUpdates: Record<string, { sourceBlockId: string | null; status: SlotDecision; remark: string }> = {};
       Object.values(blocksByDate).flat().forEach(block => {
-        initialUpdates[block.id] = { sourceBlockId: block.sourceBlockId, status: 'SKIPPED', remark: '' };
+        initialUpdates[block.id] = { sourceBlockId: block.sourceBlockId, status: 'UNRESOLVED', remark: '' };
       });
       setSlotUpdates(initialUpdates);
       setNarrative('');
@@ -86,17 +92,24 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
   const canSave = energy !== null && focus !== null && mood !== null && narrative.trim().length > 0;
 
+  const unresolvedCount = Object.values(slotUpdates).filter(u => u.status === 'UNRESOLVED').length;
+
   const handleSave = async () => {
     if (!canSave) return;
     setIsSaving(true);
     
     try {
-      const formattedSlotUpdates = Object.entries(slotUpdates).map(([slotId, update]) => ({
-        slotId,
-        sourceBlockId: update.sourceBlockId,
-        status: update.status,
-        ...(update.remark.trim() ? { remark: update.remark.trim() } : {})
-      }));
+      // Send ONLY blocks the user explicitly decided. Anything left
+      // UNRESOLVED keeps its UPCOMING status in the database rather than
+      // being invented as a skip.
+      const formattedSlotUpdates = Object.entries(slotUpdates)
+        .filter(([, update]) => update.status !== 'UNRESOLVED')
+        .map(([slotId, update]) => ({
+          slotId,
+          sourceBlockId: update.sourceBlockId,
+          status: update.status as 'COMPLETED' | 'SKIPPED',
+          ...(update.remark.trim() ? { remark: update.remark.trim() } : {})
+        }));
 
       await saveMultiDayCatchUp({
         workspaceId,
@@ -254,7 +267,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
                                 </div>
                                 <div className="flex items-center gap-1.5 ml-4">
                                   <button
-                                    onClick={() => setSlotUpdates(prev => ({ ...prev, [block.id]: { ...prev[block.id], status: 'COMPLETED' } }))}
+                                    onClick={() => setSlotUpdates(prev => ({ ...prev, [block.id]: { ...prev[block.id], status: prev[block.id].status === 'COMPLETED' ? 'UNRESOLVED' : 'COMPLETED' } }))}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                                       update.status === 'COMPLETED'
                                         ? 'bg-emerald-500/10 text-emerald-500'
@@ -265,7 +278,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
                                     <span>Done</span>
                                   </button>
                                   <button
-                                    onClick={() => setSlotUpdates(prev => ({ ...prev, [block.id]: { ...prev[block.id], status: 'SKIPPED' } }))}
+                                    onClick={() => setSlotUpdates(prev => ({ ...prev, [block.id]: { ...prev[block.id], status: prev[block.id].status === 'SKIPPED' ? 'UNRESOLVED' : 'SKIPPED' } }))}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                                       update.status === 'SKIPPED'
                                         ? 'bg-red-500/10 text-red-500'
@@ -323,13 +336,20 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
             {/* Footer */}
             <div className="p-4 border-t border-divider flex items-center justify-between flex-shrink-0 bg-sidebar/50">
-              <button
-                onClick={handleMarkAllSkipped}
-                className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-divider/50"
-              >
-                Mark All Skipped
-              </button>
-              
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleMarkAllSkipped}
+                  className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-divider/50"
+                >
+                  Mark All Skipped
+                </button>
+                {unresolvedCount > 0 && (
+                  <span className="text-xs text-muted-foreground/70">
+                    {unresolvedCount} left unmarked
+                  </span>
+                )}
+              </div>
+
               <div className="flex items-center gap-3">
                 <button
                   onClick={onClose}

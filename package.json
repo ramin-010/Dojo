@@ -7,6 +7,9 @@
     "dev:next": "set NODE_OPTIONS=--max-old-space-size=8192 && next dev -p 3003 --turbo",
     "dev": "concurrently \"npm run dev:python\" \"npm run dev:next\"",
     "build": "next build",
+    "db:backup": "node scripts/backup-db.mjs",
+    "db:status": "prisma migrate status",
+    "db:deploy": "prisma migrate deploy",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate"

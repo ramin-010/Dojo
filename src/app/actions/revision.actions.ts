@@ -3,23 +3,25 @@
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import { getISTMidnight } from '@/lib/utils';
+import {
+  getISTMidnight,
+  addDays,
+  differenceInISTDays,
+  isSameISTDay,
+} from '@/lib/date';
 
 /** Start the spaced repetition cycle for a topic */
 export async function startTopicRevisions(topicId: string) {
   const { userId, workspaceId } = await getSession();
   const intervals = [1, 3, 7, 21];
   const now = new Date();
-  
-  // Midnight of next day
-  const tomorrowDate = new Date(now);
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrow = getISTMidnight(tomorrowDate);
+
+  // Cycle 1 lands on the next IST day; later cycles are offset from there.
+  const tomorrow = addDays(getISTMidnight(now), 1);
 
   const revisions = intervals.map((intervalDays, index) => {
-    const scheduledFor = new Date(tomorrow);
-    scheduledFor.setDate(scheduledFor.getDate() + (intervalDays - 1));
-    
+    const scheduledFor = addDays(tomorrow, intervalDays - 1);
+
     return {
       topicId,
       cycleNumber: index + 1,
@@ -96,9 +98,8 @@ export async function completeRevision(revisionId: string) {
     for (const fRev of futureRevisions) {
       const futureInterval = fRev.intervalDays;
       const daysFromToday = futureInterval - currentInterval;
-      
-      const newDate = new Date(today);
-      newDate.setDate(newDate.getDate() + daysFromToday);
+
+      const newDate = addDays(today, daysFromToday);
 
       await tx.revision.update({
         where: { id: fRev.id },
@@ -163,8 +164,7 @@ export async function completeRevision(revisionId: string) {
           create: { userId, subjectId: subjectId, currentStreak: 0, longestStreak: 0, lastCalculated: new Date(0) }
         });
 
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterday = addDays(today, -1);
 
         if (streak.lastCalculated.getTime() < today.getTime()) {
           const isConsecutive = streak.lastCalculated.getTime() === yesterday.getTime();
@@ -195,19 +195,18 @@ export async function completeRevision(revisionId: string) {
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (user) {
         const lastUpdate = user.lastGlobalStreakUpdate;
-        const alreadyUpdatedToday = lastUpdate && 
-          lastUpdate.getDate() === today.getDate() && 
-          lastUpdate.getMonth() === today.getMonth() && 
-          lastUpdate.getFullYear() === today.getFullYear();
-        
+        // Compare in IST day space. The old code built a *server-local*
+        // midnight from lastUpdate and diffed it against a UTC-midnight
+        // `today`, so on any non-UTC host the two were hours apart and
+        // Math.floor could round the gap down to 0 — silently freezing
+        // the streak.
+        const alreadyUpdatedToday = !!lastUpdate && isSameISTDay(lastUpdate, today);
+
         if (!alreadyUpdatedToday) {
            let newStreak = user.globalStreak;
            if (lastUpdate) {
-               // Calculate days since last update
-               const lastDay = new Date(lastUpdate.getFullYear(), lastUpdate.getMonth(), lastUpdate.getDate());
-               const diffTime = today.getTime() - lastDay.getTime();
-               const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-               
+               const diffDays = differenceInISTDays(today, lastUpdate);
+
                if (diffDays === 1) newStreak++;
                else if (diffDays > 1) newStreak = 1;
            } else {
@@ -239,16 +238,13 @@ export async function startCaptureRevisions(captureId: string) {
   const { userId, workspaceId } = await getSession();
   const intervals = [1, 3, 7, 21];
   const now = new Date();
-  
-  // Midnight of next day
-  const tomorrowDate = new Date(now);
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrow = getISTMidnight(tomorrowDate);
+
+  // Cycle 1 lands on the next IST day; later cycles are offset from there.
+  const tomorrow = addDays(getISTMidnight(now), 1);
 
   const revisions = intervals.map((intervalDays, index) => {
-    const scheduledFor = new Date(tomorrow);
-    scheduledFor.setDate(scheduledFor.getDate() + (intervalDays - 1));
-    
+    const scheduledFor = addDays(tomorrow, intervalDays - 1);
+
     return {
       captureId,
       cycleNumber: index + 1,

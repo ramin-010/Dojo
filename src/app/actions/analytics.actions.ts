@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db';
+import { getISTMidnight, addDays } from '@/lib/date';
 import { getSession } from '@/lib/auth';
 
 /** Get recent activity for a subject */
@@ -27,8 +28,7 @@ export async function getSubjectStreak(subjectId: string) {
 /** Get last 7 days of daily history for the streak chart */
 export async function getDailyHistory(subjectId: string, days = 7) {
   const { userId, workspaceId } = await getSession();
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = addDays(getISTMidnight(), -days);
 
   const history = await prisma.dailyHistory.findMany({
     where: {

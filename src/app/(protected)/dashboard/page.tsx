@@ -27,7 +27,6 @@ export default async function DashboardPage() {
     masteredTopics,
     totalRevisionsDone,
     quickNotesRaw,
-    unverifiedBlocks,
   ] = await Promise.all([
     // 1. Workspace
     prisma.workspace.findUnique({
@@ -146,15 +145,20 @@ export default async function DashboardPage() {
       where: { workspaceId: workspaceId },
       orderBy: { createdAt: 'asc' }
     }),
-
-    // 13. Unverified Blocks
-    getUnverifiedBlocks(),
   ]);
 
-  // ── Phase 2: Dependent query (needs workspace result) ─────────────────
+  // ── Phase 2: Dependent writes (need the workspace result) ─────────────
   const routineMode = workspace?.routineMode || 'MASTER';
   const backfillResult = await backfillMissedDays(workspaceId, routineMode);
   const todaySlots = await ensureTodaySlots(workspaceId, routineMode);
+
+  // ── Phase 2b: MUST run after backfillMissedDays ───────────────────────
+  // backfillMissedDays() creates the DailyScheduleSlot rows for days the
+  // user never opened the app. getUnverifiedBlocks() reads those rows, so
+  // running it in the Phase 1 parallel batch meant the very first load
+  // after an absence saw none of the days that had just been backfilled —
+  // triage only appeared on the *second* load. Keep this call here.
+  const unverifiedBlocks = await getUnverifiedBlocks();
 
   // ── Phase 3: Pure computation (no I/O, just mapping) ──────────────────
 

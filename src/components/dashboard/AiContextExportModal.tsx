@@ -30,7 +30,7 @@ export function AiContextExportModal({ isOpen, onClose, workspaceId }: AiContext
     setIsLoading(true);
     setGeneratedPrompt(null);
     try {
-      const res = await getAiExportData(workspaceId, new Date(fromDate), new Date(toDate));
+      const res = await getAiExportData(new Date(fromDate), new Date(toDate));
       if (res.success) {
         setGeneratedPrompt(res.data || '');
       } else {

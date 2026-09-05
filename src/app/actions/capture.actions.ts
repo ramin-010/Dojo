@@ -6,6 +6,14 @@ import { getSession } from '@/lib/auth';
 import { generateAIContent } from '@/lib/ai/orchestrator';
 import { QUICK_NOTE_SYSTEM_PROMPT } from '@/lib/ai/prompts/quickNotePrompt';
 import { startCaptureRevisions } from './revision.actions';
+import {
+  getISTMidnight,
+  addDays,
+  getISTEndOfDayLabel,
+  getISTEndOfMonthLabel,
+  getISTStartOfWeek,
+  getWeeklyGoalDueDate,
+} from '@/lib/date';
 import { CaptureType } from '@prisma/client';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
@@ -115,23 +123,20 @@ export async function createCapture(data: {
     const typeLower = data.explicitType || (isUrl ? 'link' : 'note');
     const typeEnum = typeLower.toUpperCase() as CaptureType;
 
-    let dueDate = data.explicitDate || (data.reminder === 'tomorrow' ? new Date(Date.now() + 86400000) : null);
+    let dueDate = data.explicitDate || (data.reminder === 'tomorrow' ? getISTEndOfDayLabel(addDays(getISTMidnight(), 1)) : null);
     let finalGoalType = data.goalType ? data.goalType.toUpperCase() as 'NONE' | 'WEEKLY' | 'MONTHLY' : 'NONE';
 
     // Apply Weekly and Monthly Goal logic if it's a TASK and no explicit date was provided
     if (typeEnum === 'TASK' && !dueDate && finalGoalType !== 'NONE') {
       const now = new Date();
       if (finalGoalType === 'MONTHLY') {
-        // End of current month
-        dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        dueDate = getISTEndOfMonthLabel(now);
       } else if (finalGoalType === 'WEEKLY') {
-        // The "Weekend Rule": if created Sat/Sun, push to next week.
-        const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday
-        let daysUntilSunday = 7 - dayOfWeek;
-        if (dayOfWeek === 0) daysUntilSunday = 7; // Created on Sunday -> next Sunday
-        if (dayOfWeek === 6) daysUntilSunday = 8; // Created on Saturday -> next Sunday
-        
-        dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59, 999);
+        // "Weekend Rule" lives in getWeeklyGoalDueDate. Both branches read
+        // the IST weekday, not the server's — between 18:30Z and midnight
+        // UTC it is already tomorrow in IST, and the old server-local
+        // getDay() put the due date on the wrong day.
+        dueDate = getWeeklyGoalDueDate(now);
       }
     } else if (typeEnum !== 'TASK') {
       finalGoalType = 'NONE';
@@ -497,10 +502,7 @@ export async function getUnresolvedWeeklyGoals() {
   const { userId, workspaceId } = await getSession();
   try {
     const now = new Date();
-    // Start of current week (Monday)
-    const dayOfWeek = now.getDay();
-    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const startOfCurrentWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday, 0, 0, 0, 0);
+    const startOfCurrentWeek = getISTStartOfWeek(now);
 
     const goals = await prisma.capture.findMany({
       where: {
@@ -532,14 +534,10 @@ export async function shiftWeeklyGoal(captureId: string, target: 'THIS_WEEK' | '
 
     if (target === 'MONTHLY') {
       newGoalType = 'MONTHLY';
-      newDueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      newDueDate = getISTEndOfMonthLabel(now);
     } else {
       newGoalType = 'WEEKLY';
-      const dayOfWeek = now.getDay();
-      let daysUntilSunday = 7 - dayOfWeek;
-      if (dayOfWeek === 0) daysUntilSunday = 7;
-      if (dayOfWeek === 6) daysUntilSunday = 8;
-      newDueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSunday, 23, 59, 59, 999);
+      newDueDate = getWeeklyGoalDueDate(now);
     }
 
     const updated = await prisma.capture.update({

@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { startOfDay } from 'date-fns';
-import { getISTMidnight } from '@/lib/utils';
+import { getISTMidnight, fromISTDateString } from '@/lib/date';
 import { SlotStatus, BlockStatus } from '@prisma/client';
 
 export interface SlotLogInput {
@@ -183,7 +183,7 @@ export async function saveMultiDayCatchUp(input: {
     await prisma.$transaction(async (tx) => {
       // 1. Create a DayDebrief for each missed date with the shared context
       for (const dateStr of input.dates) {
-        const normalizedDate = getISTMidnight(new Date(dateStr));
+        const normalizedDate = fromISTDateString(dateStr);
 
         await tx.dayDebrief.upsert({
           where: {
@@ -215,8 +215,16 @@ export async function saveMultiDayCatchUp(input: {
         });
       }
 
-      // 2. Update each slot and create BlockSessionLog
-      for (const update of input.slotUpdates) {
+      // 2. Update each slot and create BlockSessionLog.
+      // Defensive: only explicit COMPLETED/SKIPPED decisions may mutate a
+      // slot. A block the user never marked must keep its UPCOMING status —
+      // writing a default here is what produced phantom "skips" for blocks
+      // nobody touched.
+      const explicitUpdates = input.slotUpdates.filter(
+        u => u.status === 'COMPLETED' || u.status === 'SKIPPED'
+      );
+
+      for (const update of explicitUpdates) {
         const slot = await tx.dailyScheduleSlot.update({
           where: { id: update.slotId },
           data: {
@@ -247,7 +255,7 @@ export async function saveMultiDayCatchUp(input: {
 
       // 3. Correct the debrief stats per date
       for (const dateStr of input.dates) {
-        const normalizedDate = getISTMidnight(new Date(dateStr));
+        const normalizedDate = fromISTDateString(dateStr);
         const dateSlots = await tx.dailyScheduleSlot.findMany({
           where: { workspaceId: input.workspaceId, date: normalizedDate },
         });

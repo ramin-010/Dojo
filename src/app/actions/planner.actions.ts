@@ -5,7 +5,13 @@ import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { BlockStatus } from '@prisma/client';
 import { completeRevision } from './revision.actions';
-import { getISTMidnight } from '@/lib/utils';
+import {
+  getISTMidnight,
+  getISTDayOfWeek,
+  eachISTDayInRange,
+  isSameISTDay,
+  addDays,
+} from '@/lib/date';
 // ====================================================================
 // TIME BLOCKS
 // ====================================================================
@@ -201,7 +207,7 @@ export async function rescheduleRevision(id: string, newDate: Date) {
 
     await prisma.revision.update({
       where: { id },
-      data: { scheduledFor: newDate, status: 'pending' },
+      data: { scheduledFor: targetMidnight, status: 'pending' },
     });
 
     if (daysDiff !== 0) {
@@ -217,11 +223,12 @@ export async function rescheduleRevision(id: string, newDate: Date) {
       });
 
       for (const rev of futureRevisions) {
-        const newRevDate = new Date(rev.scheduledFor);
-        newRevDate.setDate(newRevDate.getDate() + daysDiff);
+        // addDays keeps the value a clean IST day label. `setDate` would
+        // read/write server-local components and corrupt the label on a
+        // non-UTC host.
         await prisma.revision.update({
           where: { id: rev.id },
-          data: { scheduledFor: newRevDate },
+          data: { scheduledFor: addDays(getISTMidnight(rev.scheduledFor), daysDiff) },
         });
       }
     }
@@ -290,8 +297,7 @@ export async function getUnverifiedBlocks() {
       orderBy: { date: 'desc' },
       select: { date: true },
     });
-    const fallbackDate = new Date(now);
-    fallbackDate.setDate(now.getDate() - 30);
+    const fallbackDate = addDays(getISTMidnight(now), -30);
     const startRange = getISTMidnight(lastDebrief?.date || fallbackDate);
 
     const todayMidnight = getISTMidnight(now);
@@ -412,28 +418,66 @@ export async function shiftOrOverwriteBlock(
   }
 }
 
+/**
+ * Marks every scheduled block in a date range as SKIPPED (the "vacation"
+ * flow on the planner page).
+ *
+ * Two bugs used to live here and both made this silently do nothing:
+ *   1. It compared `d.getDay()` (JS: 0 = Sunday) against
+ *      `TimeBlock.dayOfWeek`, which uses the app convention 0 = Monday.
+ *      Every DAILY-mode skip landed on the wrong weekday.
+ *   2. It never looked at MASTER-mode templates, which carry
+ *      `dayOfWeek: null`. MASTER is the default routine mode, so for most
+ *      workspaces this function created zero logs — you'd mark a vacation,
+ *      come back, and still get the full catch-up modal.
+ */
 export async function bulkPreSkip(startDate: Date, endDate: Date, remark: string) {
   const { userId, workspaceId } = await getSession();
   try {
     const startMidnight = getISTMidnight(startDate);
     const endMidnight = getISTMidnight(endDate);
 
-    const blocks = await prisma.timeBlock.findMany({
-      where: { workspaceId },
-    });
+    if (startMidnight > endMidnight) {
+      throw new Error('Start date must be on or before the end date');
+    }
 
-    const logsToCreate = [];
+    const [workspace, blocks] = await Promise.all([
+      prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { routineMode: true },
+      }),
+      prisma.timeBlock.findMany({ where: { workspaceId } }),
+    ]);
 
-    // Loop through each day in the range
-    for (let d = new Date(startMidnight); d <= endMidnight; d.setDate(d.getDate() + 1)) {
-      const dayOfWeek = d.getDay();
-      
+    const routineMode = workspace?.routineMode || 'MASTER';
+
+    const logsToCreate: Array<{
+      timeBlockId: string;
+      date: Date;
+      status: BlockStatus;
+      remark: string;
+    }> = [];
+
+    for (const day of eachISTDayInRange(startMidnight, endMidnight)) {
+      const dayOfWeek = getISTDayOfWeek(day); // 0 = Mon .. 6 = Sun
+
       for (const block of blocks) {
-        // If it's a recurring block for this day, or a specific date block for this day
-        if (block.dayOfWeek === dayOfWeek || (block.date && block.date.getTime() === d.getTime())) {
+        // A one-off block pinned to this specific date always counts,
+        // regardless of routine mode.
+        const isOneOffForThisDay = !!block.date && isSameISTDay(block.date, day);
+
+        // Recurring templates: MASTER blocks (dayOfWeek === null) apply to
+        // every day; DAILY blocks apply only to their weekday.
+        const isRecurringForThisDay =
+          !block.date &&
+          (routineMode === 'MASTER'
+            ? block.dayOfWeek === null
+            : block.dayOfWeek === dayOfWeek);
+
+        if (isOneOffForThisDay || isRecurringForThisDay) {
           logsToCreate.push({
             timeBlockId: block.id,
-            date: new Date(d),
+            date: day,
             status: 'SKIPPED' as BlockStatus,
             remark,
           });
@@ -448,9 +492,24 @@ export async function bulkPreSkip(startDate: Date, endDate: Date, remark: string
       });
     }
 
+    // Days inside the range may already have DailyScheduleSlot rows (today's
+    // slots are generated on every dashboard load, and backfill fills the
+    // past). BlockSessionLog alone doesn't suppress triage for those days —
+    // getUnverifiedBlocks reads the slots — so settle them here too. Only
+    // UPCOMING slots are touched, so an already-completed block is never
+    // clobbered by a later vacation entry.
+    const skippedSlots = await prisma.dailyScheduleSlot.updateMany({
+      where: {
+        workspaceId,
+        date: { gte: startMidnight, lte: endMidnight },
+        status: 'UPCOMING',
+      },
+      data: { status: 'SKIPPED', remark },
+    });
+
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/planner');
-    return logsToCreate.length;
+    return logsToCreate.length + skippedSlots.count;
   } catch (error) {
     console.error('Failed to bulk pre-skip:', error);
     throw new Error('Failed to bulk pre-skip');

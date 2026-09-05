@@ -25,16 +25,20 @@ export function timeAgo(date: Date | string): string {
 }
 
 /**
- * Returns a UTC Date object representing Midnight in IST (Indian Standard Time)
- * for the given date. This ensures consistent "start of day" regardless of
- * where the server is hosted (Vercel UTC vs Localhost IST).
+ * Date helpers live in `@/lib/date` — that module is the single source of
+ * truth for IST day handling. Re-exported here so existing
+ * `import { getISTMidnight } from '@/lib/utils'` call sites keep working.
+ *
+ * Prefer importing from '@/lib/date' in new code.
  */
-export function getISTMidnight(date: Date = new Date()): Date {
-  // IST is UTC + 5:30
-  const tzOffsetMs = 5.5 * 60 * 60 * 1000;
-  // Convert current time to IST
-  const istTime = new Date(date.getTime() + tzOffsetMs);
-  // Return UTC Midnight matching the IST year, month, date
-  return new Date(Date.UTC(istTime.getUTCFullYear(), istTime.getUTCMonth(), istTime.getUTCDate()));
-}
-
+export {
+  getISTMidnight,
+  getISTDayOfWeek,
+  addDays,
+  getISTEndOfDayLabel,
+  differenceInISTDays,
+  isSameISTDay,
+  toISTDateString,
+  fromISTDateString,
+  eachISTDayInRange,
+} from './date';

@@ -3,7 +3,12 @@
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { SlotStatus, BlockStatus } from '@prisma/client';
-import { getISTMidnight } from '@/lib/utils';
+import {
+  getISTMidnight,
+  getISTDayOfWeek,
+  addDays,
+  eachISTDayInRange,
+} from '@/lib/date';
 import { getSession } from '@/lib/auth';
 
 // ====================================================================
@@ -45,14 +50,10 @@ export async function backfillMissedDays(
   }
 
   // Calculate the day after the last slot date
-  const dayAfterLast = new Date(startFrom);
-  dayAfterLast.setDate(dayAfterLast.getDate() + 1);
-  const fillStart = getISTMidnight(dayAfterLast);
+  const fillStart = addDays(getISTMidnight(startFrom), 1);
 
   // We only backfill up to yesterday (today is handled by ensureTodaySlots)
-  const yesterdayDate = new Date(todayMidnight);
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const fillEnd = getISTMidnight(yesterdayDate);
+  const fillEnd = addDays(todayMidnight, -1);
 
   // Nothing to backfill
   if (fillStart > fillEnd) {
@@ -60,8 +61,7 @@ export async function backfillMissedDays(
   }
 
   // Cap at 30 days to prevent unbounded backfill
-  const maxBackfillDate = new Date(todayMidnight);
-  maxBackfillDate.setDate(maxBackfillDate.getDate() - 30);
+  const maxBackfillDate = addDays(todayMidnight, -30);
   const cappedStart = fillStart < maxBackfillDate ? maxBackfillDate : fillStart;
 
   // Fetch all templates once
@@ -104,10 +104,8 @@ export async function backfillMissedDays(
   let actualStart: Date | null = null;
   let actualEnd: Date | null = null;
 
-  for (let d = new Date(cappedStart); d <= fillEnd; d.setDate(d.getDate() + 1)) {
-    const dayMidnight = getISTMidnight(d);
-    const jsDay = d.getDay();
-    const mappedDay = jsDay === 0 ? 6 : jsDay - 1;
+  for (const dayMidnight of eachISTDayInRange(cappedStart, fillEnd)) {
+    const mappedDay = getISTDayOfWeek(dayMidnight); // 0 = Mon .. 6 = Sun
 
     // Pick correct templates based on routine mode
     const dayTemplates = routineMode === 'MASTER'
@@ -184,9 +182,12 @@ export async function ensureTodaySlots(
     return existingSlots;
   }
 
-  // No slots for today — generate from TimeBlock templates
-  const jsDay = new Date().getDay();
-  const mappedDay = jsDay === 0 ? 6 : jsDay - 1; // JS: 0=Sun, Our: 0=Mon...6=Sun
+  // No slots for today — generate from TimeBlock templates.
+  // Derive the weekday from the same IST day `todayMidnight` represents.
+  // Reading `new Date().getDay()` instead would disagree with todayMidnight
+  // on a UTC host after 18:30Z (already tomorrow in IST), generating the
+  // wrong weekday's blocks under today's date in DAILY mode.
+  const mappedDay = getISTDayOfWeek(todayMidnight); // 0 = Mon .. 6 = Sun
 
   const templates = await prisma.timeBlock.findMany({
     where: {
