@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, CheckCircle2, XCircle, Loader2, Battery, Target, Smile, MessageSquare } from 'lucide-react';
-import { saveMultiDayCatchUp } from '@/app/actions/debrief.actions';
+import { saveMultiDayCatchUp, getDebriefsForDates } from '@/app/actions/debrief.actions';
 import { toast } from 'sonner';
 
 interface MultiDayCatchUpModalProps {
@@ -68,21 +68,47 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
   const [slotUpdates, setSlotUpdates] = useState<Record<string, { sourceBlockId: string | null; status: SlotDecision; remark: string }>>({});
   const [showRemark, setShowRemark] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [resumedFromExisting, setResumedFromExisting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      const initialUpdates: Record<string, { sourceBlockId: string | null; status: SlotDecision; remark: string }> = {};
-      Object.values(blocksByDate).flat().forEach(block => {
-        initialUpdates[block.id] = { sourceBlockId: block.sourceBlockId, status: 'UNRESOLVED', remark: '' };
-      });
-      setSlotUpdates(initialUpdates);
-      setNarrative('');
-      setEnergy(null);
-      setFocus(null);
-      setMood(null);
-      setTags([]);
-      setShowRemark({});
-    }
+    if (!isOpen) return;
+
+    const initialUpdates: Record<string, { sourceBlockId: string | null; status: SlotDecision; remark: string }> = {};
+    Object.values(blocksByDate).flat().forEach(block => {
+      initialUpdates[block.id] = { sourceBlockId: block.sourceBlockId, status: 'UNRESOLVED', remark: '' };
+    });
+    setSlotUpdates(initialUpdates);
+    setNarrative('');
+    setEnergy(null);
+    setFocus(null);
+    setMood(null);
+    setTags([]);
+    setShowRemark({});
+    setResumedFromExisting(false);
+
+    // This modal can reopen for a gap that was already partially closed —
+    // a shared context was saved but some blocks were left unresolved (see
+    // saveMultiDayCatchUp). Prefill from whatever was saved instead of
+    // asking the user to retype energy/focus/mood/narrative they already
+    // gave; only the still-unresolved blocks actually need attention.
+    const dates = Object.keys(blocksByDate).sort();
+    if (dates.length === 0) return;
+
+    let cancelled = false;
+    getDebriefsForDates(dates).then(res => {
+      if (cancelled || !res.success) return;
+      const existing = Object.values(res.debriefs ?? {})[0];
+      if (!existing) return;
+
+      setEnergy(existing.energy);
+      setFocus(existing.focus);
+      setMood(existing.mood);
+      setTags(existing.tags || []);
+      setNarrative(existing.narrative || '');
+      setResumedFromExisting(true);
+    });
+
+    return () => { cancelled = true; };
   }, [isOpen, blocksByDate]);
 
   const dates = Object.keys(blocksByDate).sort();
@@ -174,6 +200,11 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
                 </h2>
                 {dateRangeText && (
                   <p className="text-sm text-muted-foreground mt-1 ml-8">{dateRangeText}</p>
+                )}
+                {resumedFromExisting && (
+                  <p className="text-xs text-accent mt-1.5 ml-8">
+                    Resumed from what you already saved — just finish the blocks below.
+                  </p>
                 )}
               </div>
             </div>

@@ -323,15 +323,18 @@ export async function getUnverifiedBlocks() {
   try {
     const now = new Date();
 
-    // Dynamic lookback: start from the last debrief date, fallback to 30 days ago
-    const lastDebrief = await prisma.dayDebrief.findFirst({
-      where: { workspaceId },
-      orderBy: { date: 'desc' },
-      select: { date: true },
-    });
-    const fallbackDate = addDays(getISTMidnight(now), -30);
-    const startRange = getISTMidnight(lastDebrief?.date || fallbackDate);
-
+    // Fixed 30-day lookback (matches backfillMissedDays' cap).
+    //
+    // This used to start from the most recent DayDebrief's date instead,
+    // on the assumption that a saved debrief means that day is fully
+    // resolved. That broke once MultiDayCatchUpModal could legitimately
+    // leave individual blocks UNRESOLVED (a user can give the shared
+    // narrative/energy/mood for a gap without marking every block): the
+    // most recent debrief date then became the search floor, silently
+    // hiding any earlier day's still-unresolved blocks from triage
+    // forever. Resolution status lives on the slot, not the debrief —
+    // never infer one from the other.
+    const startRange = addDays(getISTMidnight(now), -30);
     const todayMidnight = getISTMidnight(now);
 
     const unverifiedSlots = await prisma.dailyScheduleSlot.findMany({

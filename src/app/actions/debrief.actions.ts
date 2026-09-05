@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { startOfDay } from 'date-fns';
-import { getISTMidnight, fromISTDateString } from '@/lib/date';
+import { getISTMidnight, fromISTDateString, toISTDateString } from '@/lib/date';
 import { getSession } from '@/lib/auth';
 import { SlotStatus, BlockStatus } from '@prisma/client';
 
@@ -307,5 +307,35 @@ export async function saveMultiDayCatchUp(input: {
   } catch (error) {
     console.error('Failed to save multi-day catch-up:', error);
     return { success: false, error: 'Failed to save catch-up' };
+  }
+}
+
+// ====================================================================
+// LOOKUP: EXISTING DEBRIEFS FOR A SET OF DATES
+// ====================================================================
+
+/**
+ * Returns any DayDebrief rows already saved for the given 'YYYY-MM-DD'
+ * dates, keyed by date string.
+ *
+ * Used by MultiDayCatchUpModal so reopening for a gap that already has
+ * partial context (shared energy/focus/mood/narrative saved, but some
+ * blocks left unresolved) prefills that context instead of asking the
+ * user to retype it. Re-entering data you already gave is exactly the
+ * "more inputs" friction this flow exists to avoid.
+ */
+export async function getDebriefsForDates(dates: string[]) {
+  const { workspaceId } = await getSession();
+  try {
+    const normalized = dates.map(fromISTDateString);
+    const debriefs = await prisma.dayDebrief.findMany({
+      where: { workspaceId, date: { in: normalized } },
+    });
+    const byDate: Record<string, typeof debriefs[number]> = {};
+    for (const d of debriefs) byDate[toISTDateString(d.date)] = d;
+    return { success: true, debriefs: byDate };
+  } catch (error) {
+    console.error('Failed to get debriefs for dates:', error);
+    return { success: false, error: 'Failed to fetch debriefs' };
   }
 }
