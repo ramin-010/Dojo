@@ -481,10 +481,10 @@ const NoteBlock = ({
       try {
         if (draftAttachments && draftAttachments.length > 0) {
           onUpdate(note.id, localContent, draftAttachments, categoryToSave);
-          await createQuickNoteWithAttachments(note.id, workspaceId, localContent, draftAttachments, categoryToSave);
+          await createQuickNoteWithAttachments(note.id, localContent, draftAttachments, categoryToSave);
         } else {
           onUpdate(note.id, localContent, undefined, categoryToSave);
-          await upsertQuickNote(note.id, localContent, workspaceId, undefined, categoryToSave);
+          await upsertQuickNote(note.id, localContent, undefined, categoryToSave);
         }
         setLocalContent('');
         onEnterPress();
@@ -524,7 +524,7 @@ const NoteBlock = ({
     if (localContent !== originalContent) {
       setIsSubmitting(true);
       try {
-        await upsertQuickNote(note.id, localContent, workspaceId, undefined, note.category || activeCategory || 'PRIMARY');
+        await upsertQuickNote(note.id, localContent, undefined, note.category || activeCategory || 'PRIMARY');
         setOriginalContent(localContent);
       } catch (err) {
         console.error(err);

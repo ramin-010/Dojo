@@ -57,7 +57,46 @@ export async function createTopic(subjectId: string, title: string) {
 }
 
 /** Fetch a single topic with its full canvas data */
+/**
+ * Ownership guards for this module.
+ *
+ * Every exported function here is a server action, i.e. a public HTTP
+ * endpoint whose arguments the caller controls. A bare `where: { id }` on a
+ * topic, subject or capture id would therefore read or mutate another
+ * workspace's data. Rather than rewriting every query, each entry point
+ * resolves its ids within the session's workspace first and throws if they
+ * are not ours; the queries below then operate on ids already proven owned.
+ */
+async function requireTopic(topicId: string, workspaceId: string) {
+  const topic = await prisma.topic.findFirst({
+    where: { id: topicId, subject: { workspaceId } },
+    select: { id: true, subjectId: true },
+  });
+  if (!topic) throw new Error('Topic not found');
+  return topic;
+}
+
+async function requireSubject(subjectId: string, workspaceId: string) {
+  const subject = await prisma.subject.findFirst({
+    where: { id: subjectId, workspaceId },
+    select: { id: true },
+  });
+  if (!subject) throw new Error('Subject not found');
+  return subject;
+}
+
+async function requireCaptureOwned(captureId: string, workspaceId: string) {
+  const capture = await prisma.capture.findFirst({
+    where: { id: captureId, workspaceId },
+    select: { id: true },
+  });
+  if (!capture) throw new Error('Capture not found');
+  return capture;
+}
+
 export async function getTopicById(topicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   const topic = await prisma.topic.findUnique({
     where: { id: topicId },
     include: {
@@ -114,6 +153,8 @@ export async function getTopicById(topicId: string) {
 
 /** Fetch only link captures for a topic */
 export async function getTopicLinks(topicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   const local = await prisma.capture.findMany({
     where: { topicId },
     include: {
@@ -149,6 +190,9 @@ export async function saveCanvasData(
   canvasData: object,
   extractedMentions?: string[]
 ) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
+
   // 1. Update the canvas JSON
   console.log(`[saveCanvasData] Saving canvas for topic ${topicId}. Payload size:`, JSON.stringify(canvasData).length);
   await prisma.topic.update({
@@ -196,6 +240,9 @@ export async function updateTopic(
   topicId: string,
   data: { title?: string; tags?: string[] }
 ) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
+
   // Fetch subjectId to scope the tags
   const topicContext = await prisma.topic.findUnique({
     where: { id: topicId },
@@ -337,6 +384,18 @@ export async function reorderTopics(
   subjectId: string,
   topicIds: string[]
 ) {
+  const { workspaceId } = await getSession();
+  await requireSubject(subjectId, workspaceId);
+
+  // Only reorder topics that actually belong to this subject; a foreign id
+  // in the array would otherwise have its sortOrder rewritten.
+  const owned = await prisma.topic.findMany({
+    where: { id: { in: topicIds }, subjectId },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map(t => t.id));
+  topicIds = topicIds.filter(id => ownedIds.has(id));
+
   await prisma.$transaction(
     topicIds.map((id, index) =>
       prisma.topic.update({
@@ -352,6 +411,8 @@ export async function reorderTopics(
 
 /** Get the previous and next topics for navigation */
 export async function getAdjacentTopics(subjectId: string, currentTopicId: string) {
+  const { workspaceId } = await getSession();
+  await requireSubject(subjectId, workspaceId);
   const allTopics = await prisma.topic.findMany({
     where: { subjectId },
     orderBy: [
@@ -375,17 +436,16 @@ export async function getAdjacentTopics(subjectId: string, currentTopicId: strin
 
 /** Permanently delete a capture from DB and Cloudinary */
 export async function deleteCapturePermanently(idOrUrl: string) {
-  // 1. Find the capture (by ID or exact URL)
+  const { workspaceId } = await getSession();
+
+  // 1. Find the capture (by ID or exact URL), scoped to this workspace
   const isUrl = idOrUrl.startsWith('http');
-  const capture = isUrl 
-    ? await prisma.capture.findFirst({
-        where: { url: idOrUrl, type: 'LINK' },
-        select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
-      })
-    : await prisma.capture.findUnique({
-        where: { id: idOrUrl },
-        select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
-      });
+  const capture = await prisma.capture.findFirst({
+    where: isUrl
+      ? { url: idOrUrl, type: 'LINK', workspaceId }
+      : { id: idOrUrl, workspaceId },
+    select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
+  });
 
   if (!capture) return { success: false, error: 'Capture not found' };
 
@@ -431,8 +491,9 @@ export async function deleteCapturePermanently(idOrUrl: string) {
 
 /** Permanently delete multiple captures */
 export async function deleteMultipleCapturesPermanently(ids: string[]) {
+  const { workspaceId } = await getSession();
   const captures = await prisma.capture.findMany({
-    where: { id: { in: ids } },
+    where: { id: { in: ids }, workspaceId },
     select: { id: true, cloudPublicId: true, subjectId: true, topicId: true, attachments: { select: { cloudPublicId: true } } }
   });
 
@@ -461,7 +522,7 @@ export async function deleteMultipleCapturesPermanently(ids: string[]) {
 
   try {
     await prisma.capture.deleteMany({
-      where: { id: { in: ids } }
+      where: { id: { in: captures.map(c => c.id) } }
     });
     
     if (captures[0].topicId) revalidatePath(`/topic/${captures[0].topicId}`);
@@ -475,6 +536,8 @@ export async function deleteMultipleCapturesPermanently(ids: string[]) {
 
 /** Rename a capture */
 export async function renameCapture(id: string, newTitle: string) {
+  const { workspaceId } = await getSession();
+  await requireCaptureOwned(id, workspaceId);
   const capture = await prisma.capture.update({
     where: { id },
     data: { title: newTitle }
@@ -486,6 +549,9 @@ export async function renameCapture(id: string, newTitle: string) {
 
 /** Instantly create a TopicMention record */
 export async function addTopicMention(sourceTopicId: string, targetTopicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(sourceTopicId, workspaceId);
+  await requireTopic(targetTopicId, workspaceId);
   if (sourceTopicId === targetTopicId) {
     return { success: false, error: 'Cannot link a topic to itself' };
   }
@@ -512,10 +578,13 @@ export async function addTopicMention(sourceTopicId: string, targetTopicId: stri
 
 /** Permanently delete a TopicMention record */
 export async function deleteTopicMention(id: string) {
+  const { workspaceId } = await getSession();
   try {
-    const mention = await prisma.topicMention.delete({
-      where: { id }
+    const mention = await prisma.topicMention.findFirst({
+      where: { id, sourceTopic: { subject: { workspaceId } } },
     });
+    if (!mention) throw new Error('Mention not found');
+    await prisma.topicMention.delete({ where: { id: mention.id } });
     revalidatePath(`/topic/${mention.sourceTopicId}`);
     revalidatePath(`/topic/${mention.targetTopicId}`);
     return { success: true };
@@ -527,8 +596,10 @@ export async function deleteTopicMention(id: string) {
 
 /** Search topics within a specific subject */
 export async function searchTopicsInSubject(subjectId: string, query: string, excludeTopicId?: string) {
+  const { workspaceId } = await getSession();
   return await prisma.topic.findMany({
     where: {
+      subject: { workspaceId },
       subjectId,
       id: excludeTopicId ? { not: excludeTopicId } : undefined,
       title: { contains: query, mode: 'insensitive' }
@@ -541,8 +612,10 @@ export async function searchTopicsInSubject(subjectId: string, query: string, ex
 
 /** Search all subjects */
 export async function searchAllSubjects(query: string) {
+  const { workspaceId } = await getSession();
   return await prisma.subject.findMany({
     where: {
+      workspaceId,
       name: { contains: query, mode: 'insensitive' }
     },
     select: { id: true, name: true, color: true },
@@ -553,7 +626,9 @@ export async function searchAllSubjects(query: string) {
 
 /** Fetch all subjects for the dropdown */
 export async function getAllSubjectsForMention() {
+  const { workspaceId } = await getSession();
   return await prisma.subject.findMany({
+    where: { workspaceId },
     select: { id: true, name: true, color: true },
     orderBy: { lastActiveAt: 'desc' }
   });
@@ -561,9 +636,11 @@ export async function getAllSubjectsForMention() {
 
 /** Fetch all topics for a specific subject for the dropdown */
 export async function getAllTopicsInSubjectForMention(subjectId: string, excludeTopicId?: string) {
+  const { workspaceId } = await getSession();
   return await prisma.topic.findMany({
     where: { 
       subjectId,
+      subject: { workspaceId },
       id: excludeTopicId ? { not: excludeTopicId } : undefined
     },
     select: { id: true, title: true, subjectId: true, subject: { select: { name: true } } },
@@ -573,6 +650,9 @@ export async function getAllTopicsInSubjectForMention(subjectId: string, exclude
 
 /** Move topic to a different subject */
 export async function moveTopicToSubject(topicId: string, newSubjectId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
+  await requireSubject(newSubjectId, workspaceId);
   await prisma.topic.update({
     where: { id: topicId },
     data: { subjectId: newSubjectId }
@@ -582,6 +662,8 @@ export async function moveTopicToSubject(topicId: string, newSubjectId: string) 
 
 /** Archive a topic */
 export async function archiveTopic(topicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   await prisma.topic.update({
     where: { id: topicId },
     data: { isArchived: true }
@@ -591,6 +673,8 @@ export async function archiveTopic(topicId: string) {
 
 /** Unarchive a topic */
 export async function unarchiveTopic(topicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   await prisma.topic.update({
     where: { id: topicId },
     data: { isArchived: false }
@@ -600,6 +684,8 @@ export async function unarchiveTopic(topicId: string) {
 
 /** Duplicate a topic */
 export async function duplicateTopic(topicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   const original = await prisma.topic.findUnique({
     where: { id: topicId },
     include: { captures: true }
@@ -639,6 +725,8 @@ export async function duplicateTopic(topicId: string) {
 }
  
 export async function getTopicPinnedCaptures(topicId: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   const links = await prisma.topicCaptureLink.findMany({
     where: { topicId },
     include: {
@@ -661,6 +749,8 @@ export async function getTopicPinnedCaptures(topicId: string) {
 }
 
 export async function searchGlobalCaptures(topicId: string, query: string) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
   if (!query.trim()) return [];
   const topic = await prisma.topic.findUnique({ where: { id: topicId }, include: { subject: true } });
   if (!topic) return [];
@@ -682,6 +772,9 @@ export async function searchGlobalCaptures(topicId: string, query: string) {
 }
 
 export async function toggleTopicCapturePin(topicId: string, captureId: string, pin: boolean) {
+  const { workspaceId } = await getSession();
+  await requireTopic(topicId, workspaceId);
+  await requireCaptureOwned(captureId, workspaceId);
   if (pin) {
     await prisma.topicCaptureLink.upsert({
       where: {

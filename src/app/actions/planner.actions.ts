@@ -168,6 +168,7 @@ export async function getTasksAndRevisionsForMonth(year: number, month: number) 
   }
 }
 export async function toggleRevision(id: string, isDone: boolean) {
+  const { workspaceId } = await getSession();
   try {
     if (isDone) {
       // Route through the proper pipeline to update streaks and logs
@@ -177,11 +178,27 @@ export async function toggleRevision(id: string, isDone: boolean) {
       return revision;
     } else {
       // For now, simply revert the status if untoggled (does not cleanly undo streak)
-      const revision = await prisma.revision.update({
-        where: { id },
+      // updateMany with the ownership filter: a foreign id becomes a no-op.
+      await prisma.revision.updateMany({
+        where: {
+          id,
+          OR: [
+            { topic: { subject: { workspaceId } } },
+            { capture: { workspaceId } },
+          ],
+        },
         data: {
           status: 'pending',
           completedAt: null,
+        },
+      });
+      const revision = await prisma.revision.findFirst({
+        where: {
+          id,
+          OR: [
+            { topic: { subject: { workspaceId } } },
+            { capture: { workspaceId } },
+          ],
         },
       });
       revalidatePath('/dashboard/planner');
@@ -195,9 +212,16 @@ export async function toggleRevision(id: string, isDone: boolean) {
 }
 
 export async function rescheduleRevision(id: string, newDate: Date) {
+  const { workspaceId } = await getSession();
   try {
-    const current = await prisma.revision.findUnique({
-      where: { id },
+    const current = await prisma.revision.findFirst({
+      where: {
+        id,
+        OR: [
+          { topic: { subject: { workspaceId } } },
+          { capture: { workspaceId } },
+        ],
+      },
     });
     if (!current) throw new Error('Revision not found');
 
@@ -253,8 +277,16 @@ export async function logSession(
   remark?: string,
   minutesDone?: number
 ) {
+  const { workspaceId } = await getSession();
   try {
     const targetMidnight = getISTMidnight(date);
+
+    // Confirm the block is ours before writing a log row against it.
+    const block = await prisma.timeBlock.findFirst({
+      where: { id: timeBlockId, workspaceId },
+      select: { id: true },
+    });
+    if (!block) throw new Error('Time block not found');
 
     const log = await prisma.blockSessionLog.upsert({
       where: {

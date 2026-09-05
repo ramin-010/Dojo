@@ -42,6 +42,10 @@ async function uploadFileToCloudinary(file: File): Promise<UploadApiResponse> {
 
 export async function createCaptureWithFiles(formData: FormData) {
   try {
+    // Authenticate before uploading: createCapture checks the session, but the
+    // Cloudinary uploads below happen first and cost money.
+    await getSession();
+
     const dataString = formData.get('data') as string;
     const data = JSON.parse(dataString);
     if (data.explicitDate) {
@@ -144,7 +148,8 @@ export async function createCapture(data: {
 
     const savedItem = await prisma.capture.create({
       data: {
-        workspaceId: data.workspaceId || workspaceId,
+        // Always the session's workspace; `data.workspaceId` is client input.
+        workspaceId,
         subjectId: resolvedSubjectId,
         topicId: data.topicId || null,
         type: typeEnum,
@@ -257,8 +262,33 @@ export async function getCaptures(filters: {
   }
 }
 
+/**
+ * Ownership guards. Every `id` below arrives from the client, so a bare
+ * `where: { id }` would read or mutate another workspace's row. These resolve
+ * the row within the session's workspace and throw if it isn't ours.
+ */
+async function requireCapture(id: string, workspaceId: string) {
+  const capture = await prisma.capture.findFirst({
+    where: { id, workspaceId },
+    select: { id: true },
+  });
+  if (!capture) throw new Error('Capture not found');
+  return capture;
+}
+
+async function requireReminder(id: string, workspaceId: string) {
+  const reminder = await prisma.reminder.findFirst({
+    where: { id, capture: { workspaceId } },
+    select: { id: true },
+  });
+  if (!reminder) throw new Error('Reminder not found');
+  return reminder;
+}
+
 export async function togglePinCapture(id: string, isPinned: boolean) {
   try {
+    const { workspaceId } = await getSession();
+    await requireCapture(id, workspaceId);
     const item = await prisma.capture.update({
       where: { id },
       data: { isPinned },
@@ -277,6 +307,7 @@ export async function togglePinCapture(id: string, isPinned: boolean) {
 export async function toggleTaskStatus(id: string, isDone: boolean) {
   const { userId, workspaceId } = await getSession();
   try {
+    await requireCapture(id, workspaceId);
     const item = await prisma.capture.update({
       where: { id },
       data: { 
@@ -311,6 +342,8 @@ export async function toggleTaskStatus(id: string, isDone: boolean) {
 
 export async function toggleReminder(id: string, isDismissed: boolean) {
   try {
+    const { workspaceId } = await getSession();
+    await requireReminder(id, workspaceId);
     const item = await prisma.reminder.update({
       where: { id },
       data: { isDismissed },
@@ -327,6 +360,8 @@ export async function toggleReminder(id: string, isDismissed: boolean) {
 
 export async function rescheduleReminder(id: string, remindAt: Date) {
   try {
+    const { workspaceId } = await getSession();
+    await requireReminder(id, workspaceId);
     const item = await prisma.reminder.update({
       where: { id },
       data: { remindAt },
@@ -343,6 +378,8 @@ export async function rescheduleReminder(id: string, remindAt: Date) {
 
 export async function updateCapture(id: string, data: { dueDate?: Date | null; title?: string | null; content?: string | null }) {
   try {
+    const { workspaceId } = await getSession();
+    await requireCapture(id, workspaceId);
     const item = await prisma.capture.update({
       where: { id },
       data,
@@ -357,8 +394,9 @@ export async function updateCapture(id: string, data: { dueDate?: Date | null; t
 
 export async function deleteCapture(id: string) {
   try {
-    const capture = await prisma.capture.findUnique({
-      where: { id },
+    const { workspaceId } = await getSession();
+    const capture = await prisma.capture.findFirst({
+      where: { id, workspaceId },
       include: { attachments: true }
     });
 
@@ -403,6 +441,8 @@ export async function deleteCapture(id: string) {
 
 export async function renameCapture(id: string, title: string) {
   try {
+    const { workspaceId } = await getSession();
+    await requireCapture(id, workspaceId);
     const item = await prisma.capture.update({
       where: { id },
       data: { title },
@@ -462,6 +502,9 @@ export async function generateCaptureAI(
   availableCategories: string[] = []
 ) {
   try {
+    // Gate the paid model call behind auth.
+    await getSession();
+
     if (!prompt || prompt.trim() === '') {
       return { error: 'Prompt is required.' };
     }
@@ -528,6 +571,8 @@ export async function getUnresolvedWeeklyGoals() {
 
 export async function shiftWeeklyGoal(captureId: string, target: 'THIS_WEEK' | 'MONTHLY') {
   try {
+    const { workspaceId } = await getSession();
+    await requireCapture(captureId, workspaceId);
     const now = new Date();
     let newDueDate: Date;
     let newGoalType: 'WEEKLY' | 'MONTHLY';

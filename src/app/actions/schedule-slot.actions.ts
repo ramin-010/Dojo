@@ -21,9 +21,9 @@ import { getSession } from '@/lib/auth';
  * Returns info about the gap so the UI can decide which triage modal to show.
  */
 export async function backfillMissedDays(
-  workspaceId: string,
   routineMode: 'MASTER' | 'DAILY'
 ): Promise<{ backfilledDays: number; startDate: Date | null; endDate: Date | null }> {
+  const { workspaceId } = await getSession();
   const todayMidnight = getISTMidnight();
 
   // Find the most recent date that already has slots
@@ -166,10 +166,8 @@ export async function backfillMissedDays(
  * Auto-generates DailyScheduleSlot rows for today if they don't exist.
  * Returns all slots for today, ordered by sortOrder.
  */
-export async function ensureTodaySlots(
-  workspaceId: string,
-  routineMode: 'MASTER' | 'DAILY'
-) {
+export async function ensureTodaySlots(routineMode: 'MASTER' | 'DAILY') {
+  const { workspaceId } = await getSession();
   const todayMidnight = getISTMidnight();
 
   // Check if slots already exist for today
@@ -258,13 +256,16 @@ export async function ensureTodaySlots(
 
 export async function triageSlot(slotId: string, status: 'COMPLETED' | 'SKIPPED', remark: string) {
   try {
-    const slot = await prisma.dailyScheduleSlot.findUnique({
-      where: { id: slotId },
+    const { workspaceId } = await getSession();
+    // Scope the lookup: a bare findUnique on a client-supplied id would let a
+    // caller triage another workspace's slot.
+    const slot = await prisma.dailyScheduleSlot.findFirst({
+      where: { id: slotId, workspaceId },
     });
     if (!slot) throw new Error('Slot not found');
 
     await prisma.dailyScheduleSlot.update({
-      where: { id: slotId },
+      where: { id: slot.id },
       data: {
         status,
         remark,
@@ -330,6 +331,12 @@ export async function updateDaySchedule(updates: DayManagerSlotUpdate[]) {
     const updateIds = updates.filter(u => !u.id.startsWith('new-')).map(u => u.id);
     const slotsToDelete = existingSlots.filter(s => !updateIds.includes(s.id));
 
+    // existingSlots is already scoped to this workspace and today. Anything
+    // the client sent that is not in that set is a foreign or stale id and is
+    // dropped rather than written.
+    const ownedIds = new Set(existingSlots.map(s => s.id));
+    const safeUpdates = updates.filter(u => u.id.startsWith('new-') || ownedIds.has(u.id));
+
     await prisma.$transaction(async (tx) => {
       // Delete removed slots
       if (slotsToDelete.length > 0) {
@@ -339,7 +346,7 @@ export async function updateDaySchedule(updates: DayManagerSlotUpdate[]) {
       }
 
       // Upsert updates
-      for (const update of updates) {
+      for (const update of safeUpdates) {
         if (update.id.startsWith('new-')) {
           await tx.dailyScheduleSlot.create({
             data: {

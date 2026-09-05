@@ -149,8 +149,8 @@ export default async function DashboardPage() {
 
   // ── Phase 2: Dependent writes (need the workspace result) ─────────────
   const routineMode = workspace?.routineMode || 'MASTER';
-  const backfillResult = await backfillMissedDays(workspaceId, routineMode);
-  const todaySlots = await ensureTodaySlots(workspaceId, routineMode);
+  const backfillResult = await backfillMissedDays(routineMode);
+  const todaySlots = await ensureTodaySlots(routineMode);
 
   // ── Phase 2b: MUST run after backfillMissedDays ───────────────────────
   // backfillMissedDays() creates the DailyScheduleSlot rows for days the

@@ -44,8 +44,9 @@ export async function createHabit(name: string, icon?: string, color?: string) {
 
 export async function logHabit(habitId: string) {
   try {
-    const habit = await prisma.habit.findUnique({
-      where: { id: habitId }
+    const { workspaceId } = await getSession();
+    const habit = await prisma.habit.findFirst({
+      where: { id: habitId, workspaceId }
     });
 
     if (!habit) return { error: 'Habit not found' };

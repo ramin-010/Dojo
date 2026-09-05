@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { triggerQuickNoteSync } from '@/lib/pusher';
 import { v2 as cloudinary } from 'cloudinary';
+import { getSession } from '@/lib/auth';
 
 // Configure cloudinary for the server action
 cloudinary.config({
@@ -18,7 +19,27 @@ type AttachmentInput = {
   fileType: string;
 };
 
-export async function getQuickNotes(workspaceId: string) {
+/**
+ * Server actions are public HTTP endpoints: any argument is attacker
+ * controlled. workspaceId is therefore always derived from the session and
+ * never accepted as a parameter, and every query is scoped by it.
+ *
+ * `id` arguments still need an explicit ownership check, because a bare
+ * `where: { id }` would happily read or mutate another workspace's row.
+ */
+async function assertNoteInWorkspace(id: string, workspaceId: string) {
+  const existing = await prisma.quickNote.findUnique({
+    where: { id },
+    select: { id: true, workspaceId: true },
+  });
+  if (existing && existing.workspaceId !== workspaceId) {
+    throw new Error('Not found');
+  }
+  return existing;
+}
+
+export async function getQuickNotes() {
+  const { workspaceId } = await getSession();
   const notes = await prisma.quickNote.findMany({
     where: { workspaceId },
     orderBy: { createdAt: 'asc' },
@@ -29,12 +50,17 @@ export async function getQuickNotes(workspaceId: string) {
 export async function upsertQuickNote(
   id: string,
   content: string,
-  workspaceId: string,
   attachments?: AttachmentInput[] | null,
   category: 'PRIMARY' | 'TEMPORARY' = 'PRIMARY'
 ) {
+  const { workspaceId } = await getSession();
+
   // Never save or sync empty notes
   if (content.trim() === '' && (!attachments || attachments.length === 0)) return null;
+
+  // Upserting on `id` alone would let a caller overwrite a note in another
+  // workspace by guessing its id.
+  await assertNoteInWorkspace(id, workspaceId);
 
   const updateData: Record<string, unknown> = { content, category };
   const createData: Record<string, unknown> = { id, content, workspaceId, category };
@@ -71,11 +97,13 @@ export async function upsertQuickNote(
 
 export async function createQuickNoteWithAttachments(
   id: string,
-  workspaceId: string,
   content: string,
   attachments: AttachmentInput[],
   category: 'PRIMARY' | 'TEMPORARY' = 'PRIMARY'
 ) {
+  const { workspaceId } = await getSession();
+  await assertNoteInWorkspace(id, workspaceId);
+
   const note = await prisma.quickNote.upsert({
     where: { id },
     create: {
@@ -106,7 +134,8 @@ export async function createQuickNoteWithAttachments(
 }
 
 export async function deleteQuickNote(id: string) {
-  const note = await prisma.quickNote.findUnique({ where: { id } });
+  const { workspaceId } = await getSession();
+  const note = await prisma.quickNote.findFirst({ where: { id, workspaceId } });
   if (note) {
     // Delete attachments from Cloudinary if they exist
     if (note.attachments && Array.isArray(note.attachments)) {
@@ -131,7 +160,8 @@ export async function deleteQuickNote(id: string) {
 }
 
 export async function toggleQuickNotePin(id: string) {
-  const note = await prisma.quickNote.findUnique({ where: { id } });
+  const { workspaceId } = await getSession();
+  const note = await prisma.quickNote.findFirst({ where: { id, workspaceId } });
   if (!note) return null;
 
   const updated = await prisma.quickNote.update({

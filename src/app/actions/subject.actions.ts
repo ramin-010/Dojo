@@ -29,8 +29,9 @@ export async function getSubjectsWithTopics() {
 
 /** Fetch a single subject with full details for the profile page */
 export async function getSubjectById(subjectId: string) {
-  const subject = await prisma.subject.findUnique({
-    where: { id: subjectId },
+  const { workspaceId } = await getSession();
+  const subject = await prisma.subject.findFirst({
+    where: { id: subjectId, workspaceId },
     include: {
       topics: {
         select: {
@@ -112,9 +113,15 @@ export async function updateSubject(
   subjectId: string,
   data: { name?: string; description?: string; color?: string; icon?: string }
 ) {
-  const subject = await prisma.subject.update({
-    where: { id: subjectId },
+  const { workspaceId } = await getSession();
+  // updateMany applies the workspace filter; a foreign id becomes a no-op.
+  const { count } = await prisma.subject.updateMany({
+    where: { id: subjectId, workspaceId },
     data,
+  });
+  if (count === 0) throw new Error('Subject not found');
+  const subject = await prisma.subject.findFirst({
+    where: { id: subjectId, workspaceId },
   });
 
   revalidatePath(`/subject/${subjectId}`);

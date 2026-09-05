@@ -61,8 +61,17 @@ export async function startTopicRevisions(topicId: string) {
 /** Complete a revision cycle and calculate cascading shifts */
 export async function completeRevision(revisionId: string) {
   const { userId, workspaceId } = await getSession();
-  const revision = await prisma.revision.findUnique({
-    where: { id: revisionId },
+  // Scope by workspace: a revision belongs to us via either its topic's
+  // subject or its capture. findUnique on the bare id would complete another
+  // workspace's revision (and move its schedule).
+  const revision = await prisma.revision.findFirst({
+    where: {
+      id: revisionId,
+      OR: [
+        { topic: { subject: { workspaceId } } },
+        { capture: { workspaceId } },
+      ],
+    },
     include: {
       topic: { select: { subjectId: true, title: true } },
       capture: { select: { subjectId: true, title: true, content: true } }

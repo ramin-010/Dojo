@@ -63,9 +63,9 @@ export async function POST(request: Request) {
     
     if (content || attachments.length > 0) {
       if (attachments.length > 0) {
-        await createQuickNoteWithAttachments(noteId, session.workspaceId, content, attachments, 'PRIMARY');
+        await createQuickNoteWithAttachments(noteId, content, attachments, 'PRIMARY');
       } else {
-        await upsertQuickNote(noteId, content, session.workspaceId, undefined, 'PRIMARY');
+        await upsertQuickNote(noteId, content, undefined, 'PRIMARY');
       }
     }
 

@@ -6,8 +6,9 @@ import { getSession } from '@/lib/auth';
 
 /** Get recent activity for a subject */
 export async function getRecentActivity(subjectId: string, limit = 5) {
+  const { userId } = await getSession();
   const activities = await prisma.activityLog.findMany({
-    where: { subjectId },
+    where: { subjectId, userId },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });

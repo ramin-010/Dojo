@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { startOfDay } from 'date-fns';
 import { getISTMidnight, fromISTDateString } from '@/lib/date';
+import { getSession } from '@/lib/auth';
 import { SlotStatus, BlockStatus } from '@prisma/client';
 
 export interface SlotLogInput {
@@ -18,7 +19,12 @@ export interface SlotLogInput {
 
 export interface SaveDebriefInput {
   id?: string;
-  workspaceId: string;
+  /**
+   * Accepted for backwards compatibility with existing callers but IGNORED —
+   * the workspace is taken from the session. A client-supplied workspaceId on
+   * a server action is attacker controlled.
+   */
+  workspaceId?: string;
   date: Date;
   
   // Layer 1
@@ -42,7 +48,8 @@ export interface SaveDebriefInput {
   slotLogs?: SlotLogInput[];
 }
 
-export async function getDebriefForDate(workspaceId: string, date: Date) {
+export async function getDebriefForDate(_ignoredWorkspaceId: string | null, date: Date) {
+  const { workspaceId } = await getSession();
   const normalizedDate = getISTMidnight(new Date(date));
   
   try {
@@ -62,20 +69,21 @@ export async function getDebriefForDate(workspaceId: string, date: Date) {
 }
 
 export async function saveDebrief(data: SaveDebriefInput) {
+  const { workspaceId } = await getSession();
   const normalizedDate = getISTMidnight(new Date(data.date));
-  
+
   try {
     const debrief = await prisma.$transaction(async (tx) => {
       // 1. Save Debrief
       const debriefResult = await tx.dayDebrief.upsert({
         where: {
           workspaceId_date: {
-            workspaceId: data.workspaceId,
+            workspaceId,
             date: normalizedDate,
           },
         },
         create: {
-          workspaceId: data.workspaceId,
+          workspaceId,
           date: normalizedDate,
           blocksPlanned: data.blocksPlanned,
           blocksCompleted: data.blocksCompleted,
@@ -106,10 +114,11 @@ export async function saveDebrief(data: SaveDebriefInput) {
 
       // 2. Process bulk slot logs
       if (data.slotLogs && data.slotLogs.length > 0) {
+        // Slot ids come from the client. updateMany with a workspace filter
+        // makes a foreign id a no-op instead of a cross-tenant write.
         for (const log of data.slotLogs) {
-          // Update the schedule slot
-          await tx.dailyScheduleSlot.update({
-            where: { id: log.slotId },
+          await tx.dailyScheduleSlot.updateMany({
+            where: { id: log.slotId, workspaceId },
             data: {
               status: log.status,
               remark: log.remark,
@@ -163,7 +172,8 @@ export async function saveDebrief(data: SaveDebriefInput) {
 // ====================================================================
 
 export async function saveMultiDayCatchUp(input: {
-  workspaceId: string;
+  /** Ignored — the workspace comes from the session. */
+  workspaceId?: string;
   dates: string[];
   sharedContext: {
     energy: number;
@@ -179,6 +189,8 @@ export async function saveMultiDayCatchUp(input: {
     remark?: string;
   }>;
 }) {
+  const { workspaceId } = await getSession();
+
   try {
     await prisma.$transaction(async (tx) => {
       // 1. Create a DayDebrief for each missed date with the shared context
@@ -188,12 +200,12 @@ export async function saveMultiDayCatchUp(input: {
         await tx.dayDebrief.upsert({
           where: {
             workspaceId_date: {
-              workspaceId: input.workspaceId,
+              workspaceId,
               date: normalizedDate,
             },
           },
           create: {
-            workspaceId: input.workspaceId,
+            workspaceId,
             date: normalizedDate,
             blocksPlanned: 0, // Will be corrected below
             blocksCompleted: 0,
@@ -225,26 +237,35 @@ export async function saveMultiDayCatchUp(input: {
       );
 
       for (const update of explicitUpdates) {
-        const slot = await tx.dailyScheduleSlot.update({
-          where: { id: update.slotId },
+        // Resolve the slot within this workspace first. A slot id belonging
+        // to someone else simply does not resolve, so it is skipped rather
+        // than written to. This also gives us the authoritative date and
+        // sourceBlockId instead of trusting the ones the client sent.
+        const slot = await tx.dailyScheduleSlot.findFirst({
+          where: { id: update.slotId, workspaceId },
+        });
+        if (!slot) continue;
+
+        await tx.dailyScheduleSlot.update({
+          where: { id: slot.id },
           data: {
             status: update.status,
             remark: update.remark || null,
           },
         });
 
-        if (update.sourceBlockId && (update.status === 'COMPLETED' || update.status === 'SKIPPED')) {
+        if (slot.sourceBlockId) {
           const blockStatus: BlockStatus = update.status === 'SKIPPED' ? 'SKIPPED' : 'COMPLETED';
           await tx.blockSessionLog.upsert({
             where: {
               timeBlockId_date: {
-                timeBlockId: update.sourceBlockId,
+                timeBlockId: slot.sourceBlockId,
                 date: slot.date,
               },
             },
             update: { status: blockStatus, remark: update.remark || null },
             create: {
-              timeBlockId: update.sourceBlockId,
+              timeBlockId: slot.sourceBlockId,
               date: slot.date,
               status: blockStatus,
               remark: update.remark || null,
@@ -257,7 +278,7 @@ export async function saveMultiDayCatchUp(input: {
       for (const dateStr of input.dates) {
         const normalizedDate = fromISTDateString(dateStr);
         const dateSlots = await tx.dailyScheduleSlot.findMany({
-          where: { workspaceId: input.workspaceId, date: normalizedDate },
+          where: { workspaceId, date: normalizedDate },
         });
 
         const planned = dateSlots.length;
@@ -267,7 +288,7 @@ export async function saveMultiDayCatchUp(input: {
         await tx.dayDebrief.update({
           where: {
             workspaceId_date: {
-              workspaceId: input.workspaceId,
+              workspaceId,
               date: normalizedDate,
             },
           },

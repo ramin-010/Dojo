@@ -1,8 +1,10 @@
 'use server';
 
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
-export async function getKnowledgeData(workspaceId: string) {
+export async function getKnowledgeData() {
+  const { workspaceId } = await getSession();
   try {
     // 1. Fetch all NoteCategories for the workspace
     const categories = await prisma.noteCategory.findMany({

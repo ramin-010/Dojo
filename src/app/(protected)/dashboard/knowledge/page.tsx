@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function KnowledgeHubPage() {
   const { workspaceId } = await getSession();
-  const result = await getKnowledgeData(workspaceId);
+  const result = await getKnowledgeData();
   
   if (!result.success) {
     return (
