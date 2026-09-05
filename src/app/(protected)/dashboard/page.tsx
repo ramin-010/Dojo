@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth';
 import { getUnverifiedBlocks } from '@/app/actions/planner.actions';
 import { ensureTodaySlots, backfillMissedDays } from '@/app/actions/schedule-slot.actions';
 
-import { getISTMidnight } from '@/lib/utils';
+import { getISTMidnight, addDays } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +27,7 @@ export default async function DashboardPage() {
     masteredTopics,
     totalRevisionsDone,
     quickNotesRaw,
+    adherenceSlots,
   ] = await Promise.all([
     // 1. Workspace
     prisma.workspace.findUnique({
@@ -144,6 +145,18 @@ export default async function DashboardPage() {
     prisma.quickNote.findMany({
       where: { workspaceId: workspaceId },
       orderBy: { createdAt: 'asc' }
+    }),
+
+    // 13. Block adherence source — last 14 days of resolved slots, so we can
+    // show this week's completion rate AND compare it to the week before.
+    // Only days strictly before today count: today is still in progress and
+    // would drag the number down all morning.
+    prisma.dailyScheduleSlot.findMany({
+      where: {
+        workspaceId,
+        date: { gte: addDays(today, -14), lt: today },
+      },
+      select: { date: true, status: true },
     }),
   ]);
 
@@ -293,6 +306,24 @@ export default async function DashboardPage() {
   const inProgressTopics = Math.max(0, topicsWithRevisions - masteredTopics);
   const notStartedTopics = Math.max(0, totalTopics - topicsWithRevisions);
 
+  // Block adherence: the honest number. Counts a block as "hit" only if it was
+  // COMPLETED or PARTIAL; SKIPPED and never-marked both count against it,
+  // because a block you never resolved is not a block you did.
+  const sevenDaysAgo = addDays(today, -7);
+  const fourteenDaysAgo = addDays(today, -14);
+
+  const rate = (rows: typeof adherenceSlots) => {
+    if (rows.length === 0) return null;
+    const hit = rows.filter(r => r.status === 'COMPLETED' || r.status === 'PARTIAL').length;
+    return Math.round((hit / rows.length) * 100);
+  };
+
+  const thisWeekSlots = adherenceSlots.filter(s => s.date >= sevenDaysAgo);
+  const priorWeekSlots = adherenceSlots.filter(s => s.date >= fourteenDaysAgo && s.date < sevenDaysAgo);
+
+  const adherence = rate(thisWeekSlots);
+  const priorAdherence = rate(priorWeekSlots);
+
   const stats = {
     streak: user?.globalStreak || 0,
     totalTopics,
@@ -300,7 +331,11 @@ export default async function DashboardPage() {
     weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
     mastered: masteredTopics,
     inProgress: inProgressTopics,
-    notStarted: notStartedTopics
+    notStarted: notStartedTopics,
+    adherence,
+    adherenceDelta: adherence !== null && priorAdherence !== null ? adherence - priorAdherence : null,
+    adherenceDone: thisWeekSlots.filter(s => s.status === 'COMPLETED' || s.status === 'PARTIAL').length,
+    adherenceTotal: thisWeekSlots.length,
   };
 
   // Quick Notes

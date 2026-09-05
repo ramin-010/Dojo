@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Flame, BookOpen, CheckCircle2, FolderPlus, Menu, Target, Zap, Inbox, Sparkles } from 'lucide-react';
+import { Flame, BookOpen, FolderPlus, Menu, Target, Zap, Inbox, Sparkles } from 'lucide-react';
 import { CreateSubjectModal } from '@/components/subject/CreateSubjectModal';
 import RescheduleModal from '@/components/dashboard/RescheduleModal';
 import { ResourcePreviewModal } from '@/app/(protected)/topic/[id]/components/resources/ResourcePreviewModal';
@@ -74,6 +74,12 @@ export interface StatsProp {
   mastered: number;
   inProgress: number;
   notStarted: number;
+  /** % of scheduled blocks actually completed over the last 7 full days. */
+  adherence: number | null;
+  /** Point change vs the 7 days before that. Positive = improving. */
+  adherenceDelta: number | null;
+  adherenceDone: number;
+  adherenceTotal: number;
 }
 
 export interface ScheduleSlotProp {
@@ -120,6 +126,9 @@ interface DashboardClientProps {
 
 function getGreeting(): string {
   const h = new Date().getHours();
+  // Past midnight but not yet morning: you're still up from yesterday, so
+  // "Good morning" reads as a small daily lie.
+  if (h < 5) return 'Still up';
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
@@ -247,6 +256,13 @@ export default function DashboardClient({
     });
   };
 
+  // Colour the adherence figure by where it actually sits, not by sentiment.
+  const adherenceTone =
+    stats.adherence === null ? 'text-muted'
+      : stats.adherence >= 70 ? 'text-emerald-500'
+      : stats.adherence >= 40 ? 'text-amber-500'
+      : 'text-red-400';
+
   return (
     <div className="p-4 md:p-8 pb-24 max-w-[1200px] mx-auto w-full min-h-full flex flex-col">
       <TriageInterceptor
@@ -299,18 +315,29 @@ export default function DashboardClient({
               <span className="font-semibold text-orange-400">{stats.streak}</span>
               <span>day streak</span>
             </div>
-            <div className="h-4 w-px bg-divider" />
-            <div className="flex items-center gap-1.5 text-sm text-muted">
-              <BookOpen className="w-4 h-4 text-muted" />
-              <span className="font-semibold text-muted">{stats.totalTopics}</span>
-              <span>topics</span>
-            </div>
-            <div className="h-4 w-px bg-divider" />
-            <div className="flex items-center gap-1.5 text-sm text-muted">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500/70" />
-              <span className="font-semibold text-emerald-500/70">{stats.totalRevisionsDone}</span>
-              <span>reviews</span>
-            </div>
+            {stats.adherence !== null && (
+              <>
+                <div className="h-4 w-px bg-divider" />
+                {/* The honest number. Streak and review counts only ever go up;
+                    this one can go down, which is the point. */}
+                <div
+                  className="flex items-center gap-1.5 text-sm text-muted"
+                  title={`${stats.adherenceDone} of ${stats.adherenceTotal} scheduled blocks completed in the last 7 days`}
+                >
+                  <Target className={`w-4 h-4 ${adherenceTone}`} />
+                  <span className={`font-semibold ${adherenceTone}`}>{stats.adherence}%</span>
+                  <span>blocks this week</span>
+                  {stats.adherenceDelta !== null && stats.adherenceDelta !== 0 && (
+                    <span
+                      className={`text-xs font-medium ${stats.adherenceDelta > 0 ? 'text-emerald-500' : 'text-red-400'}`}
+                      title={`${stats.adherenceDelta > 0 ? 'Up' : 'Down'} ${Math.abs(stats.adherenceDelta)} points vs the previous 7 days`}
+                    >
+                      {stats.adherenceDelta > 0 ? '↑' : '↓'}{Math.abs(stats.adherenceDelta)}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
             <div className="h-4 w-px bg-divider hidden md:block ml-2" />
             <button
               onClick={() => setIsCreateModalOpen(true)}
