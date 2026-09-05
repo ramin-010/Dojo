@@ -58,8 +58,7 @@ export function ReplaceBlockModal({ isOpen, onClose, targetBlock, targetDate }: 
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 md:p-8"
-      style={{ backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 md:p-8 bg-black/30"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-background border border-divider/60 rounded-3xl w-full max-w-md max-h-[95vh] flex flex-col overflow-y-auto shadow-[0_32px_64px_rgba(0,0,0,0.6)] relative">

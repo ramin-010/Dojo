@@ -114,7 +114,7 @@ function PastBlockItem({ slot, onUpdate }: { slot: LocalSlot, onUpdate: (id: str
         </div>
         
         <div className="flex items-center shrink-0 pl-5 sm:pl-0 w-full sm:w-auto">
-          <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50">
+          <div className="flex bg-sidebar rounded-lg p-0.5 border border-divider/50 gap-0.5">
             <button
               onClick={() => onUpdate(slot.id, { status: 'UPCOMING' })}
               className={`p-1.5 rounded-md transition-colors ${!isPastStatus(slot.status) ? 'bg-accent/10 text-accent' : 'text-foreground/30 hover:text-foreground/70 hover:bg-hover'}`}
@@ -140,14 +140,18 @@ function PastBlockItem({ slot, onUpdate }: { slot: LocalSlot, onUpdate: (id: str
         </div>
       </div>
       
-      {/* Bottom row: Input */}
+      {/* Bottom row: note. Kept as a quiet underline rather than a filled box —
+          it repeats once per block, and a stack of empty input boxes reads as
+          work to do rather than an optional aside. */}
       <div className="pl-5">
         <input
           type="text"
-          placeholder="Add a note for this block..."
+          placeholder="Why did it go this way? (optional)"
           value={slot.remark || ''}
           onChange={(e) => onUpdate(slot.id, { remark: e.target.value })}
-          className="w-full bg-sidebar border border-divider/50 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-accent transition-colors"
+          className={`w-full bg-transparent border-b px-1 py-1.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted/70 focus:border-accent/60 ${
+            slot.remark ? 'border-divider/60' : 'border-transparent hover:border-divider/50'
+          }`}
         />
       </div>
     </div>
@@ -427,15 +431,17 @@ function SortableItem({
         </div>
       </div>
 
-      {/* ── Bottom row: Input ── */}
-      <div className="w-full pl-[2.25rem] pr-2 pt-2">
+      {/* ── Bottom row: note ── */}
+      <div className="w-full pl-[2.25rem] pr-2 pt-1">
         <input
           type="text"
-          placeholder="Add a note for this block..."
+          placeholder="Add a note…"
           value={slot.remark || ''}
           onChange={(e) => onUpdate(slot.id, { remark: e.target.value })}
           onPointerDown={(e) => e.stopPropagation()}
-          className="w-full bg-sidebar/50 border border-divider/30 rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-accent/50 transition-colors opacity-50 focus:opacity-100 hover:opacity-100"
+          className={`w-full bg-transparent border-b px-1 py-1 text-xs text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent/60 ${
+            slot.remark ? 'border-divider/50' : 'border-transparent hover:border-divider/40'
+          }`}
         />
       </div>
     </div>
@@ -502,6 +508,17 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
       );
     }
   }, [isOpen, initialSlots]);
+
+  // Escape closes — every other modal in the app does, and this one traps the
+  // user behind a mouse-only Cancel button otherwise.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, isSaving, onClose]);
 
   // ── Recalculation engine ───────────────────────────────────────────────
   //
@@ -778,7 +795,7 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 md:p-8 bg-black/50"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 md:p-8 bg-black/30"
       onClick={onClose}
     >
       <div
@@ -786,8 +803,13 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
         className="bg-background border border-divider/35 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[85vh] relative animate-in fade-in zoom-in-95 duration-200"
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
-          <h2 className="text-lg font-semibold text-foreground">Day Manager</h2>
+        <div className="px-6 pt-6 pb-2 flex items-start justify-between shrink-0">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground leading-tight">Day Manager</h2>
+            <p className="text-xs text-muted mt-0.5">
+              {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
           <button
             onClick={onClose}
             disabled={isSaving}
@@ -820,19 +842,28 @@ export function DayManagerModal({ isOpen, onClose, initialSlots }: DayManagerMod
             )}
           </div>
 
-          <div className="text-sm text-muted font-medium">
-            {futureSlots.filter(s => s.status !== 'ACTIVE').length} remaining
+          <div className="flex items-center gap-2 text-sm text-muted font-medium">
+            <span>{futureSlots.filter(s => s.status !== 'ACTIVE').length} remaining</span>
             {futureDuration > 0 && (
-              <> • {futureHours}h{futureMinutes > 0 ? ` ${futureMinutes}m` : ''}</>
+              <>
+                <span className="w-1 h-1 rounded-full bg-muted/50" />
+                <span className="font-mono text-[13px]">
+                  {futureHours}h{futureMinutes > 0 ? ` ${futureMinutes}m` : ''}
+                </span>
+              </>
             )}
           </div>
         </div>
 
         {/* ── Scrollable Content ─────────────────────────────────────────── */}
-        <div className="px-6 py-3 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-divider">
+        <div className="px-6 py-3 overflow-y-auto flex-1 custom-scrollbar">
           {/* Past blocks (read-only) */}
           {hasPastBlocks && (
             <div className="mb-1">
+              <div className="flex items-center gap-2 px-1 pb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted">Earlier</span>
+                <div className="h-px flex-1 bg-divider/40" />
+              </div>
               {pastSlots.map(slot => (
                 <PastBlockItem key={slot.id} slot={slot} onUpdate={handleUpdate} />
               ))}

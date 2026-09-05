@@ -7,8 +7,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { upsertQuickNote, createQuickNoteWithAttachments, deleteQuickNote, toggleQuickNotePin } from '@/app/actions/quick-note.actions';
 import { uploadToCloud } from '@/lib/utils/upload';
 import { useQuickNoteSync, QuickNoteSyncPayload } from '@/lib/pusher-client';
-import { Plus, FileText, Download, Copy, Check, Loader2, Paperclip, Image as ImageIcon, X, Maximize2, Trash2, Pin, PinOff, Search, Code, Link, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Download, Copy, Check, Loader2, Paperclip, Image as ImageIcon, X, Maximize2, Trash2, Pin, PinOff, Search, Code, Link, ChevronDown, ChevronRight, Bold, Italic, Code2, Link2, List } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { NoteContent } from './NoteContent';
 import { createPortal } from 'react-dom';
 
 export type QuickNoteType = {
@@ -445,9 +446,69 @@ const NoteBlock = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [originalContent, setOriginalContent] = useState('');
+  const [isComposerFocused, setIsComposerFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasSendableContent = localContent.trim() !== '' || !!(draftAttachments && draftAttachments.length > 0);
+  const hasComposerContent = isComposerFocused || hasSendableContent;
+
+  // ── Composer formatting ───────────────────────────────────────────────
+  // The composer stays a plain textarea on purpose: it has to survive fast,
+  // messy input (pasted code, half-finished thoughts). These helpers just
+  // wrap the selection in markdown so the renderer picks it up, which keeps
+  // what is stored identical to what was typed.
+  const commitComposer = (next: string, selStart: number, selEnd: number) => {
+    setLocalContent(next);
+    onUpdate(note.id, next);
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(selStart, selEnd);
+    });
+  };
+
+  const wrapSelection = (before: string, after: string, placeholder: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const value = ta.value;
+    const selected = value.slice(start, end) || placeholder;
+    const next = value.slice(0, start) + before + selected + after + value.slice(end);
+    commitComposer(next, start + before.length, start + before.length + selected.length);
+  };
+
+  const wrapFence = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const value = ta.value;
+    const selected = value.slice(start, end) || 'code';
+    const lead = start > 0 && value[start - 1] !== '\n' ? '\n' : '';
+    const before = lead + '```\n';
+    const next = value.slice(0, start) + before + selected + '\n```\n' + value.slice(end);
+    commitComposer(next, start + before.length, start + before.length + selected.length);
+  };
+
+  const prefixLines = (prefix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const value = ta.value;
+    const lineStart = value.lastIndexOf('\n', Math.max(0, ta.selectionStart - 1)) + 1;
+    const rawEnd = value.indexOf('\n', ta.selectionEnd);
+    const lineEnd = rawEnd === -1 ? value.length : rawEnd;
+    const block = value.slice(lineStart, lineEnd) || '';
+    const updated = block
+      .split('\n')
+      .map((l) => (l.startsWith(prefix) ? l.slice(prefix.length) : prefix + l))
+      .join('\n');
+    const next = value.slice(0, lineStart) + updated + value.slice(lineEnd);
+    commitComposer(next, lineStart, lineStart + updated.length);
+  };
 
   useEffect(() => {
     if (note.isOptimistic && !isNoteEditing) return;
@@ -498,6 +559,15 @@ const NoteBlock = ({
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !isSearchMode) {
+      const key = e.key.toLowerCase();
+      if (key === 'b') { e.preventDefault(); wrapSelection('**', '**', 'bold'); return; }
+      if (key === 'i') { e.preventDefault(); wrapSelection('*', '*', 'italic'); return; }
+      if (key === 'e') { e.preventDefault(); wrapSelection('`', '`', 'code'); return; }
+      if (key === 'k') { e.preventDefault(); wrapSelection('[', '](url)', 'label'); return; }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmitComposer();
@@ -561,6 +631,16 @@ const NoteBlock = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleNoteEditSave();
+    }
+  };
+
+  const handleCopyNote = async () => {
+    try {
+      await navigator.clipboard.writeText(localContent);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1600);
+    } catch (err) {
+      console.error('Failed to copy note:', err);
     }
   };
 
@@ -673,21 +753,55 @@ const NoteBlock = ({
                 }}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
+                onFocus={() => setIsComposerFocused(true)}
+                onBlur={() => setIsComposerFocused(false)}
+                minRows={1}
+                maxRows={14}
                 placeholder={isSearchMode ? 'Search notes...' : (isDragging ? 'Drop file here...' : 'Jot something down...')}
-                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/50 custom-scrollbar mt-1.5 md:pr-0 pb-1"
-                style={{ paddingRight: (!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0))) ? '40px' : '0' }}
+                className="w-full bg-transparent resize-none outline-none text-[15px] leading-relaxed text-foreground/90 placeholder:text-foreground/50 custom-scrollbar mt-1.5 pb-1"
               />
-              
-              {/* Mobile Submit Button */}
-              {!isSearchMode && (localContent.trim() !== '' || (draftAttachments && draftAttachments.length > 0)) && (
-                <button
-                  onClick={handleSubmitComposer}
-                  disabled={isSubmitting}
-                  className="absolute right-0 bottom-1 p-1.5 bg-accent text-white rounded-full transition-colors shadow-sm md:hidden"
-                  title="Send (Enter)"
-                >
-                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 translate-x-[1px]"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>}
-                </button>
+
+              {/* ── Toolbar ──────────────────────────────────────────────
+                  One row, always: formatting on the left, send on the right.
+                  Mounts only once the composer is live so the resting layout
+                  of the column is untouched. Plain code and links are
+                  auto-detected on render; the icons here are for the cases
+                  where intent is ambiguous (emphasis, forcing a fence). */}
+              {!isSearchMode && hasComposerContent && (
+                <div className="flex items-center justify-between gap-2 pb-1 pt-0.5 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-0.5 min-w-0">
+                    {[
+                      { icon: Bold, title: 'Bold (Ctrl+B)', run: () => wrapSelection('**', '**', 'bold') },
+                      { icon: Italic, title: 'Italic (Ctrl+I)', run: () => wrapSelection('*', '*', 'italic') },
+                      { icon: Code, title: 'Inline code (Ctrl+E)', run: () => wrapSelection('`', '`', 'code') },
+                      { icon: Code2, title: 'Code block', run: wrapFence },
+                      { icon: Link2, title: 'Link (Ctrl+K)', run: () => wrapSelection('[', '](url)', 'label') },
+                      { icon: List, title: 'Bullet list', run: () => prefixLines('- ') },
+                    ].map(({ icon: Icon, title, run }) => (
+                      <button
+                        key={title}
+                        type="button"
+                        title={title}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={run}
+                        className="p-1.5 rounded-md text-foreground/35 hover:text-foreground/80 hover:bg-hover transition-colors shrink-0"
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </button>
+                    ))}
+                  </div>
+
+                  {hasSendableContent && (
+                    <button
+                      onClick={handleSubmitComposer}
+                      disabled={isSubmitting}
+                      title="Send  ·  Enter to save, Shift+Enter for a new line"
+                      className="flex items-center justify-center p-1.5 rounded-full bg-accent text-white hover:bg-accent/90 transition-colors shadow-sm shrink-0"
+                    >
+                      {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 translate-x-[1px]"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             
@@ -710,21 +824,21 @@ const NoteBlock = ({
     );
   }
 
-  const renderActionButtons = (isMobile: boolean) => (
+  const renderActionButtons = () => (
     <>
       {isConfirmingDelete ? (
-        <div className={`flex items-center gap-1 p-1 bg-[#1A1A1A] border border-red-500/20 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in fade-in slide-in-from-right-2 ${isMobile ? '' : 'z-10'}`}>
-          <span className="text-[11px] text-red-400/80 font-medium px-2 select-none">Delete?</span>
-          <button 
+        <div className="flex items-center gap-1 p-1 bg-card border border-red-500/25 rounded-lg shadow-sm animate-in fade-in slide-in-from-left-1">
+          <span className="text-[11px] text-red-500/90 font-medium px-1.5 select-none">Delete?</span>
+          <button
             onClick={confirmDelete}
-            className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+            className="p-1 hover:bg-red-500/15 text-red-500 rounded transition-colors"
             title="Yes, delete"
           >
             <Check className="w-3.5 h-3.5" />
           </button>
-          <button 
+          <button
             onClick={() => setIsConfirmingDelete(false)}
-            className="p-1 hover:bg-white/10 text-foreground/50 hover:text-foreground rounded transition-colors"
+            className="p-1 hover:bg-hover text-foreground/50 hover:text-foreground rounded transition-colors"
             title="Cancel"
           >
             <X className="w-3.5 h-3.5" />
@@ -732,12 +846,19 @@ const NoteBlock = ({
         </div>
       ) : (
         <>
+          {localContent.trim() !== '' && (
+            <button
+              onClick={handleCopyNote}
+              className="p-1.5 rounded-md transition-colors hover:bg-hover text-foreground/40 hover:text-foreground/80"
+              title="Copy note"
+            >
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          )}
           <button
             onClick={() => onTogglePin?.(note.id)}
-            className={`p-2 rounded-md transition-all ${
-              note.isPinned 
-                ? 'text-blue-400 hover:bg-blue-500/10 opacity-100' 
-                : `hover:bg-white/10 text-foreground/30 hover:text-foreground/60 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`
+            className={`p-1.5 rounded-md transition-colors hover:bg-hover ${
+              note.isPinned ? 'text-accent' : 'text-foreground/40 hover:text-foreground/80'
             }`}
             title={note.isPinned ? 'Unpin note' : 'Pin note'}
           >
@@ -745,10 +866,10 @@ const NoteBlock = ({
           </button>
           <button
             onClick={() => setIsConfirmingDelete(true)}
-            className={`p-2 rounded-md hover:bg-red-500/10 text-foreground/30 hover:text-red-400 transition-all focus:opacity-100 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            className="p-1.5 rounded-md hover:bg-red-500/10 text-foreground/40 hover:text-red-500 transition-colors"
             title="Delete note"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </>
       )}
@@ -762,7 +883,7 @@ const NoteBlock = ({
           {format(new Date(note.createdAt), 'h:mm a')}
         </span>
       </div>
-      <div className="flex-1 min-w-0 pb-6 pl-2">
+      <div className="flex-1 min-w-0 pb-2 pl-2">
         <div className={`relative inline-flex flex-col rounded-2xl rounded-tl-none px-4 py-3 min-w-[60px] max-w-full ${isNoteEditing ? 'w-full' : ''} bg-card border border-border shadow-sm`}>
           {/* WhatsApp style curved tail */}
           <svg className={`absolute top-0 -left-[10px] w-[10px] h-[16px] text-card`} viewBox="0 0 10 16" fill="currentColor">
@@ -788,27 +909,22 @@ const NoteBlock = ({
                 className="w-full bg-transparent resize-none outline-none text-[14px] leading-relaxed text-foreground/90 placeholder:text-muted !overflow-hidden"
               />
             ) : (
-              <div 
+              <div
                 onDoubleClick={handleDoubleClick}
-                className="w-full bg-transparent text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap cursor-text break-words"
+                className="w-full bg-transparent cursor-text"
                 title="Double click to edit"
               >
-                {localContent}
+                <NoteContent content={localContent} />
               </div>
             )
           )}
           <AttachmentView note={note} />
         </div>
         
-        {/* Mobile Action buttons (below bubble) */}
-        <div className="md:hidden flex items-center gap-1 mt-1 -ml-1">
-          {renderActionButtons(true)}
+        {/* Actions sit under the bubble so they can never cover its content */}
+        <div className="flex items-center gap-0.5 h-8 -ml-1 pt-1 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
+          {renderActionButtons()}
         </div>
-      </div>
-
-      {/* Desktop Action buttons (absolutely positioned on right) */}
-      <div className="hidden md:flex absolute top-0 right-0 items-center gap-0.5">
-        {renderActionButtons(false)}
       </div>
     </div>
   );
@@ -916,7 +1032,11 @@ export const QuickNotesWidget = ({ initialNotes, workspaceId }: QuickNotesWidget
   const groupedNotes = useMemo(() => {
     const grouped = filteredNotes.reduce((acc, note) => {
       const date = new Date(note.createdAt);
-      const key = format(date, 'MMM d, yyyy');
+      const key = isToday(date)
+        ? 'Today'
+        : isYesterday(date)
+        ? 'Yesterday'
+        : format(date, date.getFullYear() === new Date().getFullYear() ? 'MMM d' : 'MMM d, yyyy');
 
       if (!acc[key]) acc[key] = [];
       acc[key].push(note);

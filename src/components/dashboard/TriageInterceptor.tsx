@@ -101,7 +101,7 @@ export function TriageInterceptor({ unverifiedBlocks, workspaceId, onComplete }:
 
   // Single-day: use the existing DayDebriefModal as Action Required
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-2 sm:p-4 md:p-6 overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-2 sm:p-4 md:p-6 overflow-y-auto custom-scrollbar">
       <DayDebriefModal
         isOpen={true}
         onClose={onComplete}

@@ -296,6 +296,73 @@ input:-webkit-autofill:active {
   font-style: italic;
 }
 
+/* ─── Quick Note code cards ───────────────────────────────────────────────
+   The globally imported hljs theme (tokyo-night-dark) assumes a dark editor
+   surface. Note code blocks sit on a theme-derived surface instead, so they
+   get their own palette: one set tuned for the light themes, one for
+   .theme-dark. Scoping to .note-code out-specifies the imported theme without
+   needing !important. */
+.note-code {
+  --syn-keyword: #8839ef;
+  --syn-string:  #2f7d4f;
+  --syn-number:  #a4560c;
+  --syn-title:   #1f6feb;
+  --syn-attr:    #b8390e;
+}
+
+.theme-dark .note-code {
+  --syn-keyword: #c39ef5;
+  --syn-string:  #9ece6a;
+  --syn-number:  #ff9e64;
+  --syn-title:   #7aa2f7;
+  --syn-attr:    #f7768e;
+}
+
+.note-code .hljs-keyword,
+.note-code .hljs-built_in,
+.note-code .hljs-literal,
+.note-code .hljs-type,
+.note-code .hljs-meta,
+.note-code .hljs-selector-tag {
+  color: var(--syn-keyword);
+}
+
+.note-code .hljs-string,
+.note-code .hljs-regexp,
+.note-code .hljs-addition,
+.note-code .hljs-template-tag {
+  color: var(--syn-string);
+}
+
+.note-code .hljs-number,
+.note-code .hljs-symbol,
+.note-code .hljs-bullet,
+.note-code .hljs-link {
+  color: var(--syn-number);
+}
+
+.note-code .hljs-title,
+.note-code .hljs-name,
+.note-code .hljs-section,
+.note-code .hljs-class .hljs-title,
+.note-code .hljs-function .hljs-title {
+  color: var(--syn-title);
+}
+
+.note-code .hljs-attr,
+.note-code .hljs-attribute,
+.note-code .hljs-variable,
+.note-code .hljs-template-variable,
+.note-code .hljs-property {
+  color: var(--syn-attr);
+}
+
+.note-code .hljs-params,
+.note-code .hljs-punctuation,
+.note-code .hljs-operator {
+  color: inherit;
+}
+
 .tiptap blockquote {
   border-left: 3px solid var(--color-border);
   padding: 0.75rem 1rem;
