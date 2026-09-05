@@ -69,6 +69,11 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
   const [showRemark, setShowRemark] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [resumedFromExisting, setResumedFromExisting] = useState(false);
+  // First click on Save while blocks remain unmarked asks for confirmation
+  // instead of saving immediately — silently accepting a partial save is
+  // exactly what made this modal reappear with the same count, over and
+  // over, with no visible reason why.
+  const [confirmingPartialSave, setConfirmingPartialSave] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -85,6 +90,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
     setTags([]);
     setShowRemark({});
     setResumedFromExisting(false);
+    setConfirmingPartialSave(false);
 
     // This modal can reopen for a gap that was already partially closed —
     // a shared context was saved but some blocks were left unresolved (see
@@ -120,8 +126,20 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
   const unresolvedCount = Object.values(slotUpdates).filter(u => u.status === 'UNRESOLVED').length;
 
+  useEffect(() => {
+    if (unresolvedCount === 0) setConfirmingPartialSave(false);
+  }, [unresolvedCount]);
+
   const handleSave = async () => {
     if (!canSave) return;
+
+    if (unresolvedCount > 0 && !confirmingPartialSave) {
+      // First click: make the consequence explicit instead of saving
+      // silently. Second click actually saves.
+      setConfirmingPartialSave(true);
+      return;
+    }
+
     setIsSaving(true);
     
     try {
@@ -151,6 +169,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
       });
       
       toast.success('Catch-up saved!');
+      setConfirmingPartialSave(false);
       onClose();
     } catch (error) {
       console.error('Failed to save catch-up:', error);
@@ -366,43 +385,62 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-divider flex items-center justify-between flex-shrink-0 bg-sidebar/50">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleMarkAllSkipped}
-                  className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-divider/50"
-                >
-                  Mark All Skipped
-                </button>
-                {unresolvedCount > 0 && (
-                  <span className="text-xs text-muted-foreground/70">
-                    {unresolvedCount} left unmarked
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={onClose}
-                  disabled={isSaving}
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={!canSave || isSaving}
-                  className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save & Continue'
+            <div className="border-t border-divider flex-shrink-0 bg-sidebar/50">
+              {confirmingPartialSave && (
+                <div className="px-4 pt-3 flex items-start gap-2 text-amber-500">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <p className="text-xs leading-relaxed">
+                    {unresolvedCount} {unresolvedCount === 1 ? 'block is' : 'blocks are'} still unmarked above.
+                    Saving now keeps them pending — you'll see this Welcome Back screen again next time until
+                    every block is marked Done or Skipped. Click <span className="font-semibold">Save Anyway</span> to
+                    continue, or scroll up to mark them first.
+                  </p>
+                </div>
+              )}
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleMarkAllSkipped}
+                    className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-divider/50"
+                  >
+                    Mark All Skipped
+                  </button>
+                  {unresolvedCount > 0 && (
+                    <span className={`text-xs font-medium ${confirmingPartialSave ? 'text-amber-500' : 'text-muted-foreground/70'}`}>
+                      {unresolvedCount} left unmarked
+                    </span>
                   )}
-                </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onClose}
+                    disabled={isSaving}
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={!canSave || isSaving}
+                    className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      confirmingPartialSave
+                        ? 'bg-amber-500 text-white hover:bg-amber-500/90'
+                        : 'bg-accent text-white hover:bg-accent/90'
+                    }`}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : confirmingPartialSave ? (
+                      'Save Anyway'
+                    ) : (
+                      'Save & Continue'
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
