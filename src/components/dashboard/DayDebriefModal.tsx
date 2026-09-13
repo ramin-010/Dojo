@@ -30,7 +30,16 @@ const DEFAULT_TAGS = [
 
 interface DayDebriefModalProps {
   isOpen: boolean;
+  /** Called after an actual save — the caller should refetch, since data changed. */
   onClose: () => void;
+  /**
+   * Called on backdrop click, Escape, the X button, or Cancel — nothing was
+   * saved. Defaults to `onClose` for callers that treat every close the
+   * same (e.g. the manually-triggered "Wrap Up Day" flow). The Action
+   * Required flow passes its own, non-mutating dismiss so unresolved blocks
+   * stay unresolved and the prompt simply returns next visit.
+   */
+  onDismiss?: () => void;
   workspaceId: string;
   todaySlots: ScheduleSlotProp[];
   date?: Date;
@@ -41,15 +50,28 @@ interface DayDebriefModalProps {
 export function DayDebriefModal({
   isOpen,
   onClose,
+  onDismiss,
   workspaceId,
   todaySlots,
   date = new Date(),
   title = "Daily Debrief — AI Context",
   subtitle = 'Log your blocks and help your AI mentor understand the "why".'
 }: DayDebriefModalProps) {
+  const dismiss = onDismiss ?? onClose;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showFreeWrite, setShowFreeWrite] = useState(false);
+
+  // Non-blocking: Escape dismisses just like clicking outside or the X
+  // button. Nothing is saved by any of them — see `dismiss` above.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) dismiss();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, isSaving, dismiss]);
 
   // New: Schedule Review State
   const [slotLogs, setSlotLogs] = useState<Record<string, SlotLogInput>>({});
@@ -203,7 +225,10 @@ export function DayDebriefModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/30 overflow-y-auto">
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/30 overflow-y-auto"
+        onClick={(e) => { if (e.target === e.currentTarget && !isSaving) dismiss(); }}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -222,8 +247,9 @@ export function DayDebriefModal({
               </p>
             </div>
             <button
-              onClick={onClose}
-              className="p-2 text-foreground/40 hover:text-foreground hover:bg-hover rounded-lg transition-colors"
+              onClick={dismiss}
+              disabled={isSaving}
+              className="p-2 text-foreground/40 hover:text-foreground hover:bg-hover rounded-lg transition-colors disabled:opacity-50"
             >
               <X className="w-5 h-5" />
             </button>
@@ -429,8 +455,9 @@ export function DayDebriefModal({
             </span>
             <div className="flex gap-2">
               <button
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-foreground/60 hover:text-foreground hover:bg-hover transition-colors"
+                onClick={dismiss}
+                disabled={isSaving}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-foreground/60 hover:text-foreground hover:bg-hover transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

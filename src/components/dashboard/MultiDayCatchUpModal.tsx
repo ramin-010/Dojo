@@ -2,13 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, XCircle, Loader2, Battery, Target, Smile, MessageSquare, ChevronDown } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle, Loader2, Battery, Target, Smile, MessageSquare, ChevronDown, X } from 'lucide-react';
 import { saveMultiDayCatchUp, getDebriefsForDates } from '@/app/actions/debrief.actions';
 import { toast } from 'sonner';
 
 interface MultiDayCatchUpModalProps {
   isOpen: boolean;
+  /** Called after an actual save — the caller should refetch, since data changed. */
   onClose: () => void;
+  /**
+   * Called on backdrop click, Escape, or Cancel — nothing was saved, so the
+   * caller should just hide the modal locally rather than refetch. Missed
+   * blocks stay genuinely unresolved on the server; the same prompt returns
+   * next time the dashboard mounts.
+   */
+  onDismiss: () => void;
   workspaceId: string;
   blocksByDate: Record<string, Array<{
     id: string;
@@ -63,7 +71,7 @@ function RatingScale({ label, icon, value, onChange }: { label: string, icon: Re
  */
 type SlotDecision = 'COMPLETED' | 'SKIPPED' | 'UNRESOLVED';
 
-export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDate }: MultiDayCatchUpModalProps) {
+export function MultiDayCatchUpModal({ isOpen, onClose, onDismiss, workspaceId, blocksByDate }: MultiDayCatchUpModalProps) {
   const [narrative, setNarrative] = useState('');
   const [energy, setEnergy] = useState<number | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
@@ -122,6 +130,17 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
     return () => { cancelled = true; };
   }, [isOpen, blocksByDate]);
+
+  // Non-blocking: Escape dismisses just like clicking outside. Nothing is
+  // saved by either — see onDismiss above.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) onDismiss();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, isSaving, onDismiss]);
 
   const dates = Object.keys(blocksByDate).sort();
   const dateRangeText = dates.length > 0 
@@ -206,7 +225,10 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/30 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/30 overflow-y-auto"
+          onClick={(e) => { if (e.target === e.currentTarget && !isSaving) onDismiss(); }}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -215,7 +237,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
             className="w-full max-w-3xl bg-sidebar border border-divider shadow-2xl rounded-2xl flex flex-col max-h-[95vh] sm:max-h-[92vh] overflow-hidden"
           >
             {/* Header */}
-            <div className="p-6 pb-4 border-b border-divider flex items-center justify-between flex-shrink-0">
+            <div className="p-6 pb-4 border-b border-divider flex items-start justify-between flex-shrink-0">
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <AlertCircle className="w-6 h-6 text-purple-500" />
@@ -230,6 +252,14 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
                   </p>
                 )}
               </div>
+              <button
+                onClick={onDismiss}
+                disabled={isSaving}
+                className="p-2 -m-2 text-foreground/40 hover:text-foreground hover:bg-hover rounded-lg transition-colors disabled:opacity-50"
+                title="Dismiss for now — you'll see this again next time"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Scrollable Content */}
@@ -421,7 +451,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={onClose}
+                    onClick={onDismiss}
                     disabled={isSaving}
                     className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                   >

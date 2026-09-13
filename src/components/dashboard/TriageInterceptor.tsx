@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DayDebriefModal } from './DayDebriefModal';
 import { MultiDayCatchUpModal } from './MultiDayCatchUpModal';
 import { ScheduleSlotProp } from '@/app/(protected)/dashboard/DashboardClient';
@@ -25,6 +25,13 @@ interface TriageInterceptorProps {
 }
 
 export function TriageInterceptor({ unverifiedBlocks, workspaceId, onComplete }: TriageInterceptorProps) {
+  // Non-blocking: dismissing (backdrop click, Escape, X, Cancel) only hides
+  // the prompt for this page visit — nothing is saved or marked resolved,
+  // so `unverifiedBlocks` is unchanged and the same prompt returns on the
+  // next full load or dashboard revisit (this component remounts fresh
+  // either way). A real save still goes through onComplete, which refetches.
+  const [dismissed, setDismissed] = useState(false);
+
   // Determine how many unique dates are involved
   const uniqueDates = useMemo(() => {
     const dateSet = new Set(
@@ -85,7 +92,7 @@ export function TriageInterceptor({ unverifiedBlocks, workspaceId, onComplete }:
     return grouped;
   }, [unverifiedBlocks]);
 
-  if (!unverifiedBlocks || unverifiedBlocks.length === 0) return null;
+  if (!unverifiedBlocks || unverifiedBlocks.length === 0 || dismissed) return null;
 
   // Multi-day: 2+ unique dates → show the catch-up modal
   if (uniqueDates.length >= 2) {
@@ -93,24 +100,26 @@ export function TriageInterceptor({ unverifiedBlocks, workspaceId, onComplete }:
       <MultiDayCatchUpModal
         isOpen={true}
         onClose={onComplete}
+        onDismiss={() => setDismissed(true)}
         workspaceId={workspaceId}
         blocksByDate={blocksByDate}
       />
     );
   }
 
-  // Single-day: use the existing DayDebriefModal as Action Required
+  // Single-day: use the existing DayDebriefModal as Action Required.
+  // DayDebriefModal renders its own backdrop, so it's used directly here —
+  // wrapping it in a second one used to stack two overlays on top of each other.
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-2 sm:p-4 md:p-6 overflow-y-auto custom-scrollbar">
-      <DayDebriefModal
-        isOpen={true}
-        onClose={onComplete}
-        workspaceId={workspaceId}
-        todaySlots={mappedSlots}
-        date={targetDate}
-        title="Action Required"
-        subtitle={`${unverifiedBlocks.length} unresolved ${unverifiedBlocks.length === 1 ? 'block' : 'blocks'} from the past`}
-      />
-    </div>
+    <DayDebriefModal
+      isOpen={true}
+      onClose={onComplete}
+      onDismiss={() => setDismissed(true)}
+      workspaceId={workspaceId}
+      todaySlots={mappedSlots}
+      date={targetDate}
+      title="Action Required"
+      subtitle={`${unverifiedBlocks.length} unresolved ${unverifiedBlocks.length === 1 ? 'block' : 'blocks'} from the past`}
+    />
   );
 }
