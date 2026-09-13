@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, XCircle, Loader2, Battery, Target, Smile, MessageSquare } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle, Loader2, Battery, Target, Smile, MessageSquare, ChevronDown } from 'lucide-react';
 import { saveMultiDayCatchUp, getDebriefsForDates } from '@/app/actions/debrief.actions';
 import { toast } from 'sonner';
 
@@ -52,7 +52,15 @@ function RatingScale({ label, icon, value, onChange }: { label: string, icon: Re
   );
 }
 
-/** A block is unmarked until the user says otherwise. */
+/**
+ * A block is unmarked until the user says otherwise — but "unmarked" is no
+ * longer a state the user has to clear before saving. The narrative field
+ * above this list is the actual point of the modal: it captures why the
+ * whole stretch was missed in one shot. Anything still UNRESOLVED at save
+ * time is treated as SKIPPED (see handleSave); this list only exists for the
+ * rarer correction — "I actually did do gym that day" — and stays collapsed
+ * by default so it never competes with the one thing the modal is asking for.
+ */
 type SlotDecision = 'COMPLETED' | 'SKIPPED' | 'UNRESOLVED';
 
 export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDate }: MultiDayCatchUpModalProps) {
@@ -69,11 +77,9 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
   const [showRemark, setShowRemark] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [resumedFromExisting, setResumedFromExisting] = useState(false);
-  // First click on Save while blocks remain unmarked asks for confirmation
-  // instead of saving immediately — silently accepting a partial save is
-  // exactly what made this modal reappear with the same count, over and
-  // over, with no visible reason why.
-  const [confirmingPartialSave, setConfirmingPartialSave] = useState(false);
+  // Collapsed by default — reviewing every block is an exception you opt
+  // into, not a checklist you're expected to clear.
+  const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -90,7 +96,7 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
     setTags([]);
     setShowRemark({});
     setResumedFromExisting(false);
-    setConfirmingPartialSave(false);
+    setIsScheduleExpanded(false);
 
     // This modal can reopen for a gap that was already partially closed —
     // a shared context was saved but some blocks were left unresolved (see
@@ -124,36 +130,27 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
   const canSave = energy !== null && focus !== null && mood !== null && narrative.trim().length > 0;
 
+  const totalBlocks = Object.keys(slotUpdates).length;
   const unresolvedCount = Object.values(slotUpdates).filter(u => u.status === 'UNRESOLVED').length;
-
-  useEffect(() => {
-    if (unresolvedCount === 0) setConfirmingPartialSave(false);
-  }, [unresolvedCount]);
+  const exceptionCount = totalBlocks - unresolvedCount; // blocks the user explicitly overrode
 
   const handleSave = async () => {
     if (!canSave) return;
 
-    if (unresolvedCount > 0 && !confirmingPartialSave) {
-      // First click: make the consequence explicit instead of saving
-      // silently. Second click actually saves.
-      setConfirmingPartialSave(true);
-      return;
-    }
-
     setIsSaving(true);
-    
+
     try {
-      // Send ONLY blocks the user explicitly decided. Anything left
-      // UNRESOLVED keeps its UPCOMING status in the database rather than
-      // being invented as a skip.
-      const formattedSlotUpdates = Object.entries(slotUpdates)
-        .filter(([, update]) => update.status !== 'UNRESOLVED')
-        .map(([slotId, update]) => ({
-          slotId,
-          sourceBlockId: update.sourceBlockId,
-          status: update.status as 'COMPLETED' | 'SKIPPED',
-          ...(update.remark.trim() ? { remark: update.remark.trim() } : {})
-        }));
+      // The narrative above is the actual record of what happened. Every
+      // block still UNRESOLVED is resolved as SKIPPED here — that's the
+      // honest default for time that was never logged — while anything the
+      // user explicitly marked (the rare "I did do gym that day" case)
+      // keeps their decision and remark.
+      const formattedSlotUpdates = Object.entries(slotUpdates).map(([slotId, update]) => ({
+        slotId,
+        sourceBlockId: update.sourceBlockId,
+        status: (update.status === 'UNRESOLVED' ? 'SKIPPED' : update.status) as 'COMPLETED' | 'SKIPPED',
+        ...(update.remark.trim() ? { remark: update.remark.trim() } : {})
+      }));
 
       await saveMultiDayCatchUp({
         workspaceId,
@@ -167,9 +164,8 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
         },
         slotUpdates: formattedSlotUpdates
       });
-      
+
       toast.success('Catch-up saved!');
-      setConfirmingPartialSave(false);
       onClose();
     } catch (error) {
       console.error('Failed to save catch-up:', error);
@@ -195,8 +191,16 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
     });
   };
 
-  const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  // Block times are stored as plain "HH:mm" strings (see DailyScheduleSlot),
+  // not ISO timestamps — feeding one to `new Date()` is what produced
+  // "Invalid Date - Invalid Date" here.
+  const formatTime = (time24: string) => {
+    const [hStr, mStr] = time24.split(':');
+    const h = parseInt(hStr, 10);
+    if (Number.isNaN(h)) return time24;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${(mStr ?? '00').padStart(2, '0')} ${ampm}`;
   };
 
   return (
@@ -287,11 +291,28 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
                 </div>
               </div>
 
-              {/* Section 2: Missed Days Summary */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-bold border-b border-divider pb-2">Missed Schedule</h3>
-                
-                {dates.map(dateStr => {
+              {/* Section 2: Missed Days Summary — collapsed by default. The
+                  narrative above is the record; this is only for the
+                  exception where a specific block actually happened. */}
+              <div className="space-y-4">
+                <button
+                  onClick={() => setIsScheduleExpanded(prev => !prev)}
+                  className="w-full flex items-center justify-between gap-3 border-b border-divider pb-2 text-left group"
+                >
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground/80">
+                      {totalBlocks} block{totalBlocks === 1 ? '' : 's'} across {dates.length} day{dates.length === 1 ? '' : 's'} will be marked skipped
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {exceptionCount > 0
+                        ? `${exceptionCount} marked as an exception below.`
+                        : 'Actually did one of these? Mark it below.'}
+                    </p>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${isScheduleExpanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isScheduleExpanded && dates.map(dateStr => {
                   const dayBlocks = blocksByDate[dateStr];
                   if (!dayBlocks || dayBlocks.length === 0) return null;
                   
@@ -386,29 +407,15 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
 
             {/* Footer */}
             <div className="border-t border-divider flex-shrink-0 bg-sidebar/50">
-              {confirmingPartialSave && (
-                <div className="px-4 pt-3 flex items-start gap-2 text-amber-500">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <p className="text-xs leading-relaxed">
-                    {unresolvedCount} {unresolvedCount === 1 ? 'block is' : 'blocks are'} still unmarked above.
-                    Saving now keeps them pending — you'll see this Welcome Back screen again next time until
-                    every block is marked Done or Skipped. Click <span className="font-semibold">Save Anyway</span> to
-                    continue, or scroll up to mark them first.
-                  </p>
-                </div>
-              )}
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleMarkAllSkipped}
-                    className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-divider/50"
-                  >
-                    Mark All Skipped
-                  </button>
-                  {unresolvedCount > 0 && (
-                    <span className={`text-xs font-medium ${confirmingPartialSave ? 'text-amber-500' : 'text-muted-foreground/70'}`}>
-                      {unresolvedCount} left unmarked
-                    </span>
+                  {isScheduleExpanded && exceptionCount > 0 && (
+                    <button
+                      onClick={handleMarkAllSkipped}
+                      className="text-sm text-muted-foreground hover:text-foreground font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-divider/50"
+                    >
+                      Reset all to skipped
+                    </button>
                   )}
                 </div>
 
@@ -423,19 +430,13 @@ export function MultiDayCatchUpModal({ isOpen, onClose, workspaceId, blocksByDat
                   <button
                     onClick={handleSave}
                     disabled={!canSave || isSaving}
-                    className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      confirmingPartialSave
-                        ? 'bg-amber-500 text-white hover:bg-amber-500/90'
-                        : 'bg-accent text-white hover:bg-accent/90'
-                    }`}
+                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-white hover:bg-accent/90"
                   >
                     {isSaving ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Saving...
                       </>
-                    ) : confirmingPartialSave ? (
-                      'Save Anyway'
                     ) : (
                       'Save & Continue'
                     )}
