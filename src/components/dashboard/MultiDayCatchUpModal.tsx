@@ -171,7 +171,14 @@ export function MultiDayCatchUpModal({ isOpen, onClose, onDismiss, workspaceId, 
         ...(update.remark.trim() ? { remark: update.remark.trim() } : {})
       }));
 
-      await saveMultiDayCatchUp({
+      // saveMultiDayCatchUp catches its own errors and returns a result
+      // object instead of throwing — this call never rejects on a server-
+      // side failure. Not checking `.success` here is what let a silently
+      // rolled-back save (e.g. a transaction timeout) show "Catch-up
+      // saved!" and close the modal while nothing had actually been
+      // written, so it reappeared on the very next load with none of the
+      // days resolved.
+      const result = await saveMultiDayCatchUp({
         workspaceId,
         dates,
         sharedContext: {
@@ -183,6 +190,11 @@ export function MultiDayCatchUpModal({ isOpen, onClose, onDismiss, workspaceId, 
         },
         slotUpdates: formattedSlotUpdates
       });
+
+      if (!result.success) {
+        toast.error(result.error || 'Failed to save catch-up. Please try again.');
+        return;
+      }
 
       toast.success('Catch-up saved!');
       onClose();
